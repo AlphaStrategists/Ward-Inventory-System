@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 class UserController extends Controller
 {
     public function login() {
-        return view('components/home');
+        return view('pages/home');
     }
 
     public function showPasswordResetForm() {
