@@ -1,11 +1,11 @@
 <?php
 
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function() {
     return view('components/login');
 });
 
-Route::get('/home', function() {
-    return view('components/home');
-});
+Route::post('/login', [UserController::class, 'login'])-> name('login');
+Route::get('/password/reset', [UserController::class, 'showPasswordResetForm'])-> name('password.request');

@@ -59,7 +59,7 @@
 
             <!-- Login card -->
             <div class="bg-white rounded-2xl shadow-2xl p-8">
-                <h2 class="text-xl font-semibold text-slate-800 mb-1 font-outfit">Sign in to your account</h2>
+                <h2 class="text-xl font-semibold text-slate-800 mb-1 font-outfit">First sign in to your account</h2>
                 <p class="text-sm text-slate-500 mb-6 font-inter">Enter your credentials to access inventory</p>
 
                 {{-- Session status (e.g. password reset confirmation) --}}
@@ -141,7 +141,7 @@
 
                 <div class="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2">
                     <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                    <p class="text-xs text-slate-400 font-inter">Secured connection · Apollo Multi-Specialty Hospital</p>
+                    <p class="text-xs text-slate-400 font-inter">Secured connection · AlphaStrategies Desgn</p>
                 </div>
             </div>
         </div>
