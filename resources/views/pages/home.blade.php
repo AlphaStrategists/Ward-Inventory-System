@@ -63,8 +63,32 @@
                         </div>
                     </div>
                     <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">General Inventory</a>
-                    <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Medicine</a>
-                    <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Injections</a>
+
+                    <div class="relative group">
+                        <button class="inline-flex items-center gap-2 rounded-[2rem] bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">
+                            Medicine
+                            <span class="text-slate-400">▾</span>
+                        </button>
+                        <div class="invisible absolute left-0 top-full mt-2 w-52 rounded-[2rem] border border-slate-200 bg-white p-2 shadow-2xl transition duration-200 group-hover:visible group-hover:opacity-100">
+                            <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Nacotic</a>
+                            <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Syrup</a>
+                            <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">IV-fluid</a>
+                            <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Bulk</a>
+                            <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Oral-Consumable</a>
+                            <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Antibiotics</a>
+                            <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Oral-Antibiotics</a>
+                        </div>
+                    </div>
+                    <div class="relative group">
+                        <button class="inline-flex items-center gap-2 rounded-[2rem] bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">
+                            Injections
+                            <span class="text-slate-400">▾</span>
+                        </button>
+                        <div class="invisible absolute left-0 top-full mt-2 w-52 rounded-[2rem] border border-slate-200 bg-white p-2 shadow-2xl transition duration-200 group-hover:visible group-hover:opacity-100">
+                            <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Injections</a>
+                            <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Antibiotic-Injections</a>
+                        </div>
+                    </div>
                     <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Patients</a>
                     <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Settings</a>
                 </nav>
