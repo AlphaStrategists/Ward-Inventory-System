@@ -48,15 +48,15 @@
         <div class="relative z-10 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <header class="sticky top-0 z-30 rounded-[2rem] border border-slate-200/80 bg-white/95 backdrop-blur">
                 <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between">
-                    <div class="flex items-center gap-4">
-                        <div class="flex h-12 w-12 items-center justify-center rounded-3xl border border-slate-200 bg-white text-blue-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z" />
-                                <path d="M8 12h8M12 8v8" />
+                    <div class="flex items-center text-center gap-4">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/15 backdrop-blur border border-white/20 mb-4">
+                            <!-- Activity icon (lucide) -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                             </svg>
                         </div>
                         <div>
-                            <p class="text-xs uppercase tracking-[0.28em] text-slate-500">Ward Inventory</p>
+                            <p class="text-xs uppercase tracking-[0.28em] text-slate-500">Hospital Inventory Management System</p>
                             <h1 class="text-xl font-semibold tracking-tight text-slate-900 font-outfit">Dashboard</h1>
                         </div>
                     </div>
