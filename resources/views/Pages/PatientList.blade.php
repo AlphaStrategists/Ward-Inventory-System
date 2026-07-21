@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ward Inventory System</title>
+    <title>Patient List</title>
 
     <style>
         .ward-header {
@@ -11,10 +11,10 @@
             align-items: center;
             justify-content: space-between;
             background-color: #1e3a8a;
-            padding: 30px 40px;           /* wider = more inner spacing */
+            padding: 30px 40px;
             font-family: 'Inter', 'Segoe UI', sans-serif;
-            margin: 20px 24px 0 24px;     /* space around the bar (top/sides) */
-            border-radius: 14px;          /* rounded corners */
+            margin: 20px 24px 0 24px;
+            border-radius: 14px;
         }
 
         .ward-header__left {
@@ -72,9 +72,7 @@
             border-radius: 999px;
         }
 
-        
 
-        /* ===== NEW: page background + spacing ===== */
         body {
             margin: 0;
             background-color: #eef1f7;
@@ -85,46 +83,7 @@
             padding: 24px 32px;
         }
 
-        /* ===== NEW: Low Stock stat card ===== */
-        .stat-card {
-            display: inline-flex;
-            align-items: center;
-            gap: 14px;
-            background-color: #fff;
-            border-left: 4px solid #d97706; /* amber accent */
-            border-radius: 8px;
-            padding: 16px 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-        }
-
-        .stat-card__icon {
-            width: 40px;
-            height: 40px;
-            background-color: #fef3c7; /* light amber */
-            color: #d97706;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-        }
-
-        .stat-card__value {
-            font-size: 26px;
-            font-weight: 700;
-            color: #d97706;
-            line-height: 1;
-        }
-
-        .stat-card__label {
-            font-size: 11px;
-            font-weight: 600;
-            color: #6b7280;
-            letter-spacing: 0.5px;
-            margin-top: 2px;
-        }
-
-        /* ===== NEW: search bar + Add Item toolbar ===== */
+        /* Toolbar (search + add button) — same structure as inventory page */
         .toolbar {
             display: flex;
             align-items: center;
@@ -145,7 +104,7 @@
             border-color: #1e3a8a;
         }
 
-        .btn-add-item {
+        .btn-add-patient {
             display: flex;
             align-items: center;
             gap: 6px;
@@ -160,11 +119,11 @@
             white-space: nowrap;
         }
 
-        .btn-add-item:hover {
+        .btn-add-patient:hover {
             background-color: #dc2626;
         }
 
-        /* ===== NEW: table ===== */
+        /* Table — same structure as inventory page */
         .table-wrapper {
             margin-top: 20px;
             background-color: #fff;
@@ -240,7 +199,7 @@
         .btn-delete:hover {
             background-color: #fecaca;
         }
-        /* ===== NEW: Add Item modal ===== */
+        /* ===== NEW: Add Patient modal ===== */
         .modal-overlay {
             display: none; /* hidden by default */
             position: fixed;
@@ -343,8 +302,8 @@
         <div class="ward-header__left">
             <div class="ward-header__icon">+</div>
             <div class="ward-header__titles">
-                <h1 class="ward-header__title">Ward Inventory System</h1>
-                <p class="ward-header__subtitle">GENERAL INVENTORY — WARDS 47 & 48</p>
+                <h1 class="ward-header__title">Patient Records</h1>
+                <p class="ward-header__subtitle">MEDICAL WARDS 47 & 48</p>
             </div>
         </div>
 
@@ -357,166 +316,115 @@
 
     <div class="page-content">
 
-        <!-- Low Stock stat card -->
-        <div class="stat-card">
-            <div class="stat-card__icon">⚠</div>
-            <div>
-                <div class="stat-card__value">4</div>
-                <div class="stat-card__label">LOW STOCK ITEMS</div>
-            </div>
-        </div>
-
-        <!-- Search bar + Add Item button -->
+        <!-- Search bar + Add Patient button -->
         <div class="toolbar">
             <input
                 type="text"
                 class="search-input"
-                placeholder="Search by item or code..."
+                placeholder="Search by name or NIC..."
             >
 
-            <button type="button" class="btn-add-item">
-                + Add Item
+            <button type="button" class="btn-add-patient">
+                + Add Patient
             </button>
         </div>
-        <!-- Inventory table -->
+
+        <!-- Patient table -->
         <div class="table-wrapper">
             <table>
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>ITEM <span class="sort-icon">⇅</span></th>
-                        <th>RECEIVED DATE <span class="sort-icon">⇅</span></th>
-                        <th>CODE <span class="sort-icon">⇅</span></th>
-                        <th>RECEIVED <span class="sort-icon">⇅</span></th>
-                        <th>ISSUED <span class="sort-icon">⇅</span></th>
-                        <th>ISSUED DATE <span class="sort-icon">⇅</span></th>
-                        <th>BALANCE <span class="sort-icon">⇅</span></th>
+                        <th>PATIENT NAME <span class="sort-icon">⇅</span></th>
+                        <th>NIC <span class="sort-icon">⇅</span></th>
+                        <th>BEDHEAD NUMBER <span class="sort-icon">⇅</span></th>
                         <th>ACTIONS</th>
                     </tr>
                 </thead>
-<tbody>
-                    
-    <tr>
-        <td>01</td>
-        <td>Paracetamol 500mg</td>
-        <td>2026-07-01</td>
-        <td>MED-001</td>
-        <td>500</td>
-        <td>120</td>
-        <td>2026-07-01</td>
-        <td>380</td>
-        <td>
-            <div class="col-actions">
-                <button type="button" class="btn-edit">Edit</button>
-                <button type="button" class="btn-delete">Del</button>
-            </div>
-        </td>
-    </tr>
-</tbody>
-                
+                <tbody>
+                    <tr>
+                        <td>01</td>
+                        <td>W.A. Perera</td>
+                        <td>982345678V</td>
+                        <td>B-014</td>
+                        <td>
+                            <div class="col-actions">
+                                <button type="button" class="btn-edit">Edit</button>
+                                <button type="button" class="btn-delete">Del</button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
             </table>
         </div>
 
     </div>
-
-    <!-- Inventory table -->
-    <div class="table-wrapper">
-    
-    </div>
-
-</div>
-<!-- Add Item modal -->
-    <div class="modal-overlay" id="addItemModal">
+    <!-- Add Item modal -->
+    <div class="modal-overlay" id="addPatientModal">
         <div class="modal-box">
-            <h2>Add New Item</h2>
+            <h2>Add New Patient</h2>
 
-            <form id="addItemForm">
+            <form id="addPatientForm">
                 <div class="form-group">
-                    <label for="itemName">Item</label>
-                    <input type="text" id="itemName" name="item" required>
+                    <label for="patientName">Patient Name</label>
+                    <input type="text" id="patientName" name="patient" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="itemDate">Date</label>
-                    <input type="date" id="itemDate" name="date" readonly>
+                    <label for="admitDate">Admit Date</label>
+                    <input type="date" id="admitDate" name="date" readonly>
                 </div>
 
                 <div class="form-group">
-                    <label for="itemCode">Code</label>
-                    <input type="text" id="itemCode" name="code" required>
+                    <label for="nic">NIC Number</label>
+                    <input type="text" id="nic" name="nic" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="itemAmount">Amount</label>
-                    <input type="number" id="itemAmount" name="amount" required>
+                    <label for="bedheadNum">Bed Head Number</label>
+                    <input type="number" id="bedheadNum" name="bedheadNum" required>
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" id="cancelAddItem">Cancel</button>
+                    <button type="button" class="btn-cancel" id="cancelAddPatient">Cancel</button>
                     <button type="submit" class="btn-submit">Add</button>
                 </div>
             </form>
         </div>
     </div>
-
-<script>
-    // Grab all edit buttons and attach a click handler to each
-    document.querySelectorAll('.btn-edit').forEach(button => {
-        button.addEventListener('click', function () {
-            const row = this.closest('tr');
-            const itemCode = row.children[3].textContent; // CODE column
-            alert('Edit clicked for: ' + itemCode);
-
-            // Later, replace the alert above with something like:
-            // window.location.href = '/inventory/edit/' + itemCode;
-        });
-    });
-
-    // Grab all delete buttons and attach a click handler to each
-    document.querySelectorAll('.btn-delete').forEach(button => {
-        button.addEventListener('click', function () {
-            const row = this.closest('tr');
-            const itemName = row.children[1].textContent; // ITEM column
-
-            const confirmed = confirm('Delete "' + itemName + '"?');
-            if (confirmed) {
-                row.remove(); // just removes it visually for now
-                // Later: send a real delete request to the server instead
-            }
-        });
-    });
-    // Open modal when "Add Item" button is clicked
-    document.querySelector('.btn-add-item').addEventListener('click', function () {
-        document.getElementById('addItemModal').classList.add('active');
+    <script>
+        // Open modal when "Add Patient" button is clicked
+    document.querySelector('.btn-add-patient').addEventListener('click', function () {
+        document.getElementById('addPatientModal').classList.add('active');
 
         // Auto-fill today's date
         const today = new Date().toISOString().split('T')[0]; // format: YYYY-MM-DD
-        document.getElementById('itemDate').value = today;
+        document.getElementById('admitDate').value = today;
     });
 
     // Close modal on Cancel
-    document.getElementById('cancelAddItem').addEventListener('click', function () {
-        document.getElementById('addItemModal').classList.remove('active');
+    document.getElementById('cancelAddPatient').addEventListener('click', function () {
+        document.getElementById('addPatientModal').classList.remove('active');
     });
 
     // Handle form submit (placeholder for now)
-    document.getElementById('addItemForm').addEventListener('submit', function (e) {
+    document.getElementById('addPatientForm').addEventListener('submit', function (e) {
         e.preventDefault(); // stop page reload
 
-        const item = document.getElementById('itemName').value;
-        const date = document.getElementById('itemDate').value;
-        const code = document.getElementById('itemCode').value;
-        const amount = document.getElementById('itemAmount').value;
+        const patient = document.getElementById('patientName').value;
+        const date = document.getElementById('admitDate').value;
+        const nic = document.getElementById('nic').value;
+        const bedheadNum = document.getElementById('bedheadNum').value;
+        
 
-        console.log({ item, date, code, amount });
+        console.log({ patient, date, nic, bedheadNum });
         alert('Item added (not yet saved to database): ' + item);
 
         // Later: send this data to Laravel via fetch() or a real form POST
-        document.getElementById('addItemModal').classList.remove('active');
+        document.getElementById('addPatientModal').classList.remove('active');
         this.reset();
     });
-</script>
+    </script>
 
 </body>
 </html>
-
