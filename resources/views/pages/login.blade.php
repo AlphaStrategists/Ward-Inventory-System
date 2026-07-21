@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -29,13 +30,16 @@
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
     </style>
 </head>
+
 <body class="min-h-screen">
 
     <div class="min-h-screen flex items-center justify-center relative overflow-hidden"
-         style="background: linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 55%,#2563eb 100%);">
+        style="background: linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 55%,#2563eb 100%);">
 
         <!-- Decorative background circles -->
         <div class="absolute inset-0 overflow-hidden pointer-events-none">
@@ -50,7 +54,7 @@
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/15 backdrop-blur border border-white/20 mb-4">
                     <!-- Activity icon (lucide) -->
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                     </svg>
                 </div>
                 <h1 class="text-3xl font-bold text-white tracking-tight font-outfit">MedStore</h1>
@@ -64,40 +68,43 @@
 
                 {{-- Session status (e.g. password reset confirmation) --}}
                 @if (session('status'))
-                    <div class="mb-4 px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-inter">
-                        {{ session('status') }}
-                    </div>
+                <div class="mb-4 px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-inter">
+                    {{ session('status') }}
+                </div>
                 @endif
 
                 {{-- General auth error (e.g. "These credentials do not match our records") --}}
                 @if ($errors->has('email') && Str::contains($errors->first('email'), ['credentials', 'throttle', 'many']))
-                    <div class="mb-4 px-4 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-inter">
-                        {{ $errors->first('email') }}
-                    </div>
+                <div class="mb-4 px-4 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-inter">
+                    {{ $errors->first('email') }}
+                </div>
                 @endif
 
                 <form method="GET" action="{{ route('home') }}" class="space-y-4">
                     @csrf
 
                     {{-- Username / Email --}}
-                    <div x-data="{email: ''}"  x-effect="console.log('Email updated:', email)">
+                    <div x-data="{email: ''}" x-effect="console.log('Email updated:', email)">
                         <label for="email" class="block text-sm font-medium text-slate-700 mb-1.5 font-inter">
                             Username or Email
                         </label>
                         <input
                             type="text"
-                            id="email"
+                            id="email" 
                             name="email"
-                            x-model="email"
+
+                            oninput="console.log(this.value);" 
+
+                            x-model="email" 
                             value="{{ old('email') }}"
                             placeholder="Username or your email"
                             autofocus
                             autocomplete="username"
-                            class="w-full px-4 py-2.5 rounded-xl border {{ $errors->has('email') ? 'border-red-300' : 'border-slate-200' }} bg-slate-50 text-slate-800 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-inter"
-                        >
+                            class="w-full px-4 py-2.5 rounded-xl border {{ $errors->has('email') ? 'border-red-300' : 'border-slate-200' }} bg-slate-50 text-slate-800 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-inter">    
                         @error('email')
-                            <p class="mt-1.5 text-xs text-red-600 font-inter">{{ $message }}</p>
+                        <p class="mt-1.5 text-xs text-red-600 font-inter">{{ $message }}</p>
                         @enderror
+
                     </div>
 
                     {{-- Password --}}
@@ -109,12 +116,14 @@
                             type="password"
                             id="password"
                             name="password"
+
+                            oninput="console.log(this.value);"
+
                             placeholder="••••••••"
                             autocomplete="current-password"
-                            class="w-full px-4 py-2.5 rounded-xl border {{ $errors->has('password') ? 'border-red-300' : 'border-slate-200' }} bg-slate-50 text-slate-800 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-inter"
-                        >
+                            class="w-full px-4 py-2.5 rounded-xl border {{ $errors->has('password') ? 'border-red-300' : 'border-slate-200' }} bg-slate-50 text-slate-800 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-inter">
                         @error('password')
-                            <p class="mt-1.5 text-xs text-red-600 font-inter">{{ $message }}</p>
+                        <p class="mt-1.5 text-xs text-red-600 font-inter">{{ $message }}</p>
                         @enderror
                     </div>
 
@@ -126,16 +135,16 @@
                         </label>
 
                         @if (Route::has('password.request'))
-                            <a href="{{ route('password.request') }}" class="text-xs text-blue-600 hover:text-blue-700 font-inter">
-                                Forgot password?
-                            </a>
+                        <a href="{{ route('password.request') }}" class="text-xs text-blue-600 hover:text-blue-700 font-inter">
+                            Forgot password?
+                        </a>
                         @endif
                     </div>
 
                     <button
+                        onclick="console.log('clicked')"
                         type="submit"
-                        class="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors mt-2 font-inter"
-                    >
+                        class="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors mt-2 font-inter">
                         Sign In
                     </button>
                 </form>
@@ -149,4 +158,5 @@
     </div>
 
 </body>
+
 </html>
