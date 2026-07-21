@@ -76,11 +76,11 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('login') }}" class="space-y-4">
+                <form method="GET" action="{{ route('home') }}" class="space-y-4">
                     @csrf
 
                     {{-- Username / Email --}}
-                    <div>
+                    <div x-data="{email: ''}"  x-effect="console.log('Email updated:', email)">
                         <label for="email" class="block text-sm font-medium text-slate-700 mb-1.5 font-inter">
                             Username or Email
                         </label>
@@ -88,8 +88,9 @@
                             type="text"
                             id="email"
                             name="email"
+                            x-model="email"
                             value="{{ old('email') }}"
-                            placeholder="admin or your email"
+                            placeholder="Username or your email"
                             autofocus
                             autocomplete="username"
                             class="w-full px-4 py-2.5 rounded-xl border {{ $errors->has('email') ? 'border-red-300' : 'border-slate-200' }} bg-slate-50 text-slate-800 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-inter"

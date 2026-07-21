@@ -51,13 +51,13 @@
                     <div class="flex items-center text-center gap-4">
                         <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/15 backdrop-blur border border-white/20 mb-4">
                             <!-- Activity icon (lucide) -->
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                             </svg>
                         </div>
                         <div>
-                            <p class="text-xs uppercase tracking-[0.28em] text-slate-500">Hospital Inventory Management System</p>
-                            <h1 class="text-xl font-semibold tracking-tight text-slate-900 font-outfit">Dashboard</h1>
+                            <p class="text-xs uppercase tracking-[0.28em] text-slate-500 text-start">Hospital Inventory Management System</p>
+                            <h1 class="text-xl font-semibold tracking-tight text-slate-900 font-outfit text-start">Dashboard</h1>
                         </div>
                     </div>
                     <nav class="hidden items-center gap-2 rounded-[2rem] border border-slate-200 bg-white/95 px-4 py-3 text-sm font-medium text-slate-700 md:flex">
@@ -73,7 +73,7 @@
                                 <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Surgical consumable 2</a>
                             </div>
                         </div>
-                        <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">General Inventory</a>
+                        <a href="#" class="rounded-2xl whitespace-nowrap bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">General Inventory</a>
 
                         <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                             <button @click="open = !open" class="inline-flex items-center gap-2 rounded-[2rem] bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">
@@ -102,6 +102,7 @@
                         </div>
                         <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Patients</a>
                         <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Settings</a>
+                        <a href="/" class="rounded-2xl px-4 py-2 text-white transition hover:bg-red-700 bg-red-600">LogOut</a>
                     </nav>
                     <div class="flex items-center justify-between gap-3 md:hidden">
                         <span class="text-sm text-slate-500">Menu</span>

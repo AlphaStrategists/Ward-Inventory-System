@@ -3,9 +3,6 @@
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function() {
-    return view('pages/login');
-});
-
-Route::post('/login', [UserController::class, 'login'])-> name('login');
-Route::get('/password/reset', [UserController::class, 'showPasswordResetForm'])-> name('password.request');
+Route::get('/', [UserController::class, 'login'])-> name('login');
+Route::get('/home', [UserController::class, 'home'])->name('home');
+Route::get('/password/reset', [UserController::class, 'showPasswordResetForm'])->name('password.request');
