@@ -1,12 +1,12 @@
 <?php
 
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\GInventoryController;
 use App\Http\Controllers\PatientController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+
+
 Route::get('/inventory', function () {
     return view('Pages.GenInventory');
 });
@@ -21,3 +21,7 @@ Route::get('/patients', [PatientController::class, 'index']);
 Route::post('/patients', [PatientController::class, 'store']);
 Route::put('/patients/{patient}', [PatientController::class, 'update']);
 Route::delete('/patients/{patient}', [PatientController::class, 'destroy']);
+
+Route::get('/', [UserController::class, 'login'])-> name('login');
+Route::get('/home', [UserController::class, 'home'])->name('home');
+Route::get('/password/reset', [UserController::class, 'showPasswordResetForm'])->name('password.request');
