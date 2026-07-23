@@ -15,12 +15,9 @@ Route::post('/inventory', [GInventoryController::class, 'store'])->name('invento
 Route::put('/inventory/{inventoryItem}', [GInventoryController::class, 'update'])->name('inventory.update');
 Route::delete('/inventory/{inventoryItem}', [GInventoryController::class, 'destroy'])->name('inventory.destroy');
 
-Route::get('/patient', function () {
-    return view('Pages.PatientList');
-});
+Route::get('/patient', [PatientController::class, 'index']);
 
-
-Route::get('/patients', [PatientController::class, 'index'])->name('patients.index');
-Route::post('/patients', [PatientController::class, 'store'])->name('patients.store');
-Route::put('/patients/{patient}', [PatientController::class, 'update'])->name('patients.update');
-Route::delete('/patients/{patient}', [PatientController::class, 'destroy'])->name('patients.destroy');
+Route::get('/patients', [PatientController::class, 'index']);
+Route::post('/patients', [PatientController::class, 'store']);
+Route::put('/patients/{patient}', [PatientController::class, 'update']);
+Route::delete('/patients/{patient}', [PatientController::class, 'destroy']);

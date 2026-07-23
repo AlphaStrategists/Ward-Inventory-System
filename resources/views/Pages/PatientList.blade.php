@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patient List</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <style>
         .ward-header {
@@ -341,20 +342,22 @@
                         <th>ACTIONS</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td>01</td>
-                        <td>W.A. Perera</td>
-                        <td>982345678V</td>
-                        <td>B-014</td>
-                        <td>
-                            <div class="col-actions">
-                                <button type="button" class="btn-edit">Edit</button>
-                                <button type="button" class="btn-delete">Del</button>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
+                <tbody id="patientTableBody">
+    @foreach ($patients as $patient)
+        <tr data-id="{{ $patient->id }}">
+            <td>{{ $loop->iteration }}</td>
+            <td>{{ $patient->name }}</td>
+            <td>{{ $patient->nic }}</td>
+            <td>{{ $patient->bedhead_number }}</td>
+            <td>
+                <div class="col-actions">
+                    <button type="button" class="btn-edit">Edit</button>
+                    <button type="button" class="btn-delete">Del</button>
+                </div>
+            </td>
+        </tr>
+    @endforeach
+</tbody>
             </table>
         </div>
 
@@ -393,38 +396,114 @@
         </div>
     </div>
     <script>
-        // Open modal when "Add Patient" button is clicked
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    // Open modal
     document.querySelector('.btn-add-patient').addEventListener('click', function () {
         document.getElementById('addPatientModal').classList.add('active');
-
-        // Auto-fill today's date
-        const today = new Date().toISOString().split('T')[0]; // format: YYYY-MM-DD
+        const today = new Date().toISOString().split('T')[0];
         document.getElementById('admitDate').value = today;
     });
 
-    // Close modal on Cancel
+    // Close modal
     document.getElementById('cancelAddPatient').addEventListener('click', function () {
         document.getElementById('addPatientModal').classList.remove('active');
     });
 
-    // Handle form submit (placeholder for now)
+    // Add patient — real POST request
     document.getElementById('addPatientForm').addEventListener('submit', function (e) {
-        e.preventDefault(); // stop page reload
+        e.preventDefault();
 
-        const patient = document.getElementById('patientName').value;
-        const date = document.getElementById('admitDate').value;
+        const name = document.getElementById('patientName').value;
+        const admit_date = document.getElementById('admitDate').value;
         const nic = document.getElementById('nic').value;
-        const bedheadNum = document.getElementById('bedheadNum').value;
-        
+        const bedhead_number = document.getElementById('bedheadNum').value;
 
-        console.log({ patient, date, nic, bedheadNum });
-        alert('Item added (not yet saved to database): ' + item);
-
-        // Later: send this data to Laravel via fetch() or a real form POST
-        document.getElementById('addPatientModal').classList.remove('active');
-        this.reset();
+        fetch('/patients', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ name, admit_date, nic, bedhead_number }),
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to add patient');
+            return response.json();
+        })
+        .then(patient => {
+            addRowToTable(patient);
+            document.getElementById('addPatientModal').classList.remove('active');
+            this.reset();
+        })
+        .catch(error => alert(error.message));
     });
-    </script>
+
+    // Build a new table row from a patient object
+    function addRowToTable(patient) {
+        const tbody = document.getElementById('patientTableBody');
+        const row = document.createElement('tr');
+        row.dataset.id = patient.id;
+        row.innerHTML = `
+            <td>${tbody.children.length + 1}</td>
+            <td>${patient.name}</td>
+            <td>${patient.nic}</td>
+            <td>${patient.bedhead_number}</td>
+            <td>
+                <div class="col-actions">
+                    <button type="button" class="btn-edit">Edit</button>
+                    <button type="button" class="btn-delete">Del</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+        attachRowEvents(row);
+    }
+
+    // Delete a patient — real DELETE request
+    function attachRowEvents(row) {
+        const id = row.dataset.id;
+
+        row.querySelector('.btn-delete').addEventListener('click', function () {
+            if (!confirm('Delete this patient?')) return;
+
+            fetch(`/patients/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': csrfToken },
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to delete');
+                row.remove();
+            })
+            .catch(error => alert(error.message));
+        });
+
+        row.querySelector('.btn-edit').addEventListener('click', function () {
+            const newName = prompt('Edit patient name:', row.children[1].textContent);
+            if (newName === null) return; // cancelled
+
+            fetch(`/patients/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({ name: newName }),
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to update');
+                return response.json();
+            })
+            .then(patient => {
+                row.children[1].textContent = patient.name;
+            })
+            .catch(error => alert(error.message));
+        });
+    }
+
+    // Wire up buttons for rows that were rendered by Blade on page load
+    document.querySelectorAll('#patientTableBody tr').forEach(attachRowEvents);
+</script>
 
 </body>
 </html>
