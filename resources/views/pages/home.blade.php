@@ -73,7 +73,7 @@
                                 <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Surgical consumable 2</a>
                             </div>
                         </div>
-                        <a href="" class="rounded-2xl whitespace-nowrap bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">General Inventory</a>
+                        <a href="/ginventory" class="rounded-2xl whitespace-nowrap bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">General Inventory</a>
 
                         <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                             <button @click="open = !open" class="inline-flex items-center gap-2 rounded-[2rem] bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">
@@ -100,7 +100,7 @@
                                 <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Antibiotic-Injections</a>
                             </div>
                         </div>
-                        <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Patients</a>
+                        <a href="/patients" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Patients</a>
                         <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Settings</a>
                         <a href="/" class="rounded-2xl px-4 py-2 text-white transition hover:bg-red-700 bg-red-600">LogOut</a>
                     </nav>

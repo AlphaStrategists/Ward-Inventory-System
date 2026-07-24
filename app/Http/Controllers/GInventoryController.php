@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 
 class GInventoryController extends Controller
 {
+    public function view() {
+        return view('pages/genInventory');
+    }
+
     public function index()
     {
         $items = GenInventory::orderBy('date', 'desc')->get();
