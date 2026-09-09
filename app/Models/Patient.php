@@ -23,4 +23,10 @@ class Patient extends Model
     {
         return $this->hasMany(NarcoticUsage::class, 'patient_id', 'patient_id');
     }
+    protected $fillable = [
+        'name',
+        'admit_date',
+        'nic',
+        'bedhead_number',
+    ];
 }
