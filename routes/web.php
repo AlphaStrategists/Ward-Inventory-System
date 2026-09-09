@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ItemController;
@@ -43,5 +44,16 @@ Route::put('/general-inventory/{id}', [GeneralInventoryController::class, 'updat
 
 // Legacy route alias for template compatibility
 Route::get('/injA', function () {
+<<<<<<< HEAD
     return redirect()->route('items.index');
 });
+=======
+  
+       
+
+    return view('pages.InjectionAntibiotic');
+});
+Route::get('/', [UserController::class, 'login'])-> name('login');
+Route::get('/home', [UserController::class, 'home'])->name('home');
+Route::get('/password/reset', [UserController::class, 'showPasswordResetForm'])->name('password.request');
+>>>>>>> 3628962d65e8952560f21f4f17871f922845c12f
