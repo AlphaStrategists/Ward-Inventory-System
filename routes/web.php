@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 <<<<<<< Updated upstream
 =======
@@ -19,6 +20,6 @@ Route::get('/antibiotic', [AntibioticController::class, 'index'])->name('antibio
 Route::get('/oral-antibiotic', [OralAntibioticController::class, 'index'])->name('oral-antibiotic.index');
 >>>>>>> Stashed changes
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [UserController::class, 'login'])-> name('login');
+Route::get('/home', [UserController::class, 'home'])->name('home');
+Route::get('/password/reset', [UserController::class, 'showPasswordResetForm'])->name('password.request');
