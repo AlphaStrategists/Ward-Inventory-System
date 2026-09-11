@@ -114,6 +114,10 @@ class MedicineController extends Controller
             $validated['is_controlled'] = $request->has('is_controlled');
         }
 
+        // Enforce UPPERCASE formatting for Item Code and Name
+        $validated['item_code'] = strtoupper($validated['item_code']);
+        $validated['name'] = strtoupper($validated['name']);
+
         Medicine::create($validated);
 
         return redirect()->back()->with('success', 'Medicine added successfully.');

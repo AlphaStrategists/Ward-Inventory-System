@@ -288,13 +288,13 @@
                                         <!-- Item Code -->
                                         <div>
                                             <label class="block text-sm font-semibold text-slate-700 mb-1.5">Item Code <span class="text-red-500">*</span></label>
-                                            <input type="text" name="item_code" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. MED-001">
+                                            <input type="text" name="item_code" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" placeholder="e.g. MED-001">
                                         </div>
 
                                         <!-- Medicine Name -->
                                         <div>
                                             <label class="block text-sm font-semibold text-slate-700 mb-1.5">Medicine Name <span class="text-red-500">*</span></label>
-                                            <input type="text" name="name" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. Amoxicillin">
+                                            <input type="text" name="name" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" placeholder="e.g. Amoxicillin">
                                         </div>
 
                                         <!-- Form Type -->
