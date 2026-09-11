@@ -31,7 +31,11 @@ class MedicineController extends Controller
         $pharmacyOrders = collect([]);
         $patientAdministrations = collect([]);
 
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations'));
+        $currentCategory = Category::where('name', $category)->first();
+        $units = Unit::all();
+        $medicineForms = MedicineForm::all();
+
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'currentCategory', 'units', 'medicineForms'));
     }
 
     public function getDetails($category, $id)
@@ -83,10 +87,14 @@ class MedicineController extends Controller
                 ];
             });
 
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations'));
+        $currentCategory = Category::where('name', $category)->first();
+        $units = Unit::all();
+        $medicineForms = MedicineForm::all();
+
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'currentCategory', 'units', 'medicineForms'));
     }
 
-    public function storeMedicine(Request $request)
+    public function storeMedicine($category, Request $request)
     {
         $validated = $request->validate([
             'item_code' => 'required|string|max:50|unique:medicines,item_code',
@@ -95,17 +103,23 @@ class MedicineController extends Controller
             'unit_id' => 'required|integer|exists:units,id',
             'form_id' => 'required|integer|exists:medicine_forms,id',
             'strength' => 'nullable|string|max:50',
-            'is_controlled' => 'boolean',
             'min_level' => 'required|integer|min:0',
             'warning_limit' => 'required|integer|min:0',
         ]);
+
+        // Security check: Force 'is_controlled' if category is narcotics
+        if ($category === 'narcotics') {
+            $validated['is_controlled'] = true;
+        } else {
+            $validated['is_controlled'] = $request->has('is_controlled');
+        }
 
         Medicine::create($validated);
 
         return redirect()->back()->with('success', 'Medicine added successfully.');
     }
 
-    public function storeAdministration(Request $request)
+    public function storeAdministration($category, $id, Request $request)
     {
         $validated = $request->validate([
             'admission_id' => 'required|integer|exists:admissions,id',

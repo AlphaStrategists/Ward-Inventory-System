@@ -14,7 +14,16 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy' }">
+<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', openAddModal: false, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }} }">
+
+    @if(session('success'))
+    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
+         x-transition.opacity.duration.500ms
+         class="fixed top-5 right-5 z-50 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg font-semibold flex items-center gap-3">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        {{ session('success') }}
+    </div>
+    @endif
 
     <!-- Left Sidebar -->
     <div class="w-[320px] bg-white border-r border-slate-200 flex flex-col h-full shadow-[2px_0_10px_rgba(0,0,0,0.02)] z-10">
@@ -42,7 +51,7 @@
             </div>
 
             <!-- Add Button -->
-            <button class="w-full bg-[#3B82F6] hover:bg-blue-700 text-white font-semibold rounded-xl text-sm px-5 py-3 transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_10px_rgba(59,130,246,0.3)] hover:shadow-[0_4px_15px_rgba(59,130,246,0.4)] active:scale-[0.98]">
+            <button @click="openAddModal = true" class="w-full bg-[#3B82F6] hover:bg-blue-700 text-white font-semibold rounded-xl text-sm px-5 py-3 transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_10px_rgba(59,130,246,0.3)] hover:shadow-[0_4px_15px_rgba(59,130,246,0.4)] active:scale-[0.98]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                 Add Medicine
             </button>
@@ -244,6 +253,112 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Medicine Modal -->
+    <div x-show="openAddModal" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <!-- Backdrop -->
+        <div x-show="openAddModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
+
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <!-- Modal Panel -->
+                <div x-show="openAddModal" 
+                     x-transition:enter="ease-out duration-300" 
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" 
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     @click.away="openAddModal = false"
+                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                    
+                    <form action="{{ route('inventory.store', ['category' => $category]) }}" method="POST">
+                        @csrf
+                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
+                            <div class="sm:flex sm:items-start">
+                                <div class="mt-3 text-center sm:ml-0 sm:mt-0 sm:text-left w-full">
+                                    <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6" id="modal-title">Add New Medicine</h3>
+                                    
+                                    <input type="hidden" name="category_id" value="{{ $currentCategory->id ?? '' }}">
+
+                                    <div class="grid grid-cols-2 gap-5">
+                                        <!-- Item Code -->
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Item Code <span class="text-red-500">*</span></label>
+                                            <input type="text" name="item_code" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. MED-001">
+                                        </div>
+
+                                        <!-- Medicine Name -->
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Medicine Name <span class="text-red-500">*</span></label>
+                                            <input type="text" name="name" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. Amoxicillin">
+                                        </div>
+
+                                        <!-- Form Type -->
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Form Type <span class="text-red-500">*</span></label>
+                                            <select name="form_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                <option value="" disabled selected>Select Form...</option>
+                                                @foreach($medicineForms as $form)
+                                                    <option value="{{ $form->id }}">{{ $form->form_name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <!-- Unit -->
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Unit <span class="text-red-500">*</span></label>
+                                            <select name="unit_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                <option value="" disabled selected>Select Unit...</option>
+                                                @foreach($units as $unit)
+                                                    <option value="{{ $unit->id }}">{{ $unit->unit_name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <!-- Strength -->
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
+                                            <input type="text" name="strength" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. 500mg">
+                                        </div>
+
+                                        <!-- Min & Warning Level -->
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Level</label>
+                                                <input type="number" name="min_level" value="10" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Warning</label>
+                                                <input type="number" name="warning_limit" value="20" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Is Controlled -->
+                                    <div class="mt-5 flex items-center gap-3 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                                        <div class="flex items-center h-5">
+                                            <input id="is_controlled" name="is_controlled" type="checkbox" value="1" x-model="isControlled" 
+                                                :disabled="'{{ $category }}' === 'narcotics'"
+                                                class="w-4 h-4 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                                        </div>
+                                        <label for="is_controlled" class="text-sm font-medium text-slate-700 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': '{{ $category }}' === 'narcotics' }">
+                                            Controlled Drug (e.g. Narcotics)
+                                        </label>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
+                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Save Medicine</button>
+                            <button type="button" @click="openAddModal = false" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
