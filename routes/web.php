@@ -9,10 +9,12 @@ Route::get('/test', function () {
 });
 
 Route::get('/', function () {
-    return redirect()->route('medicines.index');
+    return redirect()->route('inventory.index', ['category' => 'antibiotics']);
 });
 
-Route::prefix('medicines')->name('medicines.')->group(function () {
+Route::prefix('inventory/{category}')->name('inventory.')->group(function () {
     Route::get('/', [MedicineController::class, 'index'])->name('index');
+    Route::post('/store', [MedicineController::class, 'storeMedicine'])->name('store');
     Route::get('/{id}/details', [MedicineController::class, 'getDetails'])->name('details');
+    Route::post('/{id}/administrations', [MedicineController::class, 'storeAdministration'])->name('administrations.store');
 });

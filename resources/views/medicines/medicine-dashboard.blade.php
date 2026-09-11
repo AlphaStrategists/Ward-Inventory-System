@@ -29,7 +29,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold text-[#1E3A8A] tracking-tight leading-tight">Ward Inventory</h1>
-                    <p class="text-[10px] font-bold text-slate-400 tracking-[0.15em] uppercase mt-0.5">Antibiotic</p>
+                    <p class="text-[10px] font-bold text-slate-400 tracking-[0.15em] uppercase mt-0.5">{{ Str::title(str_replace('-', ' ', $category)) }}</p>
                 </div>
             </div>
 
@@ -52,7 +52,7 @@
         <div class="flex-1 overflow-y-auto no-scrollbar px-4 pb-6 space-y-1.5">
             @foreach($medicines as $medicine)
                 @php
-                    $isActive = $medicine->id === $selectedMedicine->id;
+                    $isActive = $selectedMedicine && $medicine->id === $selectedMedicine->id;
                     $badgeClass = match($medicine->stock_status) {
                         'sufficient' => 'bg-[#DCFCE7] text-[#15803D]',
                         'low' => 'bg-[#FEE2E2] text-[#B91C1C]',
@@ -60,7 +60,7 @@
                         default => 'bg-slate-100 text-slate-700',
                     };
                 @endphp
-                <a href="{{ route('medicines.details', ['id' => $medicine->id]) }}" class="block w-full text-left rounded-xl transition-all duration-200 {{ $isActive ? 'bg-[#EFF6FF] shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)] border border-blue-100/50' : 'hover:bg-slate-50 border border-transparent' }} group relative overflow-hidden">
+                <a href="{{ route('inventory.details', ['category' => $category, 'id' => $medicine->id]) }}" class="block w-full text-left rounded-xl transition-all duration-200 {{ $isActive ? 'bg-[#EFF6FF] shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)] border border-blue-100/50' : 'hover:bg-slate-50 border border-transparent' }} group relative overflow-hidden">
                     @if($isActive)
                         <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-[#3B82F6] rounded-l-xl"></div>
                     @endif
@@ -89,12 +89,12 @@
             <!-- Hero Banner -->
             <div class="bg-gradient-to-r from-[#3B82F6] to-[#4F46E5] rounded-2xl p-7 mb-6 text-white shadow-[0_10px_25px_-5px_rgba(59,130,246,0.4)] flex justify-between items-center relative overflow-hidden">
                 <div class="relative z-10">
-                    <h2 class="text-[28px] font-bold mb-1.5 tracking-tight">{{ $selectedMedicine->name }}</h2>
+                    <h2 class="text-[28px] font-bold mb-1.5 tracking-tight">{{ $selectedMedicine ? $selectedMedicine->name : 'No Medicine Selected' }}</h2>
                     <p class="text-blue-100/90 font-medium tracking-wide text-[13px]">Current Ward Stock Balance</p>
                 </div>
                 <div class="bg-white rounded-xl px-7 py-3 text-center shadow-[0_4px_20px_rgba(0,0,0,0.1)] relative z-10 transform transition-transform hover:scale-105 duration-300">
-                    <div class="text-[32px] font-extrabold tracking-tight leading-none mb-1 {{ $selectedMedicine->stock_status === 'low' ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
-                        {{ $selectedMedicine->stock }} <span class="text-lg font-bold">{{ $selectedMedicine->unit }}</span>
+                    <div class="text-[32px] font-extrabold tracking-tight leading-none mb-1 {{ ($selectedMedicine->stock_status ?? '') === 'low' ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
+                        {{ $selectedMedicine ? $selectedMedicine->stock : 0 }} <span class="text-lg font-bold">{{ $selectedMedicine ? $selectedMedicine->unit : 'units' }}</span>
                     </div>
                     <div class="text-[10px] font-bold text-[#65A30D] tracking-[0.2em] uppercase mt-1">Available</div>
                 </div>
@@ -210,6 +210,9 @@
                                 <tr>
                                     <th scope="col" class="px-6 py-4">Date</th>
                                     <th scope="col" class="px-6 py-4">B.H.T No.</th>
+                                    @if($category === 'narcotics')
+                                    <th scope="col" class="px-6 py-4">Patient Name</th>
+                                    @endif
                                     <th scope="col" class="px-6 py-4">Qty Given</th>
                                     <th scope="col" class="px-6 py-4">Balance</th>
                                     <th scope="col" class="px-6 py-4">Sister Initials</th>
@@ -223,6 +226,11 @@
                                     <td class="px-6 py-4">
                                         <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $admin->bht_no }}</span>
                                     </td>
+                                    @if($category === 'narcotics')
+                                    <td class="px-6 py-4">
+                                        <input type="text" class="bg-white border border-slate-200 text-slate-700 text-xs rounded focus:ring-blue-500 focus:border-blue-500 block w-full p-1.5 outline-none" placeholder="Enter Patient Name..." value="{{ $admin->patient_name ?? '' }}">
+                                    </td>
+                                    @endif
                                     <td class="px-6 py-4 font-bold text-slate-800">{{ $admin->qty_given }}</td>
                                     <td class="px-6 py-4 font-bold {{ (int) $admin->balance < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
                                         {{ $admin->balance }}
