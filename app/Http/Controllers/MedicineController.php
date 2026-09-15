@@ -105,6 +105,7 @@ class MedicineController extends Controller
             'strength' => 'nullable|string|max:50',
             'min_level' => 'required|integer|min:0',
             'warning_limit' => 'required|integer|min:0',
+            'initial_stock' => 'nullable|integer|min:0',
         ]);
 
         // Security check: Force 'is_controlled' if category is narcotics
@@ -118,7 +119,60 @@ class MedicineController extends Controller
         $validated['item_code'] = strtoupper($validated['item_code']);
         $validated['name'] = strtoupper($validated['name']);
 
-        Medicine::create($validated);
+        $initialStock = $validated['initial_stock'] ?? 0;
+        unset($validated['initial_stock']);
+
+        $medicine = Medicine::create($validated);
+
+        if ($initialStock > 0) {
+            // Ensure a default ward exists
+            $wardId = \Illuminate\Support\Facades\DB::table('wards')->value('id');
+            if (!$wardId) {
+                $wardId = \Illuminate\Support\Facades\DB::table('wards')->insertGetId([
+                    'ward_number' => 'W-01',
+                    'ward_name' => 'Main Ward',
+                ]);
+            }
+
+            // Ensure a role exists
+            $roleId = \Illuminate\Support\Facades\DB::table('roles')->value('id');
+            if (!$roleId) {
+                $roleId = \Illuminate\Support\Facades\DB::table('roles')->insertGetId([
+                    'role_name' => 'Admin',
+                    'created_at' => now(),
+                ]);
+            }
+
+            // Ensure a user exists
+            $userId = auth()->id() ?? \Illuminate\Support\Facades\DB::table('users')->value('id');
+            if (!$userId) {
+                $userId = \Illuminate\Support\Facades\DB::table('users')->insertGetId([
+                    'name' => 'System Admin',
+                    'email' => 'admin@hospital.local',
+                    'password' => bcrypt('password'),
+                    'role_id' => $roleId,
+                    'ward_id' => $wardId,
+                    'created_at' => now(),
+                ]);
+            }
+
+            // Create an initial batch
+            $batchId = \Illuminate\Support\Facades\DB::table('medicine_batches')->insertGetId([
+                'medicine_id' => $medicine->id,
+                'batch_no' => 'INIT-' . date('YmdHis'),
+                'expiry_date' => now()->addYears(2)->toDateString(),
+                'created_at' => now(),
+            ]);
+
+            // Add stock using stock_receipts which triggers the ledger
+            \Illuminate\Support\Facades\DB::table('stock_receipts')->insert([
+                'batch_id' => $batchId,
+                'ward_id' => $wardId,
+                'quantity_received' => $initialStock,
+                'received_by' => $userId,
+                'date' => now(),
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Medicine added successfully.');
     }

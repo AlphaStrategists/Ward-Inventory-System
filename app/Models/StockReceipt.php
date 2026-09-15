@@ -2,10 +2,10 @@
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
-class StockLedger extends Model {
-    protected $table = 'stock_ledger';
+class StockReceipt extends Model {
+    protected $table = 'stock_receipts';
     public $timestamps = false;
-    protected $fillable = ['batch_id', 'ward_id', 'transaction_type', 'quantity', 'source_table', 'source_id', 'recorded_by'];
+    protected $fillable = ['batch_id', 'ward_id', 'quantity_received', 'received_by'];
 
     public function batch() {
         return $this->belongsTo(MedicineBatch::class, 'batch_id');
@@ -13,7 +13,7 @@ class StockLedger extends Model {
     public function ward() {
         return $this->belongsTo(Ward::class, 'ward_id');
     }
-    public function recorder() {
-        return $this->belongsTo(User::class, 'recorded_by');
+    public function receiver() {
+        return $this->belongsTo(User::class, 'received_by');
     }
 }

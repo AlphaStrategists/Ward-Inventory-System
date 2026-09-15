@@ -51,10 +51,12 @@
             </div>
 
             <!-- Add Button -->
+            @can('add_medicine')
             <button @click="openAddModal = true" class="w-full bg-[#3B82F6] hover:bg-blue-700 text-white font-semibold rounded-xl text-sm px-5 py-3 transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_10px_rgba(59,130,246,0.3)] hover:shadow-[0_4px_15px_rgba(59,130,246,0.4)] active:scale-[0.98]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                 Add Medicine
             </button>
+            @endcan
         </div>
 
         <!-- Medicine List -->
@@ -81,7 +83,7 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                             </div>
                             <span class="text-[11px] font-bold px-2.5 py-1 rounded-full {{ $badgeClass }}">
-                                {{ $medicine->stock }} {{ $medicine->unit }}
+                                {{ $medicine->stock }} {{ $medicine->unit->unit_name ?? '' }}
                             </span>
                         </div>
                     </div>
@@ -103,7 +105,7 @@
                 </div>
                 <div class="bg-white rounded-xl px-7 py-3 text-center shadow-[0_4px_20px_rgba(0,0,0,0.1)] relative z-10 transform transition-transform hover:scale-105 duration-300">
                     <div class="text-[32px] font-extrabold tracking-tight leading-none mb-1 {{ ($selectedMedicine->stock_status ?? '') === 'low' ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
-                        {{ $selectedMedicine ? $selectedMedicine->stock : 0 }} <span class="text-lg font-bold">{{ $selectedMedicine ? $selectedMedicine->unit : 'units' }}</span>
+                        {{ $selectedMedicine ? $selectedMedicine->stock : 0 }} <span class="text-lg font-bold">{{ $selectedMedicine->unit->unit_name ?? 'units' }}</span>
                     </div>
                     <div class="text-[10px] font-bold text-[#65A30D] tracking-[0.2em] uppercase mt-1">Available</div>
                 </div>
@@ -325,8 +327,8 @@
                                             <input type="text" name="strength" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. 500mg">
                                         </div>
 
-                                        <!-- Min & Warning Level -->
-                                        <div class="grid grid-cols-2 gap-3">
+                                        <!-- Min, Warning & Initial Stock -->
+                                        <div class="grid grid-cols-3 gap-3">
                                             <div>
                                                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Level</label>
                                                 <input type="number" name="min_level" value="10" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
@@ -334,6 +336,10 @@
                                             <div>
                                                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Warning</label>
                                                 <input type="number" name="warning_limit" value="20" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-1">Initial Stock</label>
+                                                <input type="number" name="initial_stock" value="0" min="0" required class="w-full rounded-lg border border-blue-100 bg-blue-50/30 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-blue-700 font-semibold">
                                             </div>
                                         </div>
                                     </div>
