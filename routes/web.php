@@ -2,45 +2,22 @@
 
 use Illuminate\Support\Facades\Route;
 
-use App\Http\Controllers\NarcoticController;
-use App\Http\Controllers\SyrupController;
-use App\Http\Controllers\IvFluidController;
-use App\Http\Controllers\OralCountableController;
-use App\Http\Controllers\AntibioticController;
-use App\Http\Controllers\OralAntibioticController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ItemController;
+use App\Http\Controllers\RequestedStockController;
+use App\Http\Controllers\NarcoticUsageController;
+use App\Http\Controllers\ConsumableUsageController;
+use App\Http\Controllers\GeneralInventoryController;
+use App\Http\Controllers\SurgicalConsumableController;
+use App\Http\Controllers\SurgicalConsumable2Controller;
+use App\Http\Controllers\LocalPurchaseController;
+use App\Http\Controllers\PatientController;
+use App\Http\Controllers\GInventoryController;
 
-//Route::get('/', [Controller::class, 'index']);
-Route::get('/narcotics', [NarcoticController::class, 'index'])->name('narcotics.index');
-Route::get('/syrup', [SyrupController::class, 'index'])->name('syrup.index');
-Route::get('/iv-fluid', [IvFluidController::class, 'index'])->name('iv-fluid.index');
-Route::get('/oral-countable', [OralCountableController::class, 'index'])->name('oral-countable.index');
-Route::get('/antibiotic', [AntibioticController::class, 'index'])->name('antibiotic.index');
-Route::get('/oral-antibiotic', [OralAntibioticController::class, 'index'])->name('oral-antibiotic.index');
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
-Route::get('/inj', function () {
-    $drug = (object) [
-        'name' => 'Diazepam',
-        'stock_balance' => 85,
-        'unit' => 'tabs',
-    ];
-
-    return view('pages.Injection', ['drug' => $drug]);
-});
-Route::get('/injA', function () {
-  
-       
-
-    return view('pages.InjectionAntibiotic');
-});
-Route::get('/', [UserController::class, 'login'])-> name('login');
-Route::get('/home', [UserController::class, 'home'])->name('home');
-Route::get('/password/reset', [UserController::class, 'showPasswordResetForm'])->name('password.request');
-
+// Dashboard
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
 
 // Items routes
 Route::get('/items', [ItemController::class, 'index'])->name('items.index');
@@ -49,6 +26,7 @@ Route::post('/items', [ItemController::class, 'store'])->name('items.store');
 Route::get('/items/{id}', [ItemController::class, 'show'])->name('items.show');
 Route::put('/items/{id}', [ItemController::class, 'update'])->name('items.update');
 
+
 // Requested Stock routes
 Route::get('/requested-stock', [RequestedStockController::class, 'index'])->name('requested-stock.index');
 Route::post('/requested-stock', [RequestedStockController::class, 'store'])->name('requested-stock.store');
@@ -56,20 +34,69 @@ Route::post('/requested-stock/{id}/approve-ms', [RequestedStockController::class
 Route::post('/requested-stock/{id}/issue', [RequestedStockController::class, 'issue'])->name('requested-stock.issue');
 Route::post('/requested-stock/{id}/receive', [RequestedStockController::class, 'receive'])->name('requested-stock.receive');
 
+
 // Narcotic Usage routes
 Route::get('/narcotic-usage', [NarcoticUsageController::class, 'index'])->name('narcotic-usage.index');
 Route::post('/narcotic-usage', [NarcoticUsageController::class, 'store'])->name('narcotic-usage.store');
 
+
 // Consumable Usage routes
 Route::get('/consumable-usage', [ConsumableUsageController::class, 'index'])->name('consumable-usage.index');
 Route::post('/consumable-usage', [ConsumableUsageController::class, 'store'])->name('consumable-usage.store');
+
 
 // General Inventory routes
 Route::get('/general-inventory', [GeneralInventoryController::class, 'index'])->name('general-inventory.index');
 Route::post('/general-inventory', [GeneralInventoryController::class, 'store'])->name('general-inventory.store');
 Route::put('/general-inventory/{id}', [GeneralInventoryController::class, 'update'])->name('general-inventory.update');
 
-// Legacy route alias for template compatibility
-Route::get('/injA', function () {
-    return redirect()->route('items.index');
-});
+
+// Patient routes
+Route::get('/patients', [PatientController::class, 'index'])->name('patients.index');
+
+
+// General Inventory alternative controller
+Route::get('/g-inventory', [GInventoryController::class, 'index'])->name('g-inventory.index');
+
+
+// =====================================================
+// SURGICAL CONSUMABLE 1
+// =====================================================
+
+Route::get('/', [SurgicalConsumableController::class, 'index']);
+
+Route::get('/surgical-consumable-1', [SurgicalConsumableController::class, 'index']);
+
+Route::get('/api/consumables', [SurgicalConsumableController::class, 'getConsumables']);
+Route::post('/api/consumables', [SurgicalConsumableController::class, 'storeConsumable']);
+Route::delete('/api/consumables/{id}', [SurgicalConsumableController::class, 'destroyConsumable']);
+
+Route::get('/api/requisitions', [SurgicalConsumableController::class, 'getRequisitions']);
+Route::post('/api/requisitions', [SurgicalConsumableController::class, 'storeRequisition']);
+Route::delete('/api/requisitions/{id}', [SurgicalConsumableController::class, 'destroyRequisition']);
+
+
+// =====================================================
+// SURGICAL CONSUMABLE 2
+// =====================================================
+
+Route::get('/surgical-consumable-2', [SurgicalConsumable2Controller::class, 'index']);
+
+Route::get('/api/surgical-consumable-2/consumables', [SurgicalConsumable2Controller::class, 'getConsumables']);
+Route::post('/api/surgical-consumable-2/consumables', [SurgicalConsumable2Controller::class, 'storeConsumable']);
+
+Route::get('/api/surgical-consumable-2/requisitions', [SurgicalConsumable2Controller::class, 'getRequisitions']);
+Route::post('/api/surgical-consumable-2/requisitions', [SurgicalConsumable2Controller::class, 'storeRequisition']);
+
+
+// =====================================================
+// LOCAL PURCHASES
+// =====================================================
+
+Route::get('/local-purchases', [LocalPurchaseController::class, 'index']);
+
+Route::get('/api/local-purchases/items', [LocalPurchaseController::class, 'getItems']);
+Route::post('/api/local-purchases/items', [LocalPurchaseController::class, 'storeItem']);
+
+Route::get('/api/local-purchases/requisitions', [LocalPurchaseController::class, 'getRequisitions']);
+Route::post('/api/local-purchases/requisitions', [LocalPurchaseController::class, 'storeRequisition']);
