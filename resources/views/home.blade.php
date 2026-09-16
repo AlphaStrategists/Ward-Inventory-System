@@ -518,7 +518,6 @@
             iframe,
             embed,
             object {
-                vertical-align: middle;
                 display: block
             }
 
@@ -1776,7 +1775,7 @@
                             class="invisible absolute right-0 top-full mt-2 w-48 translate-y-2 rounded-xl border border-slate-100 bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
 
                             <a
-                                href="{{ route('test') }}"
+                                href="{{ route('login') }}"
                                 class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-[#1894f2]">
 
                                 <i class="fa-solid fa-user"></i>
@@ -1787,7 +1786,7 @@
                             <div class="my-1 border-t border-slate-100"></div>
 
                             <a
-                                href="#"
+                                href="{{ route('login') }}"
                                 class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-red-500 hover:bg-red-50">
 
                                 <i class="fa-solid fa-right-from-bracket"></i>
@@ -1800,118 +1799,6 @@
                     </div>
 
                 </div>
-
-
-                <!-- Mobile Menu Button -->
-                <button
-                    type="button"
-                    class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
-                    onclick="document.getElementById('mobile-menu').classList.toggle('hidden')">
-
-                    <i class="fa-solid fa-bars text-xl"></i>
-
-                </button>
-
-            </div>
-
-
-            <!-- =================================================
-             MOBILE NAVIGATION
-        ================================================== -->
-            <div id="mobile-menu" class="hidden border-t border-slate-100 py-4 lg:hidden">
-
-                <div class="space-y-1">
-
-                    <a
-                        href="{{ route('home') }}"
-                        class="block rounded-lg bg-blue-50 px-4 py-3 text-sm font-semibold text-[#1894f2]">
-
-                        <i class="fa-solid fa-house mr-2"></i>
-                        Home
-
-                    </a>
-
-
-                    <a
-                        href="{{ route('dashboard') }}"
-                        class="block rounded-lg px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-[#1894f2]">
-
-                        <i class="fa-solid fa-gauge mr-2"></i>
-                        Dashboard
-
-                    </a>
-
-
-                    <p class="px-4 pb-1 pt-4 text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Inventory
-                    </p>
-
-
-                    <a
-                        href="{{ route('test') }}"
-                        class="block rounded-lg px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-[#1894f2]">
-
-                        <i class="fa-solid fa-pills mr-2"></i>
-                        Drugs
-
-                    </a>
-
-
-                    <a
-                        href="{{ route('test') }}"
-                        class="block rounded-lg px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-[#1894f2]">
-
-                        <i class="fa-solid fa-kit-medical mr-2"></i>
-                        Surgical Items
-
-                    </a>
-
-
-                    <a
-                        href="{{ route('test') }}"
-                        class="block rounded-lg px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-[#1894f2]">
-
-                        <i class="fa-solid fa-box mr-2"></i>
-                        General Items
-
-                    </a>
-
-
-                    <a
-                        href="{{ route('test') }}"
-                        class="block rounded-lg px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-[#1894f2]">
-
-                        <i class="fa-solid fa-truck mr-2"></i>
-                        Suppliers
-
-                    </a>
-
-
-                    <a
-                        href="{{ route('test') }}"
-                        class="block rounded-lg px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-[#1894f2]">
-
-                        <i class="fa-solid fa-chart-column mr-2"></i>
-                        Reports
-
-                    </a>
-
-
-                    <div class="my-2 border-t border-slate-100"></div>
-
-
-                    <a
-                        href="{{ route('test') }}"
-                        class="block rounded-lg px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-[#1894f2]">
-
-                        <i class="fa-solid fa-user mr-2"></i>
-                        Profile
-
-                    </a>
-
-                </div>
-
-            </div>
 
         </div>
 
@@ -2164,55 +2051,6 @@
                             View Reports
 
                             <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
-
-                        </a>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- =========================================================
-         INFORMATION BANNER
-    ========================================================== -->
-        <section class="px-6 pb-16 lg:px-8">
-
-            <div class="mx-auto max-w-7xl">
-
-                <div
-                    class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#003af8] to-[#1894f2] px-8 py-10 text-white shadow-xl sm:px-12">
-
-                    <!-- Decorative circles -->
-                    <div class="absolute -right-10 -top-20 h-56 w-56 rounded-full bg-white/10"></div>
-                    <div class="absolute -bottom-24 right-32 h-40 w-40 rounded-full bg-white/5"></div>
-
-                    <div class="relative z-10 flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
-
-                        <div>
-
-                            <h2 class="text-2xl font-bold sm:text-3xl">
-                                Efficient Inventory. Better Hospital Management.
-                            </h2>
-
-                            <p class="mt-2 text-blue-100">
-                                Keep your hospital inventory organized,
-                                accurate and easy to manage.
-                            </p>
-
-                        </div>
-
-
-                        <a
-                            href="{{ route('dashboard') }}"
-                            class="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-6 py-3.5 font-semibold text-[#003af8] shadow-md transition hover:bg-blue-50">
-
-                            Open Dashboard
-
-                            <i class="fa-solid fa-arrow-right"></i>
 
                         </a>
 
