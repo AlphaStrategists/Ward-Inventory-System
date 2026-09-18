@@ -1559,7 +1559,7 @@
                         </p>
 
                         <h1 class="text-2xl font-bold sm:text-3xl">
-                            Hospital Inventory Management
+                            Hospital Inventory Management System
                         </h1>
                     </div>
 
@@ -1621,11 +1621,11 @@
                     <div class="hidden sm:block">
 
                         <span class="block text-base font-bold text-slate-800">
-                            HIM System
+                            Hospital Inventory Management System
                         </span>
 
                         <span class="block text-[10px] font-medium uppercase tracking-wider text-[#7b838f]">
-                            Hospital Inventory
+                            Hospital Management
                         </span>
 
                     </div>
@@ -2085,7 +2085,7 @@
                     <div>
 
                         <p class="font-bold text-slate-800">
-                            Hospital Inventory Management
+                            Hospital Inventory Management System
                         </p>
 
                         <p class="text-xs text-slate-400">
