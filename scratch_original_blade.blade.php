@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,7 +6,6 @@
     <title>Ward Inventory System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -15,7 +14,7 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', openAddModal: false, openAdminModal: false, editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }} }">
+<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', openAddModal: false, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }} }">
 
     @if(session('success'))
     <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
@@ -52,12 +51,12 @@
             </div>
 
             <!-- Add Button -->
-            @if(auth()->check() && auth()->user()->role_id == 1)
-            <button @click="openAddModal = true" class="w-full bg-[#3B82F6] hover:bg-blue-700 text-white font-semibold rounded-xl text-sm px-5 py-3 transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_10px_rgba(59,130,246,0.3)] hover:shadow-[0_4px_15px_rgba(59,130,246,0.4)] active:scale-[0.98] mb-5">
+            @can('add_medicine')
+            <button @click="openAddModal = true" class="w-full bg-[#3B82F6] hover:bg-blue-700 text-white font-semibold rounded-xl text-sm px-5 py-3 transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_10px_rgba(59,130,246,0.3)] hover:shadow-[0_4px_15px_rgba(59,130,246,0.4)] active:scale-[0.98]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                 Add Medicine
             </button>
-            @endif
+            @endcan
         </div>
 
         <!-- Medicine List -->
@@ -79,23 +78,9 @@
                     <div class="p-4 pl-5">
                         <div class="font-semibold text-[14.5px] text-slate-800 mb-2.5 {{ $isActive ? 'text-[#1E3A8A]' : 'group-hover:text-blue-700 transition-colors' }}">{{ $medicine->name }}</div>
                         <div class="flex items-center justify-between">
-                            <div class="flex gap-2.5 text-slate-400 relative z-10">
-                                @if(auth()->check() && auth()->user()->role_id == 1)
-                                <!-- Edit Button -->
-                                <button type="button" class="hover:text-blue-500 transition-colors p-1 -m-1"
-                                    title="Edit"
-                                    @click.prevent="editModalId = {{ $medicine->id }}">
-                                    <svg class="w-4 h-4 {{ $isActive ? 'text-[#60A5FA]' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                </button>
-                                <!-- Delete Button -->
-                                <form action="{{ url('/inventory/medicines/'.$medicine->id) }}" method="POST" class="inline delete-form">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="button" class="hover:text-red-500 transition-colors p-1 -m-1 delete-btn" title="Delete">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                                    </button>
-                                </form>
-                                @endif
+                            <div class="flex gap-2.5 text-slate-400">
+                                <svg class="w-4 h-4 {{ $isActive ? 'text-[#60A5FA]' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                             </div>
                             <span class="text-[11px] font-bold px-2.5 py-1 rounded-full {{ $badgeClass }}">
                                 {{ $medicine->stock }} {{ $medicine->unit->unit_name ?? '' }}
@@ -223,7 +208,7 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
-                        <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
+                        <button class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Administration
                         </button>
@@ -234,7 +219,7 @@
                         <table class="w-full text-[13px] text-left text-slate-600">
                             <thead class="text-[11px] text-slate-400 uppercase font-bold tracking-wider border-b border-slate-100/80">
                                 <tr>
-                                    <th scope="col" class="px-6 py-4">DATE & TIME</th>
+                                    <th scope="col" class="px-6 py-4">Date</th>
                                     <th scope="col" class="px-6 py-4">B.H.T No.</th>
                                     @if($category === 'narcotics')
                                     <th scope="col" class="px-6 py-4">Patient Name</th>
@@ -248,10 +233,7 @@
                             <tbody class="divide-y divide-slate-50">
                                 @foreach($patientAdministrations as $admin)
                                 <tr class="hover:bg-slate-50/60 transition-colors group">
-                                    <td class="px-6 py-4 font-semibold text-slate-700">
-                                        {{ \Carbon\Carbon::parse($admin->date)->format('M d, Y') }} <br>
-                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $admin->usage_time ?? 'N/A' }}</small>
-                                    </td>
+                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $admin->date }}</td>
                                     <td class="px-6 py-4">
                                         <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $admin->bht_no }}</span>
                                     </td>
@@ -387,195 +369,5 @@
         </div>
     </div>
 
-    @foreach($medicines as $medicine)
-    <!-- Edit Medicine Modal -->
-    <div x-show="editModalId === {{ $medicine->id }}" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <!-- Backdrop -->
-        <div x-show="editModalId === {{ $medicine->id }}" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
-
-        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
-            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <!-- Modal Panel -->
-                <div x-show="editModalId === {{ $medicine->id }}" 
-                     x-transition:enter="ease-out duration-300" 
-                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
-                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
-                     x-transition:leave="ease-in duration-200" 
-                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
-                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
-                     @click.away="editModalId = null"
-                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
-                    
-                    <form method="POST" action="{{ url('/inventory/medicines/'.$medicine->id) }}">
-                        @csrf
-                        @method('PUT')
-                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
-                            <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6">Edit Medicine</h3>
-                            <div class="grid grid-cols-2 gap-5">
-                                <!-- Item Code -->
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Item Code <span class="text-red-500">*</span></label>
-                                    <input type="text" name="item_code" value="{{ $medicine->item_code }}" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case">
-                                </div>
-                                <!-- Medicine Name -->
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Medicine Name <span class="text-red-500">*</span></label>
-                                    <input type="text" name="name" value="{{ $medicine->name }}" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case">
-                                </div>
-                                <!-- Form Type -->
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Form Type <span class="text-red-500">*</span></label>
-                                    <select name="form_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
-                                        <option value="" disabled>Select Form...</option>
-                                        @foreach($medicineForms as $form)
-                                            <option value="{{ $form->id }}" {{ $medicine->form_id == $form->id ? 'selected' : '' }}>{{ $form->form_name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <!-- Unit -->
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Unit <span class="text-red-500">*</span></label>
-                                    <select name="unit_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
-                                        <option value="" disabled>Select Unit...</option>
-                                        @foreach($units as $unit)
-                                            <option value="{{ $unit->id }}" {{ $medicine->unit_id == $unit->id ? 'selected' : '' }}>{{ $unit->unit_name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <!-- Strength -->
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
-                                    <input type="text" name="strength" value="{{ $medicine->strength }}" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
-                                </div>
-                                <!-- Min & Warning Stock -->
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Level</label>
-                                        <input type="number" name="min_level" value="{{ $medicine->min_level }}" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Warning</label>
-                                        <input type="number" name="warning_limit" value="{{ $medicine->warning_limit }}" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Is Controlled -->
-                            <div class="mt-5 flex items-center gap-3 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                                <div class="flex items-center h-5">
-                                    <input name="is_controlled" type="checkbox" value="1" 
-                                        {{ $medicine->is_controlled ? 'checked' : '' }}
-                                        {{ $category === 'narcotics' ? 'disabled' : '' }}
-                                        class="w-4 h-4 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                                </div>
-                                <label class="text-sm font-medium text-slate-700 cursor-pointer {{ $category === 'narcotics' ? 'opacity-50 cursor-not-allowed' : '' }}">
-                                    Controlled Drug (e.g. Narcotics)
-                                </label>
-                            </div>
-
-                        </div>
-                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
-                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Save Changes</button>
-                            <button type="button" @click="editModalId = null" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endforeach
-
-    <!-- Add Administration Modal -->
-    <div x-show="openAdminModal" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <!-- Backdrop -->
-        <div x-show="openAdminModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
-
-        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
-            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <!-- Modal Panel -->
-                <div x-show="openAdminModal" 
-                     x-transition:enter="ease-out duration-300" 
-                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
-                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
-                     x-transition:leave="ease-in duration-200" 
-                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
-                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
-                     @click.away="openAdminModal = false"
-                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
-                    
-                    <form action="{{ $selectedMedicine ? url('/inventory/medicines/administration/'.$category.'/'.$selectedMedicine->id) : '#' }}" method="POST">
-                        @csrf
-                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
-                            <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6">Add Administration</h3>
-                            
-                            <div class="grid grid-cols-2 gap-5 mb-5">
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Administration Date <span class="text-red-500">*</span></label>
-                                    <input type="date" name="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ date('Y-m-d') }}">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Usage Time <span class="text-red-500">*</span></label>
-                                    <input type="time" name="usage_time" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-5 mb-5">
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Admission ID <span class="text-red-500">*</span></label>
-                                    <input type="number" name="admission_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Batch ID <span class="text-red-500">*</span></label>
-                                    <input type="number" name="batch_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-5">
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Quantity Given <span class="text-red-500">*</span></label>
-                                    <input type="number" name="qty_given" required min="1" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Dosage <span class="text-red-500">*</span></label>
-                                    <input type="text" name="dosage" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
-                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Save Administration</button>
-                            <button type="button" @click="openAdminModal = false" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const deleteButtons = document.querySelectorAll('.delete-btn');
-            deleteButtons.forEach(button => {
-                button.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const form = this.closest('.delete-form');
-                    Swal.fire({
-                        title: 'Are you sure?',
-                        text: "You want to delete this medicine? This action cannot be undone.",
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#EF4444',
-                        cancelButtonColor: '#94A3B8',
-                        confirmButtonText: 'Yes, delete it!'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            form.submit();
-                        }
-                    });
-                });
-            });
-        });
-    </script>
 </body>
 </html>

@@ -194,4 +194,44 @@ class MedicineController extends Controller
 
         return redirect()->back()->with('success', 'Administration recorded successfully.');
     }
+
+    public function update(Request $request, $id)
+    {
+        abort_if(!auth()->check() || auth()->user()->role->role_name !== 'Admin', 403, 'Unauthorized action.');
+
+        $validated = $request->validate([
+            'item_code' => 'required|string|max:50|unique:medicines,item_code,'.$id,
+            'name' => 'required|string|max:150',
+            'form_id' => 'required|integer|exists:medicine_forms,id',
+            'unit_id' => 'required|integer|exists:units,id',
+            'strength' => 'nullable|string|max:50',
+            'min_level' => 'required|integer|min:0',
+            'warning_limit' => 'required|integer|min:0',
+        ]);
+
+        $medicine = Medicine::findOrFail($id);
+        
+        if ($medicine->category->name === 'narcotics') {
+            $validated['is_controlled'] = true;
+        } else {
+            $validated['is_controlled'] = $request->has('is_controlled');
+        }
+
+        $validated['item_code'] = strtoupper($validated['item_code']);
+        $validated['name'] = strtoupper($validated['name']);
+
+        $medicine->update($validated);
+
+        return redirect()->back()->with('success', 'Updated successfully');
+    }
+
+    public function destroy($id)
+    {
+        abort_if(!auth()->check() || auth()->user()->role->role_name !== 'Admin', 403, 'Unauthorized action.');
+
+        $medicine = Medicine::findOrFail($id);
+        $medicine->delete();
+
+        return redirect()->back()->with('success', 'Deleted successfully');
+    }
 }
