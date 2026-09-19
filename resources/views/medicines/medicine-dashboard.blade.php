@@ -26,6 +26,15 @@
     </div>
     @endif
 
+    @if(session('error'))
+    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" 
+         x-transition.opacity.duration.500ms
+         class="fixed top-5 right-5 z-50 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg font-semibold flex items-center gap-3 max-w-md">
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span>{{ session('error') }}</span>
+    </div>
+    @endif
+
     <!-- Left Sidebar -->
     <div class="w-[320px] bg-white border-r border-slate-200 flex flex-col h-full shadow-[2px_0_10px_rgba(0,0,0,0.02)] z-10">
         <!-- Sidebar Header -->
@@ -65,12 +74,17 @@
             @foreach($medicines as $medicine)
                 @php
                     $isActive = $selectedMedicine && $medicine->id === $selectedMedicine->id;
-                    $badgeClass = match($medicine->stock_status) {
-                        'sufficient' => 'bg-[#DCFCE7] text-[#15803D]',
-                        'low' => 'bg-[#FEE2E2] text-[#B91C1C]',
-                        'warning' => 'bg-[#FEF9C3] text-[#A16207]',
-                        default => 'bg-slate-100 text-slate-700',
-                    };
+                    $stock = (int) $medicine->stock;
+                    $min = (int) $medicine->min_level;
+                    $warning = (int) $medicine->warning_limit;
+                    
+                    if ($stock <= $min) {
+                        $badgeClass = 'bg-red-100 text-red-700';
+                    } elseif ($stock <= $warning) {
+                        $badgeClass = 'bg-yellow-100 text-yellow-700';
+                    } else {
+                        $badgeClass = 'bg-green-100 text-green-700';
+                    }
                 @endphp
                 <a href="{{ route('inventory.details', ['category' => $category, 'id' => $medicine->id]) }}" class="block w-full text-left rounded-xl transition-all duration-200 {{ $isActive ? 'bg-[#EFF6FF] shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)] border border-blue-100/50' : 'hover:bg-slate-50 border border-transparent' }} group relative overflow-hidden">
                     @if($isActive)
@@ -119,10 +133,28 @@
                     <p class="text-blue-100/90 font-medium tracking-wide text-[13px]">Current Ward Stock Balance</p>
                 </div>
                 <div class="bg-white rounded-xl px-7 py-3 text-center shadow-[0_4px_20px_rgba(0,0,0,0.1)] relative z-10 transform transition-transform hover:scale-105 duration-300">
-                    <div class="text-[32px] font-extrabold tracking-tight leading-none mb-1 {{ ($selectedMedicine->stock_status ?? '') === 'low' ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
+                    @php
+                        $stockColor = 'text-[#16A34A]'; // Safe/Healthy (Green)
+                        $availColor = 'text-[#65A30D]'; 
+                        
+                        if ($selectedMedicine) {
+                            $stock = (int) $selectedMedicine->stock;
+                            $min = (int) $selectedMedicine->min_level;
+                            $warning = (int) $selectedMedicine->warning_limit;
+                            
+                            if ($stock <= $min) {
+                                $stockColor = 'text-red-600'; // Danger/Critical
+                                $availColor = 'text-red-500';
+                            } elseif ($stock <= $warning) {
+                                $stockColor = 'text-yellow-500'; // Warning/Low
+                                $availColor = 'text-yellow-600';
+                            }
+                        }
+                    @endphp
+                    <div class="text-[32px] font-extrabold tracking-tight leading-none mb-1 {{ $stockColor }}">
                         {{ $selectedMedicine ? $selectedMedicine->stock : 0 }} <span class="text-lg font-bold">{{ $selectedMedicine->unit->unit_name ?? 'units' }}</span>
                     </div>
-                    <div class="text-[10px] font-bold text-[#65A30D] tracking-[0.2em] uppercase mt-1">Available</div>
+                    <div class="text-[10px] font-bold tracking-[0.2em] uppercase mt-1 {{ $availColor }}">Available</div>
                 </div>
             </div>
 

@@ -230,8 +230,16 @@ class MedicineController extends Controller
         abort_if(!auth()->check() || auth()->user()->role->role_name !== 'Admin', 403, 'Unauthorized action.');
 
         $medicine = Medicine::findOrFail($id);
-        $medicine->delete();
-
-        return redirect()->back()->with('success', 'Deleted successfully');
+        
+        try {
+            $medicine->delete();
+            return redirect()->back()->with('success', 'Deleted successfully');
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == '23000') {
+                return redirect()->back()->with('error', 'Cannot delete this medicine because it contains existing batches or patient records. Please deactivate it instead.');
+            }
+            
+            return redirect()->back()->with('error', 'An error occurred while deleting the medicine.');
+        }
     }
 }
