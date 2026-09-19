@@ -122,7 +122,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('test') }}" class="space-y-5">
+                <form method="POST" action="{{ route('login.submit') }}" class="space-y-5">
                     @csrf
 
                     <!-- Email -->
@@ -213,7 +213,7 @@
                     <p class="text-sm" style="color: var(--color-secondary);">
                         Don't have an account?
                         <a
-                            href="{{ route('test') }}"
+                            href="{{ route('createUser') }}"
                             class="font-semibold hover:underline"
                             style="color: var(--color-accent);">
                             Create a new account
@@ -235,7 +235,7 @@
     <!-- =========================================================
          FOOTER (mirrors the home page footer)
     ========================================================== -->
-    <footer class="border-t border-slate-200 bg-white">
+    <footer class="border-t border-slate-200 bg-white sticky bottom-0 z-50">
         <div class="mx-auto max-w-7xl px-8 py-6 text-center">
             <p class="text-sm text-slate-400">
                 © {{ date('Y') }} Hospital Inventory Management System

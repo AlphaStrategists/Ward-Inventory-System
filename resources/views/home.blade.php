@@ -1785,14 +1785,15 @@
 
                             <div class="my-1 border-t border-slate-100"></div>
 
-                            <a
-                                href="{{ route('login') }}"
-                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-red-500 hover:bg-red-50">
-
-                                <i class="fa-solid fa-right-from-bracket"></i>
-                                Logout
-
-                            </a>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button
+                                    type="submit"
+                                    class="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-red-500 hover:bg-red-50">
+                                    <i class="fa-solid fa-right-from-bracket"></i>
+                                    Logout
+                                </button>
+                            </form>
 
                         </div>
 
@@ -1800,7 +1801,7 @@
 
                 </div>
 
-        </div>
+            </div>
 
     </nav>
 
