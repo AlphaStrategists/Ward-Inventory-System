@@ -13,6 +13,7 @@ class SurgicalConsumable extends Model
 
     protected $fillable = [
         'name',
+        'type', // 'consumable_1' or 'consumable_2'
         'balance',
         'unit',
     ];

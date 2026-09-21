@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Local Purchases - Ward Inventory System</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -326,6 +327,9 @@
             return {
                 sidebarSearch: '',
                 logSearch: '',
+                csrfToken: '',
+                sidebarSearch: '',
+                logSearch: '',
                 logDateFilter: '',
                 showAddOrderModal: false,
                 showAddItemModal: false,
@@ -336,49 +340,61 @@
                 inspectedOfficerName: '',
                 toasts: [],
 
-                items: [
-                    { id: 401, name: 'PARACETAMOL 500MG (LP)', balance: 500, unit: 'Tabs' },
-                    { id: 402, name: 'SYRUP AMBROXOL 100ML', balance: 24, unit: 'Bottle' },
-                    { id: 403, name: 'HAND SANITIZER 500ML', balance: 18, unit: 'Bottle' },
-                    { id: 404, name: 'DIGITAL THERMOMETER', balance: 10, unit: 'Pcs' },
-                    { id: 405, name: 'NEBULIZER MASK (ADULT)', balance: 35, unit: 'Pcs' }
-                ],
-
-                selectedItem: { id: 401, name: 'PARACETAMOL 500MG (LP)', balance: 500, unit: 'Tabs' },
-
-                requisitions: [
-                    {
-                        id: 501,
-                        date: '2026-09-16',
-                        item_name: 'PARACETAMOL 500MG (LP)',
-                        bht_no: 'BHT-88410',
-                        quantity: '20 Tabs',
-                        balance: '500 Tabs',
-                        officer_name: 'Sr. Perera (RN-402)',
-                        signature_in_charge: 'M. Perera',
-                        note: 'Issued for urgent inpatient fever management'
-                    },
-                    {
-                        id: 502,
-                        date: '2026-09-15',
-                        item_name: 'SYRUP AMBROXOL 100ML',
-                        bht_no: 'BHT-88399',
-                        quantity: '1 Bottle',
-                        balance: '24 Bottle',
-                        officer_name: 'Nurse De Silva (RN-118)',
-                        signature_in_charge: 'A. De Silva',
-                        note: 'Pediatric Ward local purchase issue'
-                    }
-                ],
+                items: [],
+                selectedItem: { id: null, name: '', balance: 0, unit: '' },
+                requisitions: [],
 
                 newOrder: {
                     date: new Date().toISOString().split('T')[0],
                     bht_no: '',
                     quantity: '',
-                    balance: '500 Tabs',
+                    balance: '',
                     officer_name: '',
                     signature_in_charge: '',
                     note: ''
+                },
+
+                newItem: {
+                    name: '',
+                    balance: '',
+                    unit: 'Tabs'
+                },
+
+                init() {
+                    this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    this.fetchItems();
+                    this.fetchRequisitions();
+                },
+
+                async fetchItems() {
+                    try {
+                        const res = await fetch('/api/local-purchases/items');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.length > 0) {
+                                this.items = data;
+                                const currentId = this.selectedItem.id;
+                                const match = this.items.find(i => i.id === currentId);
+                                this.selectedItem = match || this.items[0];
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error fetching local purchase items:', e);
+                    }
+                },
+
+                async fetchRequisitions() {
+                    try {
+                        const res = await fetch('/api/local-purchases/requisitions');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data) {
+                                this.requisitions = data;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error fetching requisitions:', e);
+                    }
                 },
 
                 get filteredItems() {
@@ -388,7 +404,8 @@
 
                 get filteredRequisitions() {
                     return this.requisitions.filter(log => {
-                        const matchesItem = log.item_name.toLowerCase() === this.selectedItem.name.toLowerCase() ||
+                        const matchesItem = !this.selectedItem.name || 
+                                            log.item_name.toLowerCase() === this.selectedItem.name.toLowerCase() ||
                                             log.item_name.toLowerCase().includes(this.selectedItem.name.toLowerCase());
                         const q = this.logSearch.toLowerCase().trim();
                         const matchesSearch = !q || log.bht_no.toLowerCase().includes(q) || (log.note && log.note.toLowerCase().includes(q));
@@ -406,32 +423,146 @@
                     this.showAddOrderModal = true;
                 },
 
-                submitNewOrder() {
-                    this.requisitions.unshift({
-                        id: Date.now(),
-                        date: this.newOrder.date,
-                        item_name: this.selectedItem.name,
-                        bht_no: this.newOrder.bht_no,
-                        quantity: this.newOrder.quantity,
-                        balance: this.newOrder.balance,
-                        officer_name: this.newOrder.officer_name,
-                        signature_in_charge: this.newOrder.signature_in_charge,
-                        note: this.newOrder.note
-                    });
+                async submitNewOrder() {
+                    try {
+                        const payload = {
+                            date: this.newOrder.date,
+                            item_name: this.selectedItem.name,
+                            bht_no: this.newOrder.bht_no,
+                            quantity: this.newOrder.quantity,
+                            balance: this.newOrder.balance,
+                            officer_name: this.newOrder.officer_name,
+                            signature_in_charge: this.newOrder.signature_in_charge,
+                            note: this.newOrder.note
+                        };
+                        const res = await fetch('/api/local-purchases/requisitions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        if (res.ok) {
+                            const result = await res.json();
+                            const r = result.data || result;
+                            this.requisitions.unshift(r);
 
-                    this.showToast('Requisition record saved!');
-                    this.showAddOrderModal = false;
-                    this.newOrder.bht_no = '';
-                    this.newOrder.quantity = '';
-                    this.newOrder.officer_name = '';
-                    this.newOrder.signature_in_charge = '';
-                    this.newOrder.note = '';
+                            this.showToast('Requisition record saved!');
+                            this.showAddOrderModal = false;
+                            this.newOrder.bht_no = '';
+                            this.newOrder.quantity = '';
+                            this.newOrder.officer_name = '';
+                            this.newOrder.signature_in_charge = '';
+                            this.newOrder.note = '';
+
+                            this.fetchItems();
+                        }
+                    } catch (e) {
+                        this.showToast('Error saving requisition record', 'error');
+                    }
                 },
 
-                deleteRequisition(id) {
+                async submitNewItem() {
+                    if (!this.newItem.name.trim()) return;
+                    try {
+                        const payload = {
+                            name: this.newItem.name.trim().toUpperCase(),
+                            balance: parseInt(this.newItem.balance) || 0,
+                            unit: this.newItem.unit || 'Tabs'
+                        };
+                        const res = await fetch('/api/local-purchases/items', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        if (res.ok) {
+                            const result = await res.json();
+                            const item = result.data || result;
+                            this.items.push(item);
+                            this.selectedItem = item;
+                            this.showToast('Local purchase item added!');
+                            this.showAddItemModal = false;
+                            this.newItem.name = '';
+                            this.newItem.balance = '';
+                        }
+                    } catch (e) {
+                        this.showToast('Error adding item', 'error');
+                    }
+                },
+
+                async openEditItemModal(item) {
+                    const newName = prompt('Edit Item Name:', item.name);
+                    if (newName && newName.trim()) {
+                        const updatedName = newName.trim().toUpperCase();
+                        try {
+                            const res = await fetch(`/api/local-purchases/items/${item.id}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': this.csrfToken,
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({ name: updatedName })
+                            });
+                            if (res.ok) {
+                                item.name = updatedName;
+                                if (this.selectedItem.id === item.id) {
+                                    this.selectedItem.name = updatedName;
+                                }
+                                this.showToast('Item updated successfully');
+                            }
+                        } catch (e) {
+                            this.showToast('Error updating item', 'error');
+                        }
+                    }
+                },
+
+                async deleteItem(id) {
+                    if (confirm('Are you sure you want to delete this item?')) {
+                        try {
+                            const res = await fetch(`/api/local-purchases/items/${id}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': this.csrfToken,
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            if (res.ok) {
+                                this.items = this.items.filter(i => i.id !== id);
+                                if (this.selectedItem.id === id && this.items.length > 0) {
+                                    this.selectedItem = this.items[0];
+                                }
+                                this.showToast('Item removed');
+                            }
+                        } catch (e) {
+                            this.showToast('Error deleting item', 'error');
+                        }
+                    }
+                },
+
+                async deleteRequisition(id) {
                     if (confirm('Delete this record?')) {
-                        this.requisitions = this.requisitions.filter(r => r.id !== id);
-                        this.showToast('Record deleted');
+                        try {
+                            const res = await fetch(`/api/local-purchases/requisitions/${id}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': this.csrfToken,
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            if (res.ok) {
+                                this.requisitions = this.requisitions.filter(r => r.id !== id);
+                                this.showToast('Record deleted');
+                            }
+                        } catch (e) {
+                            this.showToast('Error deleting record', 'error');
+                        }
                     }
                 },
 

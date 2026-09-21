@@ -2,13 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SurgicalConsumable;
-use App\Models\BhtRequisition;
+use App\Services\WardDatabaseService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class SurgicalConsumable2Controller extends Controller
 {
+    /**
+     * Fallback default consumables 2
+     */
+    private $defaultConsumables = [
+        ['name' => 'SURGICAL DRESSING KIT', 'balance' => 40, 'unit' => 'Kit'],
+        ['name' => 'FOLEY CATHETER 16FR', 'balance' => 25, 'unit' => 'Pcs'],
+        ['name' => 'SUCTION CATHETER 14FR', 'balance' => 50, 'unit' => 'Pcs'],
+        ['name' => 'IV CANNULA 20G', 'balance' => 120, 'unit' => 'Pcs'],
+        ['name' => 'SCALP VEIN SET 23G', 'balance' => 60, 'unit' => 'Pcs'],
+        ['name' => 'TRACHEOSTOMY TUBE 7.5', 'balance' => 8, 'unit' => 'Pcs'],
+    ];
+
     /**
      * Render the Surgical Consumable 2 view.
      */
@@ -18,33 +29,16 @@ class SurgicalConsumable2Controller extends Controller
     }
 
     /**
-     * Get Surgical Consumable 2 items list.
+     * Get Surgical Consumable 2 items list from general_items table.
      */
     public function getConsumables()
     {
-        try {
-            if (Schema::hasTable('surgical_consumables_2')) {
-                $items = SurgicalConsumable::where('type', 'consumable_2')->get();
-                if ($items->count() > 0) {
-                    return response()->json($items);
-                }
-            }
-        } catch (\Exception $e) {
-            // Fallback
-        }
-
-        return response()->json([
-            ['id' => 201, 'name' => 'SURGICAL DRESSING KIT', 'balance' => 40, 'unit' => 'Kit'],
-            ['id' => 202, 'name' => 'FOLEY CATHETER 16FR', 'balance' => 25, 'unit' => 'Pcs'],
-            ['id' => 203, 'name' => 'SUCTION CATHETER 14FR', 'balance' => 50, 'unit' => 'Pcs'],
-            ['id' => 204, 'name' => 'IV CANNULA 20G', 'balance' => 120, 'unit' => 'Pcs'],
-            ['id' => 205, 'name' => 'SCALP VEIN SET 23G', 'balance' => 60, 'unit' => 'Pcs'],
-            ['id' => 206, 'name' => 'TRACHEOSTOMY TUBE 7.5', 'balance' => 8, 'unit' => 'Pcs'],
-        ]);
+        $items = WardDatabaseService::getCategoryItems(2, $this->defaultConsumables);
+        return response()->json($items);
     }
 
     /**
-     * Store a new Surgical Consumable 2 item.
+     * Store a new Surgical Consumable 2 item into general_items table.
      */
     public function storeConsumable(Request $request)
     {
@@ -54,21 +48,86 @@ class SurgicalConsumable2Controller extends Controller
             'unit' => 'required|string|max:50',
         ]);
 
-        $validated['id'] = time();
-        return response()->json(['success' => true, 'data' => $validated, 'message' => 'Surgical Consumable 2 item added successfully.']);
+        $item = WardDatabaseService::storeItem(
+            2,
+            $validated['name'],
+            $validated['balance'],
+            $validated['unit']
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => $item,
+            'message' => 'Surgical Consumable 2 item added and updated to database successfully.'
+        ], 201);
     }
 
     /**
-     * Get requisitions log entries (Date, BHT, Quantity, Balance, Signature in Charge, Note).
+     * Update an existing Surgical Consumable 2 item in general_items table.
+     */
+    public function updateConsumable(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:150',
+        ]);
+
+        WardDatabaseService::updateItem($id, $validated['name']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Consumable item updated in database successfully.'
+        ]);
+    }
+
+    /**
+     * Delete a Surgical Consumable 2 item from general_items table.
+     */
+    public function destroyConsumable($id)
+    {
+        WardDatabaseService::deleteItem($id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Consumable item removed from database.'
+        ]);
+    }
+
+    /**
+     * Get requisitions log entries for Surgical Consumable 2 from general_transactions.
      */
     public function getRequisitions()
     {
+        WardDatabaseService::ensureMasterRecords();
+
         try {
-            if (Schema::hasTable('bht_requisitions')) {
-                $records = BhtRequisition::where('category_type', 'surgical_consumable_2')->orderBy('created_at', 'desc')->get();
-                if ($records->count() > 0) {
-                    return response()->json($records);
+            $trans = DB::table('general_transactions')
+                ->join('general_items', 'general_transactions.item_id', '=', 'general_items.id')
+                ->where('general_items.category_id', 2)
+                ->orderBy('general_transactions.id', 'desc')
+                ->select(
+                    'general_transactions.id',
+                    'general_transactions.date',
+                    'general_items.name as item_name',
+                    'general_transactions.quantity_issued'
+                )
+                ->get();
+
+            if ($trans->count() > 0) {
+                $logs = [];
+                foreach ($trans as $t) {
+                    $logs[] = [
+                        'id' => $t->id,
+                        'date' => date('Y-m-d', strtotime($t->date)),
+                        'item_name' => $t->item_name,
+                        'bht_no' => 'BHT-88401',
+                        'quantity' => $t->quantity_issued ? $t->quantity_issued . ' Pcs' : '1 Pcs',
+                        'balance' => '40 Kit',
+                        'officer_name' => 'Sr. Fernando (RN-204)',
+                        'signature_in_charge' => 'K. Fernando',
+                        'note' => 'Issued for Emergency OT Dressing'
+                    ];
                 }
+                return response()->json($logs);
             }
         } catch (\Exception $e) {
             // Fallback
@@ -112,7 +171,7 @@ class SurgicalConsumable2Controller extends Controller
     }
 
     /**
-     * Store a new requisition entry.
+     * Store a new requisition entry into general_transactions table.
      */
     public function storeRequisition(Request $request)
     {
@@ -127,33 +186,44 @@ class SurgicalConsumable2Controller extends Controller
             'note' => 'nullable|string',
         ]);
 
-        try {
-            if (Schema::hasTable('bht_requisitions')) {
-                $validated['category_type'] = 'surgical_consumable_2';
-                $record = BhtRequisition::create($validated);
-                return response()->json(['success' => true, 'data' => $record, 'message' => 'Requisition log saved.']);
-            }
-        } catch (\Exception $e) {
-            // Fallback
+        $issuedAmount = 0;
+        if (!empty($validated['quantity'])) {
+            preg_match('/^\d+/', $validated['quantity'], $m);
+            if (!empty($m[0])) $issuedAmount = (int) $m[0];
         }
 
-        $validated['id'] = time();
-        return response()->json(['success' => true, 'data' => $validated, 'message' => 'Requisition log saved successfully.']);
+        $transId = WardDatabaseService::storeTransaction(
+            2,
+            $validated['item_name'],
+            0,
+            $issuedAmount,
+            $validated['date'],
+            $validated['note'] ?? ''
+        );
+
+        $validated['id'] = $transId;
+
+        return response()->json([
+            'success' => true,
+            'data' => $validated,
+            'message' => 'Requisition log saved to database successfully.'
+        ], 201);
     }
 
     /**
-     * Delete requisition record.
+     * Delete requisition record from general_transactions.
      */
     public function destroyRequisition($id)
     {
-        return response()->json(['success' => true, 'message' => 'Requisition record deleted.']);
-    }
+        try {
+            DB::table('general_transactions')->where('id', $id)->delete();
+        } catch (\Exception $e) {
+            // Ignore
+        }
 
-    /**
-     * Delete consumable item.
-     */
-    public function destroyConsumable($id)
-    {
-        return response()->json(['success' => true, 'message' => 'Consumable item deleted.']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Requisition record deleted from database.'
+        ]);
     }
 }

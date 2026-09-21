@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Surgical Consumable 2 - Ward Inventory System</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -326,6 +327,9 @@
             return {
                 sidebarSearch: '',
                 logSearch: '',
+                csrfToken: '',
+                sidebarSearch: '',
+                logSearch: '',
                 logDateFilter: '',
                 showAddOrderModal: false,
                 showAddConsumableModal: false,
@@ -336,49 +340,61 @@
                 inspectedOfficerName: '',
                 toasts: [],
 
-                consumables: [
-                    { id: 201, name: 'SURGICAL DRESSING KIT', balance: 40, unit: 'Kit' },
-                    { id: 202, name: 'FOLEY CATHETER 16FR', balance: 25, unit: 'Pcs' },
-                    { id: 203, name: 'SUCTION CATHETER 14FR', balance: 50, unit: 'Pcs' },
-                    { id: 204, name: 'IV CANNULA 20G', balance: 120, unit: 'Pcs' },
-                    { id: 205, name: 'SCALP VEIN SET 23G', balance: 60, unit: 'Pcs' }
-                ],
-
-                selectedConsumable: { id: 201, name: 'SURGICAL DRESSING KIT', balance: 40, unit: 'Kit' },
-
-                requisitions: [
-                    {
-                        id: 301,
-                        date: '2026-09-16',
-                        item_name: 'SURGICAL DRESSING KIT',
-                        bht_no: 'BHT-88401',
-                        quantity: '2 Kit',
-                        balance: '40 Kit',
-                        officer_name: 'Sr. Fernando (RN-204)',
-                        signature_in_charge: 'K. Fernando',
-                        note: 'Issued for Emergency OT Dressing'
-                    },
-                    {
-                        id: 302,
-                        date: '2026-09-15',
-                        item_name: 'FOLEY CATHETER 16FR',
-                        bht_no: 'BHT-88392',
-                        quantity: '1 Pcs',
-                        balance: '25 Pcs',
-                        officer_name: 'Nurse Ratnayake (RN-512)',
-                        signature_in_charge: 'S. Ratnayake',
-                        note: 'Catheterization ward procedure'
-                    }
-                ],
+                consumables: [],
+                selectedConsumable: { id: null, name: '', balance: 0, unit: '' },
+                requisitions: [],
 
                 newOrder: {
                     date: new Date().toISOString().split('T')[0],
                     bht_no: '',
                     quantity: '',
-                    balance: '40 Kit',
+                    balance: '',
                     officer_name: '',
                     signature_in_charge: '',
                     note: ''
+                },
+
+                newConsumable: {
+                    name: '',
+                    balance: '',
+                    unit: 'Kit'
+                },
+
+                init() {
+                    this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    this.fetchConsumables();
+                    this.fetchRequisitions();
+                },
+
+                async fetchConsumables() {
+                    try {
+                        const res = await fetch('/api/surgical-consumable-2/consumables');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.length > 0) {
+                                this.consumables = data;
+                                const currentId = this.selectedConsumable.id;
+                                const match = this.consumables.find(c => c.id === currentId);
+                                this.selectedConsumable = match || this.consumables[0];
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error fetching consumables:', e);
+                    }
+                },
+
+                async fetchRequisitions() {
+                    try {
+                        const res = await fetch('/api/surgical-consumable-2/requisitions');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data) {
+                                this.requisitions = data;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error fetching requisitions:', e);
+                    }
                 },
 
                 get filteredConsumables() {
@@ -388,7 +404,8 @@
 
                 get filteredRequisitions() {
                     return this.requisitions.filter(log => {
-                        const matchesItem = log.item_name.toLowerCase() === this.selectedConsumable.name.toLowerCase() ||
+                        const matchesItem = !this.selectedConsumable.name || 
+                                            log.item_name.toLowerCase() === this.selectedConsumable.name.toLowerCase() ||
                                             log.item_name.toLowerCase().includes(this.selectedConsumable.name.toLowerCase());
                         const q = this.logSearch.toLowerCase().trim();
                         const matchesSearch = !q || log.bht_no.toLowerCase().includes(q) || (log.note && log.note.toLowerCase().includes(q));
@@ -406,32 +423,146 @@
                     this.showAddOrderModal = true;
                 },
 
-                submitNewOrder() {
-                    this.requisitions.unshift({
-                        id: Date.now(),
-                        date: this.newOrder.date,
-                        item_name: this.selectedConsumable.name,
-                        bht_no: this.newOrder.bht_no,
-                        quantity: this.newOrder.quantity,
-                        balance: this.newOrder.balance,
-                        officer_name: this.newOrder.officer_name,
-                        signature_in_charge: this.newOrder.signature_in_charge,
-                        note: this.newOrder.note
-                    });
+                async submitNewOrder() {
+                    try {
+                        const payload = {
+                            date: this.newOrder.date,
+                            item_name: this.selectedConsumable.name,
+                            bht_no: this.newOrder.bht_no,
+                            quantity: this.newOrder.quantity,
+                            balance: this.newOrder.balance,
+                            officer_name: this.newOrder.officer_name,
+                            signature_in_charge: this.newOrder.signature_in_charge,
+                            note: this.newOrder.note
+                        };
+                        const res = await fetch('/api/surgical-consumable-2/requisitions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        if (res.ok) {
+                            const result = await res.json();
+                            const r = result.data || result;
+                            this.requisitions.unshift(r);
 
-                    this.showToast('Requisition record saved!');
-                    this.showAddOrderModal = false;
-                    this.newOrder.bht_no = '';
-                    this.newOrder.quantity = '';
-                    this.newOrder.officer_name = '';
-                    this.newOrder.signature_in_charge = '';
-                    this.newOrder.note = '';
+                            this.showToast('Requisition record saved!');
+                            this.showAddOrderModal = false;
+                            this.newOrder.bht_no = '';
+                            this.newOrder.quantity = '';
+                            this.newOrder.officer_name = '';
+                            this.newOrder.signature_in_charge = '';
+                            this.newOrder.note = '';
+
+                            this.fetchConsumables();
+                        }
+                    } catch (e) {
+                        this.showToast('Error saving requisition record', 'error');
+                    }
                 },
 
-                deleteRequisition(id) {
+                async submitNewConsumable() {
+                    if (!this.newConsumable.name.trim()) return;
+                    try {
+                        const payload = {
+                            name: this.newConsumable.name.trim().toUpperCase(),
+                            balance: parseInt(this.newConsumable.balance) || 0,
+                            unit: this.newConsumable.unit || 'Kit'
+                        };
+                        const res = await fetch('/api/surgical-consumable-2/consumables', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        if (res.ok) {
+                            const result = await res.json();
+                            const newItem = result.data || result;
+                            this.consumables.push(newItem);
+                            this.selectedConsumable = newItem;
+                            this.showToast('Consumable item added!');
+                            this.showAddConsumableModal = false;
+                            this.newConsumable.name = '';
+                            this.newConsumable.balance = '';
+                        }
+                    } catch (e) {
+                        this.showToast('Error adding consumable item', 'error');
+                    }
+                },
+
+                async openEditConsumableModal(item) {
+                    const newName = prompt('Edit Consumable Name:', item.name);
+                    if (newName && newName.trim()) {
+                        const updatedName = newName.trim().toUpperCase();
+                        try {
+                            const res = await fetch(`/api/surgical-consumable-2/consumables/${item.id}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': this.csrfToken,
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({ name: updatedName })
+                            });
+                            if (res.ok) {
+                                item.name = updatedName;
+                                if (this.selectedConsumable.id === item.id) {
+                                    this.selectedConsumable.name = updatedName;
+                                }
+                                this.showToast('Item updated successfully');
+                            }
+                        } catch (e) {
+                            this.showToast('Error updating item', 'error');
+                        }
+                    }
+                },
+
+                async deleteConsumable(id) {
+                    if (confirm('Are you sure you want to delete this consumable item?')) {
+                        try {
+                            const res = await fetch(`/api/surgical-consumable-2/consumables/${id}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': this.csrfToken,
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            if (res.ok) {
+                                this.consumables = this.consumables.filter(c => c.id !== id);
+                                if (this.selectedConsumable.id === id && this.consumables.length > 0) {
+                                    this.selectedConsumable = this.consumables[0];
+                                }
+                                this.showToast('Consumable item removed');
+                            }
+                        } catch (e) {
+                            this.showToast('Error deleting item', 'error');
+                        }
+                    }
+                },
+
+                async deleteRequisition(id) {
                     if (confirm('Delete this record?')) {
-                        this.requisitions = this.requisitions.filter(r => r.id !== id);
-                        this.showToast('Record deleted');
+                        try {
+                            const res = await fetch(`/api/surgical-consumable-2/requisitions/${id}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': this.csrfToken,
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            if (res.ok) {
+                                this.requisitions = this.requisitions.filter(r => r.id !== id);
+                                this.showToast('Record deleted');
+                            }
+                        } catch (e) {
+                            this.showToast('Error deleting record', 'error');
+                        }
                     }
                 },
 

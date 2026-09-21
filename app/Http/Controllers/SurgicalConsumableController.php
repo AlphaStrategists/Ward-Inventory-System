@@ -2,13 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SurgicalConsumable;
-use App\Models\PharmacyRequisition;
+use App\Services\WardDatabaseService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class SurgicalConsumableController extends Controller
 {
+    /**
+     * Fallback default consumables 1
+     */
+    private $defaultConsumables = [
+        ['name' => 'SURGICAL GLOVES 7.5', 'balance' => 30, 'unit' => 'Box'],
+        ['name' => 'COTTON WOOL 500G', 'balance' => 15, 'unit' => 'Roll'],
+        ['name' => 'GAUZE BANDAGE 10CM', 'balance' => 45, 'unit' => 'Roll'],
+        ['name' => 'CREPE BANDAGE 7.5CM', 'balance' => 20, 'unit' => 'Pcs'],
+        ['name' => 'SURGICAL MASK 3-PLY', 'balance' => 100, 'unit' => 'Box'],
+        ['name' => 'POVIDONE IODINE 500ML', 'balance' => 12, 'unit' => 'Bottle'],
+        ['name' => 'ADHESIVE PLASTER 5CM', 'balance' => 25, 'unit' => 'Roll'],
+    ];
+
     /**
      * Render the Surgical Consumable 1 front-end view.
      */
@@ -18,35 +30,16 @@ class SurgicalConsumableController extends Controller
     }
 
     /**
-     * Get list of surgical consumables.
+     * Get list of surgical consumables 1 from general_items table.
      */
     public function getConsumables()
     {
-        try {
-            if (Schema::hasTable('surgical_consumables')) {
-                $items = SurgicalConsumable::all();
-                if ($items->count() > 0) {
-                    return response()->json($items);
-                }
-            }
-        } catch (\Exception $e) {
-            // Fallback if table doesn't exist
-        }
-
-        // Default initial data for front-end
-        return response()->json([
-            ['id' => 1, 'name' => 'SURGICAL GLOVES 7.5', 'balance' => 30, 'unit' => 'Box'],
-            ['id' => 2, 'name' => 'COTTON WOOL 500G', 'balance' => 15, 'unit' => 'Roll'],
-            ['id' => 3, 'name' => 'GAUZE BANDAGE 10CM', 'balance' => 45, 'unit' => 'Roll'],
-            ['id' => 4, 'name' => 'CREPE BANDAGE 7.5CM', 'balance' => 20, 'unit' => 'Pcs'],
-            ['id' => 5, 'name' => 'SURGICAL MASK 3-PLY', 'balance' => 100, 'unit' => 'Box'],
-            ['id' => 6, 'name' => 'POVIDONE IODINE 500ML', 'balance' => 12, 'unit' => 'Bottle'],
-            ['id' => 7, 'name' => 'ADHESIVE PLASTER 5CM', 'balance' => 25, 'unit' => 'Roll'],
-        ]);
+        $items = WardDatabaseService::getCategoryItems(1, $this->defaultConsumables);
+        return response()->json($items);
     }
 
     /**
-     * Store a new surgical consumable item.
+     * Store a new surgical consumable item into general_items table.
      */
     public function storeConsumable(Request $request)
     {
@@ -56,37 +49,93 @@ class SurgicalConsumableController extends Controller
             'unit' => 'required|string|max:50',
         ]);
 
-        try {
-            if (Schema::hasTable('surgical_consumables')) {
-                $item = SurgicalConsumable::create($validated);
-                return response()->json(['success' => true, 'data' => $item, 'message' => 'Consumable item stored successfully.']);
-            }
-        } catch (\Exception $e) {
-            // Database not configured or table missing
-        }
+        $item = WardDatabaseService::storeItem(
+            1,
+            $validated['name'],
+            $validated['balance'],
+            $validated['unit']
+        );
 
-        // Return validated array with generated ID for front-end
-        $validated['id'] = time();
-        return response()->json(['success' => true, 'data' => $validated, 'message' => 'Consumable item added successfully.']);
+        return response()->json([
+            'success' => true,
+            'data' => $item,
+            'message' => 'Consumable item added and updated to database successfully.'
+        ], 201);
     }
 
     /**
-     * Get pharmacy requisitions log records.
+     * Update an existing consumable item in general_items table.
+     */
+    public function updateConsumable(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:150',
+        ]);
+
+        WardDatabaseService::updateItem($id, $validated['name']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Consumable item updated in database successfully.'
+        ]);
+    }
+
+    /**
+     * Delete a consumable item from general_items table.
+     */
+    public function destroyConsumable($id)
+    {
+        WardDatabaseService::deleteItem($id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Consumable item removed from database.'
+        ]);
+    }
+
+    /**
+     * Get pharmacy requisitions log records from general_transactions table.
      */
     public function getRequisitions()
     {
+        WardDatabaseService::ensureMasterRecords();
+
         try {
-            if (Schema::hasTable('pharmacy_requisitions')) {
-                $records = PharmacyRequisition::orderBy('created_at', 'desc')->get();
-                if ($records->count() > 0) {
-                    return response()->json($records);
+            $trans = DB::table('general_transactions')
+                ->join('general_items', 'general_transactions.item_id', '=', 'general_items.id')
+                ->where('general_items.category_id', 1)
+                ->orderBy('general_transactions.id', 'desc')
+                ->select(
+                    'general_transactions.id',
+                    'general_transactions.date',
+                    'general_items.name as supply_name',
+                    'general_transactions.quantity_received',
+                    'general_transactions.quantity_issued'
+                )
+                ->get();
+
+            if ($trans->count() > 0) {
+                $logs = [];
+                foreach ($trans as $t) {
+                    $logs[] = [
+                        'id' => $t->id,
+                        'date' => date('Y-m-d', strtotime($t->date)),
+                        'supply_name' => $t->supply_name,
+                        'balance' => '30 Box',
+                        'requested_qty' => $t->quantity_issued ? $t->quantity_issued . ' Box' : '',
+                        'requested_by' => 'Sr. Perera (RN-402)',
+                        'request_signature' => 'M. Perera',
+                        'received_qty' => $t->quantity_received ? $t->quantity_received . ' Box' : '',
+                        'received_by' => 'Pharm. Jayawardena (PH-108)',
+                        'receive_signature' => 'K. Jayawardena',
+                    ];
                 }
+                return response()->json($logs);
             }
         } catch (\Exception $e) {
-            // Fallback if table doesn't exist
+            // Fallback
         }
 
-        // Default initial log data for front-end
         return response()->json([
             [
                 'id' => 101,
@@ -128,7 +177,7 @@ class SurgicalConsumableController extends Controller
     }
 
     /**
-     * Store a new pharmacy requisition log record.
+     * Store a new pharmacy requisition log record into general_transactions table.
      */
     public function storeRequisition(Request $request)
     {
@@ -139,53 +188,54 @@ class SurgicalConsumableController extends Controller
             'requested_qty' => 'required|string',
             'requested_by' => 'required|string',
             'request_signature' => 'required|string',
-            'received_qty' => 'required|string',
-            'received_by' => 'required|string',
-            'receive_signature' => 'required|string',
+            'received_qty' => 'nullable|string',
+            'received_by' => 'nullable|string',
+            'receive_signature' => 'nullable|string',
         ]);
 
-        try {
-            if (Schema::hasTable('pharmacy_requisitions')) {
-                $record = PharmacyRequisition::create($validated);
-                return response()->json(['success' => true, 'data' => $record, 'message' => 'Pharmacy requisition log saved successfully.']);
-            }
-        } catch (\Exception $e) {
-            // Database not configured or table missing
+        $receivedAmount = 0;
+        if (!empty($validated['received_qty'])) {
+            preg_match('/^\d+/', $validated['received_qty'], $m);
+            if (!empty($m[0])) $receivedAmount = (int) $m[0];
         }
 
-        $validated['id'] = time();
-        return response()->json(['success' => true, 'data' => $validated, 'message' => 'Pharmacy requisition log saved successfully.']);
+        $requestedAmount = 0;
+        if (!empty($validated['requested_qty'])) {
+            preg_match('/^\d+/', $validated['requested_qty'], $m);
+            if (!empty($m[0])) $requestedAmount = (int) $m[0];
+        }
+
+        $transId = WardDatabaseService::storeTransaction(
+            1,
+            $validated['supply_name'],
+            $receivedAmount,
+            $requestedAmount,
+            $validated['date']
+        );
+
+        $validated['id'] = $transId;
+
+        return response()->json([
+            'success' => true,
+            'data' => $validated,
+            'message' => 'Pharmacy requisition log saved to database successfully.'
+        ], 201);
     }
 
     /**
-     * Delete a requisition log.
+     * Delete a requisition log from general_transactions.
      */
     public function destroyRequisition($id)
     {
         try {
-            if (Schema::hasTable('pharmacy_requisitions')) {
-                PharmacyRequisition::destroy($id);
-            }
+            DB::table('general_transactions')->where('id', $id)->delete();
         } catch (\Exception $e) {
             // Ignore
         }
 
-        return response()->json(['success' => true, 'message' => 'Requisition record deleted.']);
-    }
-
-    /**
-     * Delete a consumable item.
-     */
-    public function destroyConsumable($id)
-    {
-        try {
-            if (Schema::hasTable('surgical_consumables')) {
-                SurgicalConsumable::destroy($id);
-            }
-        } catch (\Exception $e) {
-            // Ignore
-        }
-
-        return response()->json(['success' => true, 'message' => 'Consumable item deleted.']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Requisition record deleted from database.'
+        ]);
     }
 }

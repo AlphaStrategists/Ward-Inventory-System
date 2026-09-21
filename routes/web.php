@@ -63,12 +63,23 @@ Route::get('/g-inventory', [GInventoryController::class, 'index'])->name('g-inve
 // SURGICAL CONSUMABLE 1
 // =====================================================
 
+<<<<<<< HEAD
 Route::get('/', [SurgicalConsumableController::class, 'index']);
+=======
+// View Routes
+Route::get('/', function () {
+    return view('welcome');
+});
+Route::get('/surgical-consumable-1', [SurgicalConsumableController::class, 'index']);
+Route::get('/surgical-consumable-2', [SurgicalConsumable2Controller::class, 'index']);
+Route::get('/local-purchases', [LocalPurchaseController::class, 'index']);
+>>>>>>> af53420 (Update local purchases and surgical consumable modules, add ward inventory seeder)
 
 Route::get('/surgical-consumable-1', [SurgicalConsumableController::class, 'index']);
 
 Route::get('/api/consumables', [SurgicalConsumableController::class, 'getConsumables']);
 Route::post('/api/consumables', [SurgicalConsumableController::class, 'storeConsumable']);
+Route::put('/api/consumables/{id}', [SurgicalConsumableController::class, 'updateConsumable']);
 Route::delete('/api/consumables/{id}', [SurgicalConsumableController::class, 'destroyConsumable']);
 
 Route::get('/api/requisitions', [SurgicalConsumableController::class, 'getRequisitions']);
@@ -84,9 +95,15 @@ Route::get('/surgical-consumable-2', [SurgicalConsumable2Controller::class, 'ind
 
 Route::get('/api/surgical-consumable-2/consumables', [SurgicalConsumable2Controller::class, 'getConsumables']);
 Route::post('/api/surgical-consumable-2/consumables', [SurgicalConsumable2Controller::class, 'storeConsumable']);
+<<<<<<< HEAD
 
+=======
+Route::put('/api/surgical-consumable-2/consumables/{id}', [SurgicalConsumable2Controller::class, 'updateConsumable']);
+Route::delete('/api/surgical-consumable-2/consumables/{id}', [SurgicalConsumable2Controller::class, 'destroyConsumable']);
+>>>>>>> af53420 (Update local purchases and surgical consumable modules, add ward inventory seeder)
 Route::get('/api/surgical-consumable-2/requisitions', [SurgicalConsumable2Controller::class, 'getRequisitions']);
 Route::post('/api/surgical-consumable-2/requisitions', [SurgicalConsumable2Controller::class, 'storeRequisition']);
+Route::delete('/api/surgical-consumable-2/requisitions/{id}', [SurgicalConsumable2Controller::class, 'destroyRequisition']);
 
 
 // =====================================================
@@ -97,6 +114,14 @@ Route::get('/local-purchases', [LocalPurchaseController::class, 'index']);
 
 Route::get('/api/local-purchases/items', [LocalPurchaseController::class, 'getItems']);
 Route::post('/api/local-purchases/items', [LocalPurchaseController::class, 'storeItem']);
+<<<<<<< HEAD
 
 Route::get('/api/local-purchases/requisitions', [LocalPurchaseController::class, 'getRequisitions']);
 Route::post('/api/local-purchases/requisitions', [LocalPurchaseController::class, 'storeRequisition']);
+=======
+Route::put('/api/local-purchases/items/{id}', [LocalPurchaseController::class, 'updateItem']);
+Route::delete('/api/local-purchases/items/{id}', [LocalPurchaseController::class, 'destroyItem']);
+Route::get('/api/local-purchases/requisitions', [LocalPurchaseController::class, 'getRequisitions']);
+Route::post('/api/local-purchases/requisitions', [LocalPurchaseController::class, 'storeRequisition']);
+Route::delete('/api/local-purchases/requisitions/{id}', [LocalPurchaseController::class, 'destroyRequisition']);
+>>>>>>> af53420 (Update local purchases and surgical consumable modules, add ward inventory seeder)

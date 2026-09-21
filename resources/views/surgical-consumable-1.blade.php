@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Surgical Consumable 1 - Ward Inventory System</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -552,6 +553,7 @@
     <script>
         function surgicalConsumableApp() {
             return {
+                csrfToken: '',
                 sidebarSearch: '',
                 logSearch: '',
                 logDateFilter: '',
@@ -567,64 +569,14 @@
 
                 toasts: [],
 
-                // Consumables List
-                consumables: [
-                    { id: 1, name: 'SURGICAL GLOVES 7.5', balance: 30, unit: 'Box' },
-                    { id: 2, name: 'COTTON WOOL 500G', balance: 15, unit: 'Roll' },
-                    { id: 3, name: 'GAUZE BANDAGE 10CM', balance: 45, unit: 'Roll' },
-                    { id: 4, name: 'CREPE BANDAGE 7.5CM', balance: 20, unit: 'Pcs' },
-                    { id: 5, name: 'SURGICAL MASK 3-PLY', balance: 100, unit: 'Box' },
-                    { id: 6, name: 'POVIDONE IODINE 500ML', balance: 12, unit: 'Bottle' },
-                    { id: 7, name: 'ADHESIVE PLASTER 5CM', balance: 25, unit: 'Roll' }
-                ],
+                consumables: [],
+                selectedConsumable: { id: null, name: '', balance: 0, unit: '' },
+                requisitions: [],
 
-                selectedConsumable: { id: 1, name: 'SURGICAL GLOVES 7.5', balance: 30, unit: 'Box' },
-
-                // Requisitions Log Items
-                requisitions: [
-                    {
-                        id: 101,
-                        date: '2026-09-16',
-                        supplyName: 'SURGICAL GLOVES 7.5',
-                        balance: '30 Box',
-                        requestedQty: '10 Box',
-                        requestedBy: 'Sr. Perera (RN-402)',
-                        requestSignature: 'M. Perera',
-                        receivedQty: '10 Box',
-                        receivedBy: 'Pharm. Jayawardena (PH-108)',
-                        receiveSignature: 'K. Jayawardena'
-                    },
-                    {
-                        id: 102,
-                        date: '2026-09-15',
-                        supplyName: 'COTTON WOOL 500G',
-                        balance: '15 Roll',
-                        requestedQty: '5 Roll',
-                        requestedBy: 'Nurse Wickramasinghe (RN-311)',
-                        requestSignature: 'S. Wickramasinghe',
-                        receivedQty: '5 Roll',
-                        receivedBy: 'Pharm. Jayawardena (PH-108)',
-                        receiveSignature: 'K. Jayawardena'
-                    },
-                    {
-                        id: 103,
-                        date: '2026-09-14',
-                        supplyName: 'GAUZE BANDAGE 10CM',
-                        balance: '45 Roll',
-                        requestedQty: '15 Roll',
-                        requestedBy: 'Sr. Perera (RN-402)',
-                        requestSignature: 'M. Perera',
-                        receivedQty: '15 Roll',
-                        receivedBy: 'Pharm. Silva (PH-114)',
-                        receiveSignature: 'R. Silva'
-                    }
-                ],
-
-                // New Order Modal State
                 newOrder: {
                     date: new Date().toISOString().split('T')[0],
-                    supplyName: 'SURGICAL GLOVES 7.5',
-                    balance: '30 Box',
+                    supplyName: '',
+                    balance: '',
                     requestedQty: '',
                     requestedBy: '',
                     requestSignature: '',
@@ -633,14 +585,60 @@
                     receiveSignature: ''
                 },
 
-                // New Consumable Item Modal State
                 newConsumable: {
                     name: '',
                     balance: '',
                     unit: 'Box'
                 },
 
-                // Computed Filtered Lists
+                init() {
+                    this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    this.fetchConsumables();
+                    this.fetchRequisitions();
+                },
+
+                async fetchConsumables() {
+                    try {
+                        const res = await fetch('/api/consumables');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.length > 0) {
+                                this.consumables = data;
+                                const currentId = this.selectedConsumable.id;
+                                const match = this.consumables.find(c => c.id === currentId);
+                                this.selectedConsumable = match || this.consumables[0];
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error fetching consumables:', e);
+                    }
+                },
+
+                async fetchRequisitions() {
+                    try {
+                        const res = await fetch('/api/requisitions');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data) {
+                                this.requisitions = data.map(r => ({
+                                    id: r.id,
+                                    date: r.date,
+                                    supplyName: r.supply_name || r.supplyName,
+                                    balance: r.balance,
+                                    requestedQty: r.requested_qty || r.requestedQty,
+                                    requestedBy: r.requested_by || r.requestedBy,
+                                    requestSignature: r.request_signature || r.requestSignature,
+                                    receivedQty: r.received_qty || r.receivedQty,
+                                    receivedBy: r.received_by || r.receivedBy,
+                                    receiveSignature: r.receive_signature || r.receiveSignature
+                                }));
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error fetching requisitions:', e);
+                    }
+                },
+
                 get filteredConsumables() {
                     if (!this.sidebarSearch.trim()) return this.consumables;
                     const query = this.sidebarSearch.toLowerCase();
@@ -649,19 +647,17 @@
 
                 get filteredRequisitions() {
                     return this.requisitions.filter(log => {
-                        // Filter by selected consumable item
-                        const matchesItem = log.supplyName.toLowerCase() === this.selectedConsumable.name.toLowerCase() ||
+                        const matchesItem = !this.selectedConsumable.name || 
+                                            log.supplyName.toLowerCase() === this.selectedConsumable.name.toLowerCase() ||
                                             log.supplyName.toLowerCase().includes(this.selectedConsumable.name.toLowerCase());
                         
-                        // Search text filter
                         const searchQuery = this.logSearch.toLowerCase().trim();
                         const matchesSearch = !searchQuery || 
                             log.supplyName.toLowerCase().includes(searchQuery) ||
-                            log.requestedBy.toLowerCase().includes(searchQuery) ||
-                            log.receivedBy.toLowerCase().includes(searchQuery) ||
-                            log.date.includes(searchQuery);
+                            (log.requestedBy && log.requestedBy.toLowerCase().includes(searchQuery)) ||
+                            (log.receivedBy && log.receivedBy.toLowerCase().includes(searchQuery)) ||
+                            (log.date && log.date.includes(searchQuery));
 
-                        // Date filter
                         const matchesDate = !this.logDateFilter || log.date === this.logDateFilter;
 
                         return matchesItem && matchesSearch && matchesDate;
@@ -685,71 +681,160 @@
                     }
                 },
 
-                submitNewOrder() {
-                    const newId = Date.now();
-                    this.requisitions.unshift({
-                        id: newId,
-                        date: this.newOrder.date,
-                        supplyName: this.newOrder.supplyName,
-                        balance: this.newOrder.balance,
-                        requestedQty: this.newOrder.requestedQty,
-                        requestedBy: this.newOrder.requestedBy,
-                        requestSignature: this.newOrder.requestSignature,
-                        receivedQty: this.newOrder.receivedQty,
-                        receivedBy: this.newOrder.receivedBy,
-                        receiveSignature: this.newOrder.receiveSignature
-                    });
+                async submitNewOrder() {
+                    try {
+                        const payload = {
+                            date: this.newOrder.date,
+                            supply_name: this.newOrder.supplyName,
+                            balance: this.newOrder.balance,
+                            requested_qty: this.newOrder.requestedQty,
+                            requested_by: this.newOrder.requestedBy,
+                            request_signature: this.newOrder.requestSignature,
+                            received_qty: this.newOrder.receivedQty,
+                            received_by: this.newOrder.receivedBy,
+                            receive_signature: this.newOrder.receiveSignature
+                        };
+                        const res = await fetch('/api/requisitions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        if (res.ok) {
+                            const result = await res.json();
+                            const r = result.data || result;
+                            this.requisitions.unshift({
+                                id: r.id,
+                                date: r.date,
+                                supplyName: r.supply_name || r.supplyName,
+                                balance: r.balance,
+                                requestedQty: r.requested_qty || r.requestedQty,
+                                requestedBy: r.requested_by || r.requestedBy,
+                                requestSignature: r.request_signature || r.requestSignature,
+                                receivedQty: r.received_qty || r.receivedQty,
+                                receivedBy: r.received_by || r.receivedBy,
+                                receiveSignature: r.receive_signature || r.receiveSignature
+                            });
 
-                    this.showToast('New pharmacy requisition order saved!');
-                    this.showAddOrderModal = false;
+                            this.showToast('New pharmacy requisition order saved!');
+                            this.showAddOrderModal = false;
 
-                    // Reset order fields
-                    this.newOrder.requestedQty = '';
-                    this.newOrder.requestedBy = '';
-                    this.newOrder.requestSignature = '';
-                    this.newOrder.receivedQty = '';
-                    this.newOrder.receivedBy = '';
-                    this.newOrder.receiveSignature = '';
+                            this.newOrder.requestedQty = '';
+                            this.newOrder.requestedBy = '';
+                            this.newOrder.requestSignature = '';
+                            this.newOrder.receivedQty = '';
+                            this.newOrder.receivedBy = '';
+                            this.newOrder.receiveSignature = '';
+                            
+                            this.fetchConsumables();
+                        }
+                    } catch (e) {
+                        this.showToast('Error saving requisition order', 'error');
+                    }
                 },
 
-                openEditConsumableModal(item) {
+                async openEditConsumableModal(item) {
                     const newName = prompt('Edit Consumable Name:', item.name);
                     if (newName && newName.trim()) {
-                        item.name = newName.trim().toUpperCase();
-                        this.showToast('Item updated successfully');
-                    }
-                },
-
-                deleteConsumable(id) {
-                    if (confirm('Are you sure you want to delete this consumable item?')) {
-                        this.consumables = this.consumables.filter(c => c.id !== id);
-                        if (this.selectedConsumable.id === id && this.consumables.length > 0) {
-                            this.selectedConsumable = this.consumables[0];
+                        const updatedName = newName.trim().toUpperCase();
+                        try {
+                            const res = await fetch(`/api/consumables/${item.id}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': this.csrfToken,
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({ name: updatedName })
+                            });
+                            if (res.ok) {
+                                item.name = updatedName;
+                                if (this.selectedConsumable.id === item.id) {
+                                    this.selectedConsumable.name = updatedName;
+                                }
+                                this.showToast('Item updated successfully');
+                            }
+                        } catch (e) {
+                            this.showToast('Error updating item', 'error');
                         }
-                        this.showToast('Consumable item removed');
                     }
                 },
 
-                submitNewConsumable() {
-                    if (!this.newConsumable.name.trim()) return;
-                    const newItem = {
-                        id: Date.now(),
-                        name: this.newConsumable.name.trim().toUpperCase(),
-                        balance: parseInt(this.newConsumable.balance) || 0,
-                        unit: this.newConsumable.unit || 'Box'
-                    };
-                    this.consumables.push(newItem);
-                    this.selectedConsumable = newItem;
-                    this.showToast('Surgical consumable item added!');
-                    this.showAddConsumableModal = false;
-                    this.newConsumable.name = '';
-                    this.newConsumable.balance = '';
+                async deleteConsumable(id) {
+                    if (confirm('Are you sure you want to delete this consumable item?')) {
+                        try {
+                            const res = await fetch(`/api/consumables/${id}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': this.csrfToken,
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            if (res.ok) {
+                                this.consumables = this.consumables.filter(c => c.id !== id);
+                                if (this.selectedConsumable.id === id && this.consumables.length > 0) {
+                                    this.selectedConsumable = this.consumables[0];
+                                }
+                                this.showToast('Consumable item removed');
+                            }
+                        } catch (e) {
+                            this.showToast('Error deleting item', 'error');
+                        }
+                    }
                 },
 
-                deleteRequisition(id) {
+                async submitNewConsumable() {
+                    if (!this.newConsumable.name.trim()) return;
+                    try {
+                        const payload = {
+                            name: this.newConsumable.name.trim().toUpperCase(),
+                            balance: parseInt(this.newConsumable.balance) || 0,
+                            unit: this.newConsumable.unit || 'Box'
+                        };
+                        const res = await fetch('/api/consumables', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        if (res.ok) {
+                            const result = await res.json();
+                            const newItem = result.data || result;
+                            this.consumables.push(newItem);
+                            this.selectedConsumable = newItem;
+                            this.showToast('Surgical consumable item added!');
+                            this.showAddConsumableModal = false;
+                            this.newConsumable.name = '';
+                            this.newConsumable.balance = '';
+                        }
+                    } catch (e) {
+                        this.showToast('Error adding item', 'error');
+                    }
+                },
+
+                async deleteRequisition(id) {
                     if (confirm('Delete this requisition record?')) {
-                        this.requisitions = this.requisitions.filter(r => r.id !== id);
-                        this.showToast('Record deleted');
+                        try {
+                            const res = await fetch(`/api/requisitions/${id}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': this.csrfToken,
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            if (res.ok) {
+                                this.requisitions = this.requisitions.filter(r => r.id !== id);
+                                this.showToast('Record deleted');
+                            }
+                        } catch (e) {
+                            this.showToast('Error deleting record', 'error');
+                        }
                     }
                 },
 
