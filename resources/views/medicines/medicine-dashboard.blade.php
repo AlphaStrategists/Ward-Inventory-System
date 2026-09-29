@@ -15,7 +15,7 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', openAddModal: false, openAdminModal: false, editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }} }">
+<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', openAddModal: false, openAdminModal: false, editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
 
     @if(session('success'))
     <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
@@ -340,13 +340,13 @@
                                         <!-- Item Code -->
                                         <div>
                                             <label class="block text-sm font-semibold text-slate-700 mb-1.5">Item Code <span class="text-red-500">*</span></label>
-                                            <input type="text" name="item_code" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" placeholder="e.g. MED-001">
+                                            <input type="text" name="item_code" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" placeholder="e.g. MED-001" oninput="this.value = this.value.toUpperCase()">
                                         </div>
 
                                         <!-- Medicine Name -->
                                         <div>
                                             <label class="block text-sm font-semibold text-slate-700 mb-1.5">Medicine Name <span class="text-red-500">*</span></label>
-                                            <input type="text" name="name" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" placeholder="e.g. Amoxicillin">
+                                            <input type="text" name="name" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" placeholder="e.g. Amoxicillin" oninput="this.value = this.value.toUpperCase()">
                                         </div>
 
                                         <!-- Form Type -->
@@ -389,7 +389,19 @@
                                             </div>
                                             <div>
                                                 <label class="block text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-1">Initial Stock</label>
-                                                <input type="number" name="initial_stock" value="0" min="0" required class="w-full rounded-lg border border-blue-100 bg-blue-50/30 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-blue-700 font-semibold">
+                                                <input type="number" name="initial_stock" x-model="initialStock" value="0" min="0" required class="w-full rounded-lg border border-blue-100 bg-blue-50/30 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-blue-700 font-semibold">
+                                            </div>
+                                        </div>
+
+                                        <!-- Batch Info (Shown if Initial Stock > 0) -->
+                                        <div class="grid grid-cols-2 gap-3 mt-3" x-show="initialStock > 0" x-transition x-cloak>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Batch Number <span class="text-red-500">*</span></label>
+                                                <input type="text" name="batch_no" :required="initialStock > 0" class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 placeholder:text-slate-400 placeholder:normal-case" placeholder="e.g. BATCH-001" oninput="this.value = this.value.toUpperCase()">
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expiry Date <span class="text-red-500">*</span></label>
+                                                <input type="date" name="expiry_date" :required="initialStock > 0" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
                                             </div>
                                         </div>
                                     </div>
@@ -447,12 +459,12 @@
                                 <!-- Item Code -->
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Item Code <span class="text-red-500">*</span></label>
-                                    <input type="text" name="item_code" value="{{ $medicine->item_code }}" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case">
+                                    <input type="text" name="item_code" value="{{ $medicine->item_code }}" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" oninput="this.value = this.value.toUpperCase()">
                                 </div>
                                 <!-- Medicine Name -->
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Medicine Name <span class="text-red-500">*</span></label>
-                                    <input type="text" name="name" value="{{ $medicine->name }}" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case">
+                                    <input type="text" name="name" value="{{ $medicine->name }}" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" oninput="this.value = this.value.toUpperCase()">
                                 </div>
                                 <!-- Form Type -->
                                 <div>
@@ -533,7 +545,7 @@
                      x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
                      x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
                      @click.away="openAdminModal = false"
-                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                     class="relative transform overflow-visible rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
                     
                     <form action="{{ $selectedMedicine ? url('/inventory/medicines/administration/'.$category.'/'.$selectedMedicine->id) : '#' }}" method="POST">
                         @csrf
@@ -547,18 +559,105 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Usage Time <span class="text-red-500">*</span></label>
-                                    <input type="time" name="usage_time" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required>
+                                    <input type="time" name="usage_time" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ date('H:i') }}">
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-5 mb-5">
                                 <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Admission ID <span class="text-red-500">*</span></label>
-                                    <input type="number" name="admission_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">B.H.T. No. <span class="text-red-500">*</span></label>
+                                    <div x-data="{
+                                        open: false,
+                                        search: '',
+                                        selectedAdmissionId: '',
+                                        selectedAdmissionText: 'Select BHT / Patient...',
+                                        options: [
+                                            @if(isset($admissions))
+                                                @foreach($admissions as $admission)
+                                                    { id: '{{ $admission->id }}', text: '{{ $admission->bht_no }} - {{ addslashes($admission->patient->name ?? $admission->patient->patient_name ?? 'Patient') }}' },
+                                                @endforeach
+                                            @endif
+                                        ],
+                                        get filteredOptions() {
+                                            if (this.search === '') return this.options;
+                                            return this.options.filter(opt => opt.text.toLowerCase().includes(this.search.toLowerCase()));
+                                        },
+                                        selectOption(opt) {
+                                            this.selectedAdmissionId = opt.id;
+                                            this.selectedAdmissionText = opt.text;
+                                            this.open = false;
+                                            this.search = '';
+                                        }
+                                    }" class="relative w-full">
+                                        <input type="hidden" name="admission_id" :value="selectedAdmissionId" required>
+                                        
+                                        <button type="button" @click="open = !open" @click.away="open = false" class="w-full text-left rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 flex justify-between items-center bg-white" :class="{'ring-1 ring-blue-500 border-blue-500': open}">
+                                            <span x-text="selectedAdmissionText" :class="{ 'text-slate-400': !selectedAdmissionId }"></span>
+                                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        </button>
+
+                                        <div x-show="open" x-cloak x-transition class="absolute z-[100] mt-1 w-full bg-white rounded-lg border border-slate-200 shadow-xl max-h-60 flex flex-col overflow-hidden">
+                                            <div class="p-2 border-b border-slate-100 shrink-0">
+                                                <input type="text" x-model="search" placeholder="Search BHT No. or Patient Name..." class="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" @click.stop @keydown.enter.prevent>
+                                            </div>
+                                            <ul class="py-1 overflow-y-auto grow">
+                                                <template x-for="opt in filteredOptions" :key="opt.id">
+                                                    <li @click="selectOption(opt)" class="px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 cursor-pointer" x-text="opt.text" :class="{'bg-blue-50 font-semibold text-blue-700': selectedAdmissionId === opt.id}"></li>
+                                                </template>
+                                                <li x-show="filteredOptions.length === 0" class="px-3 py-2 text-sm text-slate-500 text-center">No results found</li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Batch ID <span class="text-red-500">*</span></label>
-                                    <input type="number" name="batch_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Batch No. <span class="text-red-500">*</span></label>
+                                    <div x-data="{
+                                        open: false,
+                                        search: '',
+                                        selectedBatchId: '',
+                                        selectedBatchText: 'Select Batch...',
+                                        options: [
+                                            @if(isset($availableBatches))
+                                                @foreach($availableBatches as $batch)
+                                                    { id: '{{ $batch->id }}', text: '{{ $batch->batch_no }} (Exp: {{ $batch->expiry_date }} | Avail: {{ $batch->available_qty }})' },
+                                                @endforeach
+                                            @endif
+                                        ],
+                                        get filteredOptions() {
+                                            if (this.search === '') return this.options;
+                                            return this.options.filter(opt => opt.text.toLowerCase().includes(this.search.toLowerCase()));
+                                        },
+                                        selectOption(opt) {
+                                            this.selectedBatchId = opt.id;
+                                            this.selectedBatchText = opt.text;
+                                            this.open = false;
+                                            this.search = '';
+                                        },
+                                        init() {
+                                            if (this.options.length > 0) {
+                                                this.selectOption(this.options[0]);
+                                            }
+                                        }
+                                    }" class="relative w-full">
+                                        <input type="hidden" name="batch_id" :value="selectedBatchId" required>
+                                        
+                                        <button type="button" @click="open = !open" @click.away="open = false" class="w-full text-left rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 flex justify-between items-center bg-white" :class="{'ring-1 ring-blue-500 border-blue-500': open, 'cursor-not-allowed opacity-75 bg-slate-100': options.length === 0}" :disabled="options.length === 0">
+                                            <span x-text="selectedBatchText" :class="{ 'text-slate-400': !selectedBatchId }"></span>
+                                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        </button>
+
+                                        <div x-show="open" x-cloak x-transition class="absolute z-[100] mt-1 w-full bg-white rounded-lg border border-slate-200 shadow-xl max-h-60 flex flex-col overflow-hidden">
+                                            <div class="p-2 border-b border-slate-100 shrink-0">
+                                                <input type="text" x-model="search" placeholder="Search Batch No. or Expiry Date..." class="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" @click.stop @keydown.enter.prevent>
+                                            </div>
+                                            <ul class="py-1 overflow-y-auto grow">
+                                                <template x-for="opt in filteredOptions" :key="opt.id">
+                                                    <li @click="selectOption(opt)" class="px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 cursor-pointer" x-text="opt.text" :class="{'bg-blue-50 font-semibold text-blue-700': selectedBatchId === opt.id}"></li>
+                                                </template>
+                                                <li x-show="filteredOptions.length === 0" class="px-3 py-2 text-sm text-slate-500 text-center">No results found</li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -568,8 +667,8 @@
                                     <input type="number" name="qty_given" required min="1" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Dosage <span class="text-red-500">*</span></label>
-                                    <input type="text" name="dosage" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Remark / Dosage <span class="text-red-500">*</span></label>
+                                    <input type="text" name="dosage" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. 1 Capsule / TDS / After meals">
                                 </div>
                             </div>
                         </div>
