@@ -123,6 +123,45 @@
 
     <!-- Right Content Area -->
     <div class="flex-1 flex flex-col h-full bg-[#F8FAFC]">
+        <!-- Top Header / User Profile -->
+        <div class="w-full bg-white border-b border-slate-200 px-8 py-3 flex shadow-sm">
+            <div class="ms-auto justify-content-end w-full flex justify-end">
+                <div x-data="{ open: false }" class="relative dropdown">
+                    <button @click="open = !open" @click.away="open = false" class="dropdown-toggle flex items-center gap-3 focus:outline-none hover:bg-slate-50 p-1.5 pr-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">
+                        <div class="text-right hidden sm:block">
+                            <div class="text-sm font-bold text-slate-700 leading-tight">{{ auth()->user()->name ?? 'Guest User' }}</div>
+                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ auth()->user()->role->role_name ?? 'Nurse' }}</div>
+                        </div>
+                        <div class="w-9 h-9 rounded-full bg-blue-100 text-[#3B82F6] flex items-center justify-center font-bold text-sm border border-blue-200 shadow-sm">
+                            {{ substr(auth()->user()->name ?? 'U', 0, 1) }}
+                        </div>
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    
+                    <div x-show="open" x-cloak 
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         class="dropdown-menu absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
+                        <div class="px-4 py-3 border-b border-slate-50 mb-1">
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Signed in as</p>
+                            <p class="text-sm font-semibold text-slate-700 truncate">{{ auth()->user()->email ?? 'user@example.com' }}</p>
+                        </div>
+                        <form action="{{ route('logout') }}" method="POST" class="w-full m-0 p-0">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-semibold transition-colors flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                                Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Main Content Scrollable Area -->
         <div class="flex-1 overflow-y-auto p-8 pt-7 max-w-7xl mx-auto w-full">
             
@@ -255,10 +294,12 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['admin', 'nurse']))
                         <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Administration
                         </button>
+                        @endif
                     </div>
                     
                     <!-- Table -->
@@ -282,7 +323,7 @@
                                 <tr class="hover:bg-slate-50/60 transition-colors group">
                                     <td class="px-6 py-4 font-semibold text-slate-700">
                                         {{ \Carbon\Carbon::parse($admin->date)->format('M d, Y') }} <br>
-                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $admin->usage_time ?? 'N/A' }}</small>
+                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $admin->usage_time ? \Carbon\Carbon::parse($admin->usage_time)->format('h:i A') : 'N/A' }}</small>
                                     </td>
                                     <td class="px-6 py-4">
                                         <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $admin->bht_no }}</span>
@@ -535,7 +576,7 @@
                      @click.away="openAdminModal = false"
                      class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
                     
-                    <form action="{{ $selectedMedicine ? url('/inventory/medicines/administration/'.$category.'/'.$selectedMedicine->id) : '#' }}" method="POST">
+                    <form action="{{ $selectedMedicine ? route('medicines.administration.store', ['category' => $category, 'id' => $selectedMedicine->id]) : '#' }}" method="POST">
                         @csrf
                         <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
                             <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6">Add Administration</h3>
@@ -547,18 +588,77 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Usage Time <span class="text-red-500">*</span></label>
-                                    <input type="time" name="usage_time" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required>
+                                    <input type="time" name="usage_time" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" value="{{ \Carbon\Carbon::now('Asia/Colombo')->format('H:i') }}" required>
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-5 mb-5">
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Admission ID <span class="text-red-500">*</span></label>
-                                    <input type="number" name="admission_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                <!-- Searchable Admission Dropdown -->
+                                <div x-data="{
+                                    open: false,
+                                    search: '',
+                                    selected: '',
+                                    options: [
+                                        @foreach($admissions ?? [] as $admission)
+                                        { id: '{{ $admission->id }}', label: '{{ $admission->bht_no }} - {{ addslashes($admission->patient->patient_name ?? 'Patient') }}' },
+                                        @endforeach
+                                    ],
+                                    get filteredOptions() {
+                                        if (this.search === '') return this.options;
+                                        return this.options.filter(i => i.label.toLowerCase().includes(this.search.toLowerCase()));
+                                    },
+                                    selectOption(option) {
+                                        this.selected = option.id;
+                                        this.search = option.label;
+                                        this.open = false;
+                                    }
+                                }" @click.away="open = false" class="relative">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">B.H.T. No. <span class="text-red-500">*</span></label>
+                                    <input type="hidden" name="admission_id" :value="selected">
+                                    <input type="text" x-model="search" @focus="open = true" @input="selected = ''" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="Search BHT No..." required>
+                                    <div x-show="open" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto" x-cloak>
+                                        <template x-for="option in filteredOptions" :key="option.id">
+                                            <div @click="selectOption(option)" class="px-3 py-2 cursor-pointer hover:bg-slate-100 text-sm text-slate-700" x-text="option.label"></div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0" class="px-3 py-2 text-sm text-slate-500">No results found</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Batch ID <span class="text-red-500">*</span></label>
-                                    <input type="number" name="batch_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+
+                                <!-- Searchable Batch Dropdown -->
+                                <div x-data="{
+                                    open: false,
+                                    search: '',
+                                    selected: '{{ ($availableBatches ?? collect())->first()->id ?? '' }}',
+                                    options: [
+                                        @foreach($availableBatches ?? [] as $batch)
+                                        { id: '{{ $batch->id }}', label: '{{ $batch->batch_no }} (Exp: {{ $batch->expiry_date }})' },
+                                        @endforeach
+                                    ],
+                                    init() {
+                                        const initialOpt = this.options.find(o => o.id == this.selected);
+                                        if (initialOpt) {
+                                            this.search = initialOpt.label;
+                                        }
+                                    },
+                                    get filteredOptions() {
+                                        if (this.search === '') return this.options;
+                                        return this.options.filter(i => i.label.toLowerCase().includes(this.search.toLowerCase()));
+                                    },
+                                    selectOption(option) {
+                                        this.selected = option.id;
+                                        this.search = option.label;
+                                        this.open = false;
+                                    }
+                                }" @click.away="open = false" class="relative">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Batch No. <span class="text-red-500">*</span></label>
+                                    <input type="hidden" name="batch_id" :value="selected">
+                                    <input type="text" x-model="search" @focus="open = true" @input="selected = ''" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="Search Batch..." required>
+                                    <div x-show="open" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto" x-cloak>
+                                        <template x-for="option in filteredOptions" :key="option.id">
+                                            <div @click="selectOption(option)" class="px-3 py-2 cursor-pointer hover:bg-slate-100 text-sm text-slate-700" x-text="option.label"></div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0" class="px-3 py-2 text-sm text-slate-500">No available batches</div>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -568,7 +668,7 @@
                                     <input type="number" name="qty_given" required min="1" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Dosage <span class="text-red-500">*</span></label>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Remark / Dosage <span class="text-red-500">*</span></label>
                                     <input type="text" name="dosage" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
                                 </div>
                             </div>

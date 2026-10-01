@@ -30,12 +30,14 @@ class MedicineController extends Controller
         $selectedMedicine = null;
         $pharmacyOrders = collect([]);
         $patientAdministrations = collect([]);
+        $admissions = collect([]);
+        $availableBatches = collect([]);
 
         $currentCategory = Category::where('name', $category)->first();
         $units = Unit::all();
         $medicineForms = MedicineForm::all();
 
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'currentCategory', 'units', 'medicineForms'));
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'currentCategory', 'units', 'medicineForms', 'admissions', 'availableBatches'));
     }
 
     public function getDetails($category, $id)
@@ -83,7 +85,8 @@ class MedicineController extends Controller
                     'qty_given' => $admin->qty_given . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
                     'balance' => $selectedMedicine->stock . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
                     'sister_initials' => $admin->issuedBy->name ?? 'N/A',
-                    'remark' => trim(($admin->dosage ?? '') . ' ' . ($admin->usage_time ?? '')),
+                    'remark' => $admin->dosage ?? '',
+                    'usage_time' => $admin->usage_time,
                 ];
             });
 
@@ -91,7 +94,17 @@ class MedicineController extends Controller
         $units = Unit::all();
         $medicineForms = MedicineForm::all();
 
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'currentCategory', 'units', 'medicineForms'));
+        $admissions = \App\Models\Admission::with('patient')->latest('admit_date')->get();
+        $availableBatches = \App\Models\MedicineBatch::where('medicine_id', $selectedMedicine->id)
+            ->withSum('ledgerEntries', 'quantity')
+            ->get()
+            ->filter(function ($batch) {
+                return $batch->ledger_entries_sum_quantity > 0;
+            })
+            ->sortBy('expiry_date')
+            ->values();
+
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'currentCategory', 'units', 'medicineForms', 'admissions', 'availableBatches'));
     }
 
     public function storeMedicine($category, Request $request)
@@ -177,7 +190,7 @@ class MedicineController extends Controller
         return redirect()->back()->with('success', 'Medicine added successfully.');
     }
 
-    public function storeAdministration($category, $id, Request $request)
+    public function storeAdministration(Request $request, $category, $id)
     {
         $validated = $request->validate([
             'admission_id' => 'required|integer|exists:admissions,id',
@@ -189,6 +202,9 @@ class MedicineController extends Controller
 
         // Assuming authenticated user is issuing, fallback to 1 if no auth logic implemented yet
         $validated['issued_by'] = auth()->id() ?? 1;
+
+        // Ensure usage_time is saved exactly as requested
+        $validated['usage_time'] = $request->usage_time;
 
         Dispensation::create($validated);
 

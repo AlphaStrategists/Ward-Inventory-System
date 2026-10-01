@@ -12,6 +12,8 @@ Route::get('/test', function () {
     return "Laravel is working perfectly!";
 });
 
+Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
+
 Route::get('/', function () {
     return redirect()->route('inventory.index', ['category' => 'antibiotics']);
 });
@@ -58,8 +60,9 @@ Route::prefix('inventory/{category}')->name('inventory.')->group(function () {
     Route::get('/', [MedicineController::class, 'index'])->name('index');
     Route::post('/store', [MedicineController::class, 'storeMedicine'])->name('store');
     Route::get('/{id}/details', [MedicineController::class, 'getDetails'])->name('details');
-    Route::post('/{id}/administrations', [MedicineController::class, 'storeAdministration'])->name('administrations.store');
 });
+
+Route::post('/inventory/medicines/administration/{category}/{id}', [MedicineController::class, 'storeAdministration'])->name('medicines.administration.store');
 
 Route::put('/inventory/medicines/{id}', [MedicineController::class, 'update']);
 Route::delete('/inventory/medicines/{id}', [MedicineController::class, 'destroy']);
