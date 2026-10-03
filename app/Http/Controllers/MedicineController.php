@@ -106,23 +106,20 @@ class MedicineController extends Controller
             }
         }
 
-        // Fetch Pharmacy Orders using OrderDetail mapping
+        $wardId = auth()->user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
+
+        foreach ($medicines as $medicine) {
+            $medicine->stock = \Illuminate\Support\Facades\DB::table('stock_ledger')
+                ->join('medicine_batches', 'stock_ledger.batch_id', '=', 'medicine_batches.id')
+                ->where('medicine_batches.medicine_id', $medicine->id)
+                ->where('stock_ledger.ward_id', $wardId)
+                ->sum('stock_ledger.quantity');
+        }
+
+        // Fetch Pharmacy Orders
         $pharmacyOrders = OrderDetail::with(['order.requester', 'order.approver'])
             ->where('medicine_id', $selectedMedicine->id)
-            ->get()
-            ->map(function ($detail) use ($selectedMedicine) {
-                return (object) [
-                    'id' => $detail->id,
-                    'date' => $detail->order->date ? \Carbon\Carbon::parse($detail->order->date)->format('d M Y') : 'N/A',
-                    'req_no' => $detail->order->req_no ?? 'N/A',
-                    'qty_requested' => $detail->qty_requested . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
-                    'requested_by' => $detail->order->requester->name ?? 'N/A',
-                    'ms_approval' => $detail->order->ms_approval_status ?? 'Pending',
-                    'qty_received' => $detail->qty_issued . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
-                    'issuing_officer' => $detail->order->approver->name ?? 'N/A',
-                    'receiving_officer' => $detail->order->requester->name ?? 'N/A',
-                ];
-            });
+            ->get();
 
         // Fetch Patient Administrations using Dispensation mapping
         $patientAdministrations = Dispensation::with(['admission.patient', 'issuedBy', 'batch'])
@@ -146,6 +143,14 @@ class MedicineController extends Controller
                 ];
             });
 
+        // Fetch Stock Adjustments
+        $stockAdjustments = \App\Models\MedicineStockAdjustment::with(['batch', 'adjustedBy', 'ward'])
+            ->whereHas('batch', function($q) use ($selectedMedicine) {
+                $q->where('medicine_id', $selectedMedicine->id);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         $currentCategory = Category::where('name', $category)->first();
         $units = Unit::all();
         $medicineForms = MedicineForm::all();
@@ -158,14 +163,15 @@ class MedicineController extends Controller
             ->map(function ($batch) {
                 $received = \App\Models\StockReceipt::where('batch_id', $batch->id)->sum('quantity_received');
                 $dispensed = \App\Models\Dispensation::where('batch_id', $batch->id)->sum('qty_given');
-                $batch->available_qty = $received - $dispensed;
+                $adjustments = \App\Models\MedicineStockAdjustment::where('batch_id', $batch->id)->sum('quantity');
+                $batch->available_qty = $received - $dispensed + $adjustments;
                 return $batch;
             })
             ->filter(function ($batch) {
                 return $batch->available_qty > 0;
             });
 
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'currentCategory', 'units', 'medicineForms', 'admissions', 'availableBatches'));
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'admissions', 'availableBatches'));
     }
 
     public function storeMedicine($category, Request $request)
@@ -291,6 +297,45 @@ class MedicineController extends Controller
         return redirect()->back()->with('success', 'Administration recorded successfully.');
     }
 
+    public function storeAdjustment(Request $request, $category, $id)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'batch_id' => 'required|integer|exists:medicine_batches,id',
+            'adjustment_type' => 'required|in:EXPIRY,DAMAGED,LOST,COUNT_CORRECTION,RETURN',
+            'quantity' => 'required|integer|min:1',
+            'reason' => 'required|string|max:255',
+        ]);
+
+        $batch = \App\Models\MedicineBatch::findOrFail($validated['batch_id']);
+        
+        $received = \App\Models\StockReceipt::where('batch_id', $batch->id)->sum('quantity_received');
+        $dispensed = \App\Models\Dispensation::where('batch_id', $batch->id)->sum('qty_given');
+        $adjustments = \App\Models\MedicineStockAdjustment::where('batch_id', $batch->id)->sum('quantity');
+        $availableQty = $received - $dispensed + $adjustments;
+
+        $isDeduction = in_array($validated['adjustment_type'], ['EXPIRY', 'DAMAGED', 'LOST']);
+
+        if ($isDeduction && $validated['quantity'] > $availableQty) {
+            return redirect()->back()->with('error', 'Adjustment quantity exceeds available batch quantity.');
+        }
+
+        $wardId = auth()->user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
+        $userId = auth()->id() ?? 1;
+
+        \App\Models\MedicineStockAdjustment::create([
+            'batch_id' => $validated['batch_id'],
+            'ward_id' => $wardId,
+            'adjustment_type' => $validated['adjustment_type'],
+            'quantity' => $isDeduction ? -$validated['quantity'] : $validated['quantity'],
+            'reason' => $validated['reason'],
+            'adjusted_by' => $userId,
+            'created_at' => $validated['date'] . ' ' . date('H:i:s'),
+        ]);
+
+        return redirect()->back()->with('success', 'Stock adjustment recorded successfully.');
+    }
+
     public function update(Request $request, $id)
     {
         abort_if(!auth()->check() || auth()->user()->role->role_name !== 'Admin', 403, 'Unauthorized action.');
@@ -337,5 +382,121 @@ class MedicineController extends Controller
             
             return redirect()->back()->with('error', 'An error occurred while deleting the medicine.');
         }
+    }
+
+    public function storeOrder(Request $request, $category, $id)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'req_no' => 'required|string|max:100',
+            'qty_requested' => 'required|integer|min:1',
+        ]);
+
+        $medicine = Medicine::findOrFail($id);
+        $wardId = auth()->user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
+        $userId = auth()->id() ?? 1;
+
+        $order = Order::create([
+            'ward_id' => $wardId,
+            'req_no' => $validated['req_no'],
+            'date' => $validated['date'],
+            'requested_by' => $userId,
+            'ms_approval_status' => 'Pending',
+        ]);
+
+        OrderDetail::create([
+            'order_id' => $order->id,
+            'medicine_id' => $medicine->id,
+            'qty_requested' => $validated['qty_requested'],
+            'qty_issued' => 0,
+        ]);
+
+        return redirect()->back()->with('success', 'Order created successfully.');
+    }
+
+    public function approveOrder(Request $request, $category, $id)
+    {
+        $detail = OrderDetail::findOrFail($id);
+        $order = $detail->order;
+
+        if ($request->input('action') === 'Approve') {
+            $validated = $request->validate([
+                'qty_requested' => 'required|integer|min:1',
+            ]);
+            
+            $detail->update(['qty_requested' => $validated['qty_requested']]);
+            $order->update([
+                'ms_approval_status' => 'Approved',
+                'approved_by' => auth()->id() ?? 1,
+            ]);
+            return redirect()->back()->with('success', 'Order approved successfully.');
+        } else {
+            $order->update([
+                'ms_approval_status' => 'Rejected',
+                'approved_by' => auth()->id() ?? 1,
+            ]);
+            return redirect()->back()->with('success', 'Order rejected successfully.');
+        }
+    }
+
+    public function issueOrder(Request $request, $category, $id)
+    {
+        $detail = OrderDetail::findOrFail($id);
+        
+        $validated = $request->validate([
+            'qty_issued' => 'required|integer|min:1|max:' . $detail->qty_requested,
+        ]);
+
+        $detail->update([
+            'qty_issued' => $validated['qty_issued'],
+            'remark' => '[ISSUED_BY:' . \Illuminate\Support\Facades\Auth::user()->name . '] ' . ($detail->remark ?? '')
+        ]);
+        
+        return redirect()->back()->with('success', 'Order issued successfully.');
+    }
+
+    public function receiveOrder(Request $request, $category, $id)
+    {
+        $detail = OrderDetail::findOrFail($id);
+
+        if (str_contains($detail->remark ?? '', '[RECEIVED')) {
+            return back()->with('error', 'This order has already been received.');
+        }
+        
+        $isNewBatch = $request->input('batch_type') === 'new';
+
+        if ($isNewBatch) {
+            $validated = $request->validate([
+                'new_batch_no' => 'required|string|max:100',
+                'new_expiry_date' => 'required|date',
+            ]);
+            
+            $batchId = \Illuminate\Support\Facades\DB::table('medicine_batches')->insertGetId([
+                'medicine_id' => $detail->medicine_id,
+                'batch_no' => strtoupper(trim($validated['new_batch_no'])),
+                'expiry_date' => $validated['new_expiry_date'],
+                'created_at' => now(),
+            ]);
+        } else {
+            $validated = $request->validate([
+                'batch_id' => 'required|integer|exists:medicine_batches,id',
+            ]);
+            $batchId = $validated['batch_id'];
+        }
+
+        $wardId = auth()->user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
+        $userId = auth()->id() ?? 1;
+
+        \Illuminate\Support\Facades\DB::table('stock_receipts')->insert([
+            'batch_id' => $batchId,
+            'ward_id' => $wardId,
+            'quantity_received' => $detail->qty_issued,
+            'received_by' => $userId,
+            'date' => now(),
+        ]);
+
+        $detail->update(['remark' => trim('[RECEIVED_BY:' . (auth()->user()->name ?? 'Nurse') . '] ' . ($detail->remark ?? ''))]);
+
+        return redirect()->back()->with('success', 'Stock received successfully.');
     }
 }

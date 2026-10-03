@@ -5,7 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 class MedicineStockAdjustment extends Model {
     protected $table = 'medicine_stock_adjustments';
     public $timestamps = false;
-    protected $fillable = ['batch_id', 'ward_id', 'adjustment_type', 'quantity', 'reason', 'adjusted_by'];
+    protected $fillable = ['batch_id', 'ward_id', 'adjustment_type', 'quantity', 'reason', 'adjusted_by', 'created_at'];
 
     public function batch() {
         return $this->belongsTo(MedicineBatch::class, 'batch_id');

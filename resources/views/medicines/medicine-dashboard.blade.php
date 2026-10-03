@@ -15,7 +15,7 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', openAddModal: false, openAdminModal: false, editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
+<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', openAddModal: false, openAdminModal: false, showAdjustmentModal: false, openOrderModal: false, openReceiveModal: false, receiveModalDetailId: '', editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
 
     @if(session('success'))
     <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
@@ -204,12 +204,17 @@
                     <button @click="tab = 'pharmacy'" 
                             :class="tab === 'pharmacy' ? 'bg-[#F8FAFC] text-slate-800 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-semibold'"
                             class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200">
-                        Pharmacy Orders ({{ $pharmacyOrders->count() }})
+                        Pharmacy Orders ({{ isset($pharmacyOrders) ? $pharmacyOrders->count() : 0 }})
                     </button>
                     <button @click="tab = 'patient'" 
                             :class="tab === 'patient' ? 'bg-[#F8FAFC] text-slate-800 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-semibold'"
                             class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200 ml-1">
-                        Patient Administrations ({{ $patientAdministrations->count() }})
+                        Patient Administrations ({{ isset($patientAdministrations) ? $patientAdministrations->count() : 0 }})
+                    </button>
+                    <button @click="tab = 'adjustments'" 
+                            :class="tab === 'adjustments' ? 'bg-[#F8FAFC] text-slate-800 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-semibold'"
+                            class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200 ml-1">
+                        Stock Adjustments ({{ isset($stockAdjustments) ? $stockAdjustments->count() : 0 }})
                     </button>
                 </div>
 
@@ -244,7 +249,7 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
-                        <button class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
+                        <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Order
                         </button>
@@ -266,22 +271,91 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-50">
-                                @foreach($pharmacyOrders as $order)
+                                @foreach($pharmacyOrders ?? [] as $detail)
+                                @php $order = $detail->order; @endphp
                                 <tr class="hover:bg-slate-50/60 transition-colors group">
-                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $order->date }}</td>
+                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $order->date ? \Carbon\Carbon::parse($order->date)->format('d M Y') : 'N/A' }}</td>
                                     <td class="px-6 py-4">
-                                        <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $order->req_no }}</span>
+                                        <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $order->req_no ?? 'N/A' }}</span>
                                     </td>
-                                    <td class="px-6 py-4 font-bold text-slate-800">{{ $order->qty_requested }}</td>
-                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $order->requested_by }}</td>
+                                    <td class="px-6 py-4 font-bold text-slate-800">
+                                        @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
+                                            <form id="approve-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.approve', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
+                                                @csrf @method('PATCH')
+                                            </form>
+                                            <div class="flex items-center gap-1">
+                                                <input type="number" form="approve-form-{{$detail->id}}" name="qty_requested" value="{{ $detail->qty_requested }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
+                                                <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->unit->unit_name ?? '' }}</span>
+                                            </div>
+                                        @else
+                                            {{ $detail->qty_requested }} <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->unit->unit_name ?? '' }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $order->requester->name ?? 'N/A' }}</td>
                                     <td class="px-6 py-4">
-                                        <span class="bg-[#DCFCE7] text-[#16A34A] font-bold px-3 py-1.5 rounded-full text-[11px]">
-                                            {{ $order->ms_approval }}
-                                        </span>
+                                        <div class="flex flex-col items-start gap-2">
+                                            <div class="flex flex-col items-start gap-1">
+                                                <span class="{{ $order->ms_approval_status === 'Approved' ? 'bg-[#DCFCE7] text-[#16A34A]' : ($order->ms_approval_status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700') }} font-bold px-3 py-1 rounded-full text-[11px]">
+                                                    {{ $order->ms_approval_status ?? 'Pending' }}
+                                                </span>
+                                                <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver->name ?? 'Pending' }}</span>
+                                            </div>
+                                            @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
+                                                <div class="flex gap-1.5 mt-1">
+                                                    <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Approve" class="bg-[#16A34A] hover:bg-green-700 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Approve</button>
+                                                    <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Reject" class="bg-red-500 hover:bg-red-600 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Reject</button>
+                                                </div>
+                                            @endif
+                                        </div>
                                     </td>
-                                    <td class="px-6 py-4 font-bold text-slate-800">{{ $order->qty_received }}</td>
-                                    <td class="px-6 py-4 text-slate-500 font-medium">{{ $order->issuing_officer }}</td>
-                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $order->receiving_officer }}</td>
+                                    <td class="px-6 py-4 font-bold text-slate-800">
+                                        @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
+                                            <form id="issue-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.issue', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
+                                                @csrf @method('PATCH')
+                                            </form>
+                                            <div class="flex items-center gap-1">
+                                                <input type="number" form="issue-form-{{$detail->id}}" name="qty_issued" value="{{ $detail->qty_requested }}" max="{{ $detail->qty_requested }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
+                                                <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->unit->unit_name ?? '' }}</span>
+                                            </div>
+                                        @else
+                                            {{ $detail->qty_issued }} <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->unit->unit_name ?? '' }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-500 font-medium">
+                                        @if(str_contains($detail->remark ?? '', '[ISSUED_BY:'))
+                                            @php
+                                                preg_match('/\[ISSUED_BY:(.*?)\]/', $detail->remark ?? '', $issMatches);
+                                                $issName = $issMatches[1] ?? 'N/A';
+                                            @endphp
+                                            {{ $issName }}
+                                        @else
+                                            @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
+                                                <button type="submit" form="issue-form-{{$detail->id}}" class="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Issue Batch</button>
+                                            @else
+                                                <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
+                                            @endif
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 font-semibold text-slate-700">
+                                        @if(str_contains($detail->remark ?? '', '[RECEIVED_BY:') || str_contains($detail->remark ?? '', '[RECEIVED]'))
+                                            @php
+                                                preg_match('/\[RECEIVED_BY:(.*?)\]/', $detail->remark ?? '', $rxMatches);
+                                                $rxName = $rxMatches[1] ?? '';
+                                            @endphp
+                                            <div class="flex flex-col gap-1 items-start">
+                                                <span class="bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-full text-[11px]">Received</span>
+                                                @if($rxName) <span class="text-[10px] text-slate-500 font-medium">{{ $rxName }}</span> @endif
+                                            </div>
+                                        @else
+                                            @if($detail->qty_issued == 0)
+                                                <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
+                                            @elseif(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'nurse')
+                                                <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
+                                            @else
+                                                <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
+                                            @endif
+                                        @endif
+                                    </td>
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -320,7 +394,7 @@
                             </thead>
                             <tbody class="divide-y divide-slate-50">
                                 @php $runningBalance = $selectedMedicine ? (int)$selectedMedicine->stock : 0; @endphp
-                                @foreach($patientAdministrations as $admin)
+                                @foreach($patientAdministrations ?? [] as $admin)
                                 <tr class="hover:bg-slate-50/60 transition-colors group admin-record-row">
                                     <td class="px-6 py-4 font-semibold text-slate-700">
                                         {{ \Carbon\Carbon::parse($admin->date)->format('M d, Y') }} <br>
@@ -342,6 +416,63 @@
                                     <td class="px-6 py-4 text-slate-500 font-medium">{{ $admin->remark }}</td>
                                 </tr>
                                 @php $runningBalance += (int)$admin->qty_given; @endphp
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Adjustments Tab Content -->
+                <div x-show="tab === 'adjustments'" x-cloak x-transition.opacity.duration.300ms>
+                    <!-- Header -->
+                    <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
+                        <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['admin', 'nurse', 'pharmacist']))
+                        <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            Add Adjustment
+                        </button>
+                        @endif
+                    </div>
+                    
+                    <!-- Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-[13px] text-left text-slate-600">
+                            <thead class="text-[11px] text-slate-400 uppercase font-bold tracking-wider border-b border-slate-100/80">
+                                <tr>
+                                    <th scope="col" class="px-6 py-4">Date</th>
+                                    <th scope="col" class="px-6 py-4">Type</th>
+                                    <th scope="col" class="px-6 py-4">Quantity</th>
+                                    <th scope="col" class="px-6 py-4">Reason / Notes</th>
+                                    <th scope="col" class="px-6 py-4">Adjusted By</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                @foreach($stockAdjustments ?? [] as $adj)
+                                <tr class="hover:bg-slate-50/60 transition-colors group">
+                                    <td class="px-6 py-4 font-semibold text-slate-700">
+                                        {{ \Carbon\Carbon::parse($adj->created_at)->format('M d, Y') }} <br>
+                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ \Carbon\Carbon::parse($adj->created_at)->format('h:i A') }}</small>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        @php
+                                            $typeColors = [
+                                                'EXPIRY' => 'bg-red-100 text-red-700',
+                                                'DAMAGED' => 'bg-red-100 text-red-700',
+                                                'LOST' => 'bg-orange-100 text-orange-700',
+                                                'COUNT_CORRECTION' => 'bg-blue-100 text-blue-700',
+                                                'RETURN' => 'bg-green-100 text-green-700',
+                                            ];
+                                            $color = $typeColors[$adj->adjustment_type] ?? 'bg-slate-100 text-slate-700';
+                                        @endphp
+                                        <span class="font-bold px-2.5 py-1 rounded-md text-[11px] {{ $color }}">{{ str_replace('_', ' ', $adj->adjustment_type) }}</span>
+                                    </td>
+                                    <td class="px-6 py-4 font-bold {{ $adj->quantity < 0 ? 'text-red-600' : 'text-green-600' }}">
+                                        {{ $adj->quantity > 0 ? '+' : '' }}{{ $adj->quantity }}
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-500 font-medium">{{ $adj->reason }}</td>
+                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $adj->adjustedBy->name ?? 'N/A' }}</td>
+                                </tr>
                                 @endforeach
                             </tbody>
                         </table>
@@ -724,9 +855,191 @@
             </div>
         </div>
     </div>
+    
+    <!-- Add Adjustment Modal -->
+    <div x-show="showAdjustmentModal" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div x-show="showAdjustmentModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div x-show="showAdjustmentModal" 
+                     x-transition:enter="ease-out duration-300" 
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" 
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     @click.away="showAdjustmentModal = false"
+                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                    <form action="{{ route('inventory.medicines.adjustment.store', ['category' => $category, 'id' => $selectedMedicine ? $selectedMedicine->id : 0]) }}" method="POST">
+                        @csrf
+                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
+                            <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6" id="modal-title">Add Stock Adjustment</h3>
+                            
+                            <div class="grid grid-cols-2 gap-5 mb-5">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Adjustment Date <span class="text-red-500">*</span></label>
+                                    <input type="date" name="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ date('Y-m-d') }}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Adjustment Type <span class="text-red-500">*</span></label>
+                                    <select name="adjustment_type" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required>
+                                        <option value="" disabled selected>Select Type...</option>
+                                        <option value="DAMAGED">Damaged / Broken</option>
+                                        <option value="LOST">Missing / Lost</option>
+                                        <option value="EXPIRY">Expired</option>
+                                        <option value="COUNT_CORRECTION">Count Correction (Found)</option>
+                                        <option value="RETURN">Return</option>
+                                    </select>
+                                </div>
+                            </div>
 
+                            <div class="mb-5">
+                                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Batch No. <span class="text-red-500">*</span></label>
+                                <select name="batch_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                    <option value="" disabled selected>Select Batch...</option>
+                                    @if(isset($availableBatches))
+                                        @foreach($availableBatches as $batch)
+                                            <option value="{{ $batch->id }}">{{ $batch->batch_no }} (Exp: {{ $batch->expiry_date }} | Avail: {{ $batch->available_qty }})</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-5 mb-5">
+                                <div class="col-span-2 sm:col-span-1">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Quantity <span class="text-red-500">*</span></label>
+                                    <input type="number" name="quantity" required min="1" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Reason / Notes <span class="text-red-500">*</span></label>
+                                <textarea name="reason" required rows="3" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. Found during physical count"></textarea>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
+                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Save Adjustment</button>
+                            <button type="button" @click="showAdjustmentModal = false" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <script>
+    <!-- Add Order Modal -->
+    <div x-show="openOrderModal" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div x-show="openOrderModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div x-show="openOrderModal" 
+                     x-transition:enter="ease-out duration-300" 
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" 
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     @click.away="openOrderModal = false"
+                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                    <form action="{{ $selectedMedicine ? route('inventory.medicines.orders.store', ['category' => $category, 'id' => $selectedMedicine->id]) : '#' }}" method="POST">
+                        @csrf
+                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
+                            <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6">Add Pharmacy Order</h3>
+                            <div class="grid grid-cols-2 gap-5 mb-5">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Date <span class="text-red-500">*</span></label>
+                                    <input type="date" name="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ date('Y-m-d') }}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Req. No. <span class="text-red-500">*</span></label>
+                                    <input type="text" name="req_no" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 uppercase" placeholder="e.g. REQ-123">
+                                </div>
+                            </div>
+                            <div class="mb-5">
+                                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Quantity Requested <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <input type="number" name="qty_requested" required min="1" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 pr-16 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-500 text-sm">
+                                        {{ $selectedMedicine->unit->unit_name ?? '' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
+                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Submit Order</button>
+                            <button type="button" @click="openOrderModal = false" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Receipt Modal -->
+    <div x-show="openReceiveModal" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div x-show="openReceiveModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div x-show="openReceiveModal" 
+                     x-data="{ isNewBatch: false }"
+                     x-transition:enter="ease-out duration-300" 
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" 
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     @click.away="openReceiveModal = false"
+                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                    <form :action="'{{ route('inventory.medicines.orders.receive', ['category' => $category, 'id' => 'DETAIL_ID']) }}'.replace('DETAIL_ID', receiveModalDetailId)" method="POST">
+                        @csrf
+                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
+                            <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6">Confirm Receipt</h3>
+                            
+                            <div class="mb-5 flex items-center gap-4">
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="batch_type" value="existing" @click="isNewBatch = false" checked class="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm font-semibold text-slate-700">Select Existing Batch</span>
+                                </label>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="batch_type" value="new" @click="isNewBatch = true" class="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm font-semibold text-slate-700">Add New Batch</span>
+                                </label>
+                            </div>
+
+                            <div x-show="!isNewBatch" class="mb-5">
+                                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Select Batch Received <span class="text-red-500">*</span></label>
+                                <select name="batch_id" :required="!isNewBatch" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                    <option value="" disabled selected>Select Batch...</option>
+                                    @if(isset($selectedMedicine) && $selectedMedicine->batches)
+                                        @foreach($selectedMedicine->batches as $batch)
+                                            <option value="{{ $batch->id }}">{{ $batch->batch_no }} (Exp: {{ $batch->expiry_date }})</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+
+                            <div x-show="isNewBatch" style="display: none;" class="grid grid-cols-2 gap-5 mb-5">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">New Batch No. <span class="text-red-500">*</span></label>
+                                    <input type="text" name="new_batch_no" :required="isNewBatch" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 uppercase" placeholder="e.g. BATCH-002" oninput="this.value = this.value.toUpperCase()">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Expiry Date <span class="text-red-500">*</span></label>
+                                    <input type="date" name="new_expiry_date" :required="isNewBatch" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                </div>
+                            </div>
+                            
+                            <p class="mt-2 text-xs text-slate-500">Note: Receipt will update stock automatically.</p>
+                        </div>
+                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
+                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-600 sm:w-auto transition-colors active:scale-95">Confirm Receipt</button>
+                            <button type="button" @click="openReceiveModal = false" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>    <script>
         document.addEventListener('DOMContentLoaded', function () {
             const deleteButtons = document.querySelectorAll('.delete-btn');
             deleteButtons.forEach(button => {

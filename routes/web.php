@@ -63,6 +63,12 @@ Route::prefix('inventory/{category}')->name('inventory.')->group(function () {
 });
 
 Route::post('/inventory/medicines/administration/{category}/{id}', [MedicineController::class, 'storeAdministration'])->name('medicines.administration.store');
+Route::post('/inventory/medicines/{category}/{id}/adjustments', [App\Http\Controllers\MedicineController::class, 'storeAdjustment'])->name('inventory.medicines.adjustment.store');
+
+Route::post('/inventory/medicines/{category}/{id}/orders', [MedicineController::class, 'storeOrder'])->name('inventory.medicines.orders.store');
+Route::patch('/inventory/medicines/{category}/orders/{id}/approve', [MedicineController::class, 'approveOrder'])->name('inventory.medicines.orders.approve');
+Route::patch('/inventory/medicines/{category}/orders/{id}/issue', [MedicineController::class, 'issueOrder'])->name('inventory.medicines.orders.issue');
+Route::post('/inventory/medicines/{category}/orders/{id}/receive', [MedicineController::class, 'receiveOrder'])->name('inventory.medicines.orders.receive');
 
 Route::put('/inventory/medicines/{id}', [MedicineController::class, 'update']);
 Route::delete('/inventory/medicines/{id}', [MedicineController::class, 'destroy']);
