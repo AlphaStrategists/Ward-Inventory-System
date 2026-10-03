@@ -123,6 +123,45 @@
 
     <!-- Right Content Area -->
     <div class="flex-1 flex flex-col h-full bg-[#F8FAFC]">
+        <!-- Top Header / User Profile -->
+        <div class="w-full bg-white border-b border-slate-200 px-8 py-3 flex shadow-sm">
+            <div class="ms-auto justify-content-end w-full flex justify-end">
+                <div x-data="{ open: false }" class="relative dropdown">
+                    <button @click="open = !open" @click.away="open = false" class="dropdown-toggle flex items-center gap-3 focus:outline-none hover:bg-slate-50 p-1.5 pr-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">
+                        <div class="text-right hidden sm:block">
+                            <div class="text-sm font-bold text-slate-700 leading-tight">{{ auth()->user()->name ?? 'Guest User' }}</div>
+                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ auth()->user()->role->role_name ?? 'Nurse' }}</div>
+                        </div>
+                        <div class="w-9 h-9 rounded-full bg-blue-100 text-[#3B82F6] flex items-center justify-center font-bold text-sm border border-blue-200 shadow-sm">
+                            {{ substr(auth()->user()->name ?? 'U', 0, 1) }}
+                        </div>
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    
+                    <div x-show="open" x-cloak 
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         class="dropdown-menu absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
+                        <div class="px-4 py-3 border-b border-slate-50 mb-1">
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Signed in as</p>
+                            <p class="text-sm font-semibold text-slate-700 truncate">{{ auth()->user()->email ?? 'user@example.com' }}</p>
+                        </div>
+                        <form action="{{ route('logout') }}" method="POST" class="w-full m-0 p-0">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-semibold transition-colors flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                                Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Main Content Scrollable Area -->
         <div class="flex-1 overflow-y-auto p-8 pt-7 max-w-7xl mx-auto w-full">
             
@@ -180,17 +219,17 @@
                         <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                             <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </div>
-                        <input type="text" class="bg-[#F8FAFC] border border-slate-100 text-slate-700 text-[13px] font-medium rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-200 block w-52 pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="Search records...">
+                        <input type="text" id="searchInput" class="bg-[#F8FAFC] border border-slate-100 text-slate-700 text-[13px] font-medium rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-200 block w-52 pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="Search records...">
                     </div>
                     
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                             <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                         </div>
-                        <input type="text" class="bg-[#F8FAFC] border border-slate-100 text-slate-600 text-[13px] font-medium rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-200 block w-36 pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="mm/dd/yyyy">
+                        <input type="date" id="dateInput" class="bg-[#F8FAFC] border border-slate-100 text-slate-600 text-[13px] font-medium rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-200 block w-36 pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="mm/dd/yyyy">
                     </div>
 
-                    <button class="flex items-center gap-1.5 text-slate-500 hover:text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all shadow-sm active:scale-95">
+                    <button id="clearFiltersBtn" class="flex items-center gap-1.5 text-slate-500 hover:text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all shadow-sm active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         Clear
                     </button>
@@ -255,10 +294,12 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['admin', 'nurse']))
                         <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Administration
                         </button>
+                        @endif
                     </div>
                     
                     <!-- Table -->
@@ -278,11 +319,12 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-50">
+                                @php $runningBalance = $selectedMedicine ? (int)$selectedMedicine->stock : 0; @endphp
                                 @foreach($patientAdministrations as $admin)
-                                <tr class="hover:bg-slate-50/60 transition-colors group">
+                                <tr class="hover:bg-slate-50/60 transition-colors group admin-record-row">
                                     <td class="px-6 py-4 font-semibold text-slate-700">
                                         {{ \Carbon\Carbon::parse($admin->date)->format('M d, Y') }} <br>
-                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $admin->usage_time ?? 'N/A' }}</small>
+                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $admin->usage_time ? \Carbon\Carbon::parse($admin->usage_time)->format('h:i A') : 'N/A' }}</small>
                                     </td>
                                     <td class="px-6 py-4">
                                         <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $admin->bht_no }}</span>
@@ -293,12 +335,13 @@
                                     </td>
                                     @endif
                                     <td class="px-6 py-4 font-bold text-slate-800">{{ $admin->qty_given }}</td>
-                                    <td class="px-6 py-4 font-bold {{ (int) $admin->balance < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
-                                        {{ $admin->balance }}
+                                    <td class="px-6 py-4 font-bold {{ (int) $runningBalance < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
+                                        {{ $runningBalance }}
                                     </td>
                                     <td class="px-6 py-4 font-semibold text-slate-700">{{ $admin->sister_initials }}</td>
                                     <td class="px-6 py-4 text-slate-500 font-medium">{{ $admin->remark }}</td>
                                 </tr>
+                                @php $runningBalance += (int)$admin->qty_given; @endphp
                                 @endforeach
                             </tbody>
                         </table>
@@ -547,7 +590,7 @@
                      @click.away="openAdminModal = false"
                      class="relative transform overflow-visible rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
                     
-                    <form action="{{ $selectedMedicine ? url('/inventory/medicines/administration/'.$category.'/'.$selectedMedicine->id) : '#' }}" method="POST">
+                    <form action="{{ $selectedMedicine ? route('medicines.administration.store', ['category' => $category, 'id' => $selectedMedicine->id]) : '#' }}" method="POST">
                         @csrf
                         <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
                             <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6">Add Administration</h3>
@@ -559,7 +602,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Usage Time <span class="text-red-500">*</span></label>
-                                    <input type="time" name="usage_time" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ date('H:i') }}">
+                                    <input type="time" name="usage_time" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" value="{{ \Carbon\Carbon::now('Asia/Colombo')->format('H:i') }}" required>
                                 </div>
                             </div>
 
@@ -706,6 +749,59 @@
                     });
                 });
             });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const dateInput = document.getElementById('dateInput');
+            const clearBtn = document.getElementById('clearFiltersBtn');
+            const rows = document.querySelectorAll('.admin-record-row');
+
+            function filterTable() {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                const dateTerm = dateInput.value;
+
+                rows.forEach(row => {
+                    // Prevent errors if row doesn't have enough cells
+                    if (!row.cells[0] || !row.cells[1]) return;
+                    
+                    // Use textContent for cleaner text extraction and trim any accidental spaces
+                    const dateText = row.cells[0].textContent.toLowerCase().trim();
+                    const bhtText = row.cells[1].textContent.toLowerCase().trim();
+
+                    // Check if the cell text includes the typed search term
+                    const matchesSearch = searchTerm === '' || bhtText.includes(searchTerm);
+                    
+                    const matchesDate = dateTerm === '' || 
+                                        dateText.includes(dateTerm) || 
+                                        dateText.includes(formatDateToTableString(dateTerm));
+
+                    if (matchesSearch && matchesDate) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            }
+
+            // Helper to convert HTML date (YYYY-MM-DD) to Table format (e.g., 'Oct 01, 2026')
+            function formatDateToTableString(dateString) {
+                if(!dateString) return '';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).toLowerCase();
+            }
+
+            if(searchInput) searchInput.addEventListener('keyup', filterTable);
+            if(dateInput) dateInput.addEventListener('change', filterTable);
+            
+            if(clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    searchInput.value = '';
+                    dateInput.value = '';
+                    filterTable();
+                });
+            }
         });
     </script>
 </body>

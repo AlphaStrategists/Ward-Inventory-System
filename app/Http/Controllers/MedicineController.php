@@ -30,6 +30,8 @@ class MedicineController extends Controller
         $selectedMedicine = null;
         $pharmacyOrders = collect([]);
         $patientAdministrations = collect([]);
+        $admissions = collect([]);
+        $availableBatches = collect([]);
 
         $currentCategory = Category::where('name', $category)->first();
         $units = Unit::all();
@@ -37,7 +39,6 @@ class MedicineController extends Controller
 
         $admissions = collect([]);
         $availableBatches = collect([]);
-
         return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'currentCategory', 'units', 'medicineForms', 'admissions', 'availableBatches'));
     }
 
@@ -128,6 +129,8 @@ class MedicineController extends Controller
             ->whereHas('batch', function($q) use ($selectedMedicine) {
                 $q->where('medicine_id', $selectedMedicine->id);
             })
+            ->orderBy('date', 'desc')
+            ->orderBy('usage_time', 'desc')
             ->get()
             ->map(function ($admin) use ($selectedMedicine) {
                 return (object) [
@@ -138,7 +141,8 @@ class MedicineController extends Controller
                     'qty_given' => $admin->qty_given . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
                     'balance' => $selectedMedicine->stock . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
                     'sister_initials' => $admin->issuedBy->name ?? 'N/A',
-                    'remark' => trim(($admin->dosage ?? '') . ' ' . ($admin->usage_time ?? '')),
+                    'remark' => $admin->dosage ?? '',
+                    'usage_time' => $admin->usage_time,
                 ];
             });
 
@@ -255,7 +259,7 @@ class MedicineController extends Controller
         return redirect()->back()->with('success', 'Medicine added successfully.');
     }
 
-    public function storeAdministration($category, $id, Request $request)
+    public function storeAdministration(Request $request, $category, $id)
     {
         $validated = $request->validate([
             'date' => 'required|date',
@@ -278,12 +282,11 @@ class MedicineController extends Controller
 
         $validated['issued_by'] = auth()->id() ?? 1;
 
+        // Ensure usage_time is saved exactly as requested
+        $validated['usage_time'] = $request->usage_time;
+
         Dispensation::create($validated);
 
-        // Deduct from main medicine stock
-        $medicine = \App\Models\Medicine::findOrFail($id);
-        $medicine->stock -= $validated['qty_given'];
-        $medicine->save();
 
         return redirect()->back()->with('success', 'Administration recorded successfully.');
     }
