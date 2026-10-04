@@ -15,7 +15,7 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', openAddModal: false, openAdminModal: false, showAdjustmentModal: false, openOrderModal: false, openReceiveModal: false, receiveModalDetailId: '', editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
+<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', searchQuery: '', searchDate: '', openAddModal: false, openAdminModal: false, showAdjustmentModal: false, openOrderModal: {{ $errors->has('req_no') ? 'true' : 'false' }}, openReceiveModal: false, receiveModalDetailId: '', editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
 
     @if(session('success'))
     <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
@@ -78,9 +78,18 @@
                     $min = (int) $medicine->min_level;
                     $warning = (int) $medicine->warning_limit;
                     
-                    if ($stock <= $min) {
+                    $compareValue = $stock;
+                    if (stripos($medicine->strength, 'ml') !== false) {
+                        preg_match('/(\d+)/', $medicine->strength, $matches);
+                        $baseVol = (int) ($matches[1] ?? 1);
+                        if ($baseVol > 0) {
+                            $compareValue = $stock / $baseVol;
+                        }
+                    }
+
+                    if ($compareValue <= $min) {
                         $badgeClass = 'bg-red-100 text-red-700';
-                    } elseif ($stock <= $warning) {
+                    } elseif ($compareValue <= $warning) {
                         $badgeClass = 'bg-yellow-100 text-yellow-700';
                     } else {
                         $badgeClass = 'bg-green-100 text-green-700';
@@ -112,7 +121,21 @@
                                 @endif
                             </div>
                             <span class="text-[11px] font-bold px-2.5 py-1 rounded-full {{ $badgeClass }}">
-                                {{ $medicine->stock }} {{ $medicine->unit->unit_name ?? '' }}
+                                @if(stripos($medicine->strength, 'ml') !== false)
+                                    @php
+                                        preg_match('/(\d+)/', $medicine->strength, $matches);
+                                        $baseVol = (int) ($matches[1] ?? 1);
+                                        $bottles = $baseVol > 0 ? floor($medicine->stock / $baseVol) : 0;
+                                        $remainingMl = $baseVol > 0 ? $medicine->stock % $baseVol : 0;
+                                    @endphp
+                                    @if($remainingMl > 0)
+                                        {{ $bottles }} Bottle(s) & {{ $remainingMl }}ml (Total: {{ $medicine->stock }}ml)
+                                    @else
+                                        {{ $bottles }} Bottle(s) (Total: {{ $medicine->stock }}ml)
+                                    @endif
+                                @else
+                                    {{ $medicine->stock }} {{ $medicine->form->form_name ?? $medicine->unit->unit_name ?? '' }}
+                                @endif
                             </span>
                         </div>
                     </div>
@@ -181,21 +204,79 @@
                             $min = (int) $selectedMedicine->min_level;
                             $warning = (int) $selectedMedicine->warning_limit;
                             
-                            if ($stock <= $min) {
+                            $compareValue = $stock;
+                            if (stripos($selectedMedicine->strength, 'ml') !== false) {
+                                preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
+                                $baseVol = (int) ($matches[1] ?? 1);
+                                if ($baseVol > 0) {
+                                    $compareValue = $stock / $baseVol;
+                                }
+                            }
+
+                            if ($compareValue <= $min) {
                                 $stockColor = 'text-red-600'; // Danger/Critical
                                 $availColor = 'text-red-500';
-                            } elseif ($stock <= $warning) {
+                            } elseif ($compareValue <= $warning) {
                                 $stockColor = 'text-yellow-500'; // Warning/Low
                                 $availColor = 'text-yellow-600';
                             }
                         }
                     @endphp
                     <div class="text-[32px] font-extrabold tracking-tight leading-none mb-1 {{ $stockColor }}">
-                        {{ $selectedMedicine ? $selectedMedicine->stock : 0 }} <span class="text-lg font-bold">{{ $selectedMedicine->unit->unit_name ?? 'units' }}</span>
+                        @if($selectedMedicine)
+                            @if(stripos($selectedMedicine->strength, 'ml') !== false)
+                                @php
+                                    preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
+                                    $baseVolume = (int) ($matches[1] ?? 1);
+                                    $bottleCount = $baseVolume > 0 ? floor($stock / $baseVolume) : 0;
+                                    $remainingMl = $baseVolume > 0 ? $stock % $baseVolume : 0;
+                                @endphp
+                                @if($remainingMl > 0)
+                                    {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s) & {{ $remainingMl }}ml</span> <span class="text-xl text-white/80 font-semibold ml-2">(Total: {{ $stock }}ml)</span>
+                                @else
+                                    {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s)</span> <span class="text-xl text-white/80 font-semibold ml-2">(Total: {{ $stock }}ml)</span>
+                                @endif
+                            @else
+                                {{ $stock }} <span class="text-lg font-bold">{{ $selectedMedicine->form->form_name ?? $selectedMedicine->unit->unit_name ?? 'Unit' }}</span>
+                            @endif
+                        @else
+                            0 <span class="text-lg font-bold">units</span>
+                        @endif
                     </div>
                     <div class="text-[10px] font-bold tracking-[0.2em] uppercase mt-1 {{ $availColor }}">Available</div>
                 </div>
             </div>
+
+            <!-- Expiry Warning Alerts -->
+            @if(isset($availableBatches) && $availableBatches->count() > 0)
+                @foreach($availableBatches as $batch)
+                    @if($batch->expiry_date)
+                        @php
+                            $expiryDate = \Carbon\Carbon::parse($batch->expiry_date)->startOfDay();
+                            $today = \Carbon\Carbon::today();
+                            $daysToExpiry = $today->diffInDays($expiryDate, false);
+                        @endphp
+                        
+                        @if($daysToExpiry < 0)
+                            <div class="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 mb-6 rounded-r-xl shadow-sm text-sm" role="alert">
+                                <div class="flex items-center">
+                                    <svg class="w-5 h-5 mr-2.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    <span class="font-bold">CRITICAL:</span>
+                                    <span class="ml-1.5 font-medium tracking-wide">Batch <span class="font-bold text-red-900 bg-red-100 px-1.5 py-0.5 rounded">{{ $batch->batch_no }}</span> EXPIRED on <span class="font-bold">{{ $expiryDate->format('d M Y') }}</span>. Do not use!</span>
+                                </div>
+                            </div>
+                        @elseif($daysToExpiry <= 30)
+                            <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-6 rounded-r-xl shadow-sm text-sm" role="alert">
+                                <div class="flex items-center">
+                                    <svg class="w-5 h-5 mr-2.5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    <span class="font-bold">WARNING:</span>
+                                    <span class="ml-1.5 font-medium tracking-wide">Batch <span class="font-bold text-yellow-900 bg-yellow-100 px-1.5 py-0.5 rounded">{{ $batch->batch_no }}</span> is expiring soon on <span class="font-bold">{{ $expiryDate->format('d M Y') }}</span>.</span>
+                                </div>
+                            </div>
+                        @endif
+                    @endif
+                @endforeach
+            @endif
 
             <!-- Action / Filter Bar -->
             <div class="flex items-center justify-between bg-white rounded-[14px] p-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100/80 mb-6">
@@ -224,17 +305,17 @@
                         <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                             <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </div>
-                        <input type="text" id="searchInput" class="bg-[#F8FAFC] border border-slate-100 text-slate-700 text-[13px] font-medium rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-200 block w-52 pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="Search records...">
+                        <input type="text" x-model="searchQuery" id="searchInput" class="bg-[#F8FAFC] border border-slate-100 text-slate-700 text-[13px] font-medium rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-200 block w-52 pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="Search records...">
                     </div>
                     
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                             <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                         </div>
-                        <input type="date" id="dateInput" class="bg-[#F8FAFC] border border-slate-100 text-slate-600 text-[13px] font-medium rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-200 block w-36 pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="mm/dd/yyyy">
+                        <input type="date" x-model="searchDate" id="dateInput" class="bg-[#F8FAFC] border border-slate-100 text-slate-600 text-[13px] font-medium rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-200 block w-36 pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="mm/dd/yyyy">
                     </div>
 
-                    <button id="clearFiltersBtn" class="flex items-center gap-1.5 text-slate-500 hover:text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all shadow-sm active:scale-95">
+                    <button @click="searchQuery = ''; searchDate = ''" id="clearFiltersBtn" class="flex items-center gap-1.5 text-slate-500 hover:text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all shadow-sm active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         Clear
                     </button>
@@ -249,10 +330,12 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
+                        @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') !== 'pharmacist')
                         <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Order
                         </button>
+                        @endif
                     </div>
                     
                     <!-- Table -->
@@ -273,8 +356,11 @@
                             <tbody class="divide-y divide-slate-50">
                                 @foreach($pharmacyOrders ?? [] as $detail)
                                 @php $order = $detail->order; @endphp
-                                <tr class="hover:bg-slate-50/60 transition-colors group">
-                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $order->date ? \Carbon\Carbon::parse($order->date)->format('d M Y') : 'N/A' }}</td>
+                                <tr x-show="(searchQuery === '' || '{{ strtolower($order->req_no ?? '') }}'.includes(searchQuery.toLowerCase())) && (searchDate === '' || '{{ $order->date ? \Carbon\Carbon::parse($order->date)->format('Y-m-d') : '' }}' === searchDate)" class="hover:bg-slate-50/60 transition-colors group">
+                                    <td class="px-6 py-4 font-semibold text-slate-700">
+                                        {{ $order->date ? \Carbon\Carbon::parse($order->date)->format('M d, Y') : 'N/A' }} <br>
+                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $order->date ? \Carbon\Carbon::parse($order->date)->format('h:i A') : 'N/A' }}</small>
+                                    </td>
                                     <td class="px-6 py-4">
                                         <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $order->req_no ?? 'N/A' }}</span>
                                     </td>
@@ -298,7 +384,9 @@
                                                 <span class="{{ $order->ms_approval_status === 'Approved' ? 'bg-[#DCFCE7] text-[#16A34A]' : ($order->ms_approval_status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700') }} font-bold px-3 py-1 rounded-full text-[11px]">
                                                     {{ $order->ms_approval_status ?? 'Pending' }}
                                                 </span>
-                                                <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver->name ?? 'Pending' }}</span>
+                                                @if($order->approver)
+                                                <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver->name }}</span>
+                                                @endif
                                             </div>
                                             @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
                                                 <div class="flex gap-1.5 mt-1">
@@ -382,7 +470,9 @@
                             <thead class="text-[11px] text-slate-400 uppercase font-bold tracking-wider border-b border-slate-100/80">
                                 <tr>
                                     <th scope="col" class="px-6 py-4">DATE & TIME</th>
+                                    @if(strtolower($category) !== 'bulk')
                                     <th scope="col" class="px-6 py-4">B.H.T No.</th>
+                                    @endif
                                     @if($category === 'narcotics')
                                     <th scope="col" class="px-6 py-4">Patient Name</th>
                                     @endif
@@ -400,9 +490,11 @@
                                         {{ \Carbon\Carbon::parse($admin->date)->format('M d, Y') }} <br>
                                         <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $admin->usage_time ? \Carbon\Carbon::parse($admin->usage_time)->format('h:i A') : 'N/A' }}</small>
                                     </td>
+                                    @if(strtolower($category) !== 'bulk')
                                     <td class="px-6 py-4">
                                         <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $admin->bht_no }}</span>
                                     </td>
+                                    @endif
                                     @if($category === 'narcotics')
                                     <td class="px-6 py-4">
                                         <input type="text" class="bg-white border border-slate-200 text-slate-700 text-xs rounded focus:ring-blue-500 focus:border-blue-500 block w-full p-1.5 outline-none" placeholder="Enter Patient Name..." value="{{ $admin->patient_name ?? '' }}">
@@ -427,7 +519,7 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['admin', 'nurse', 'pharmacist']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['admin', 'nurse']))
                         <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Adjustment
@@ -510,7 +602,7 @@
                                     
                                     <input type="hidden" name="category_id" value="{{ $currentCategory->id ?? '' }}">
 
-                                    <div class="grid grid-cols-2 gap-5">
+                                    <div class="grid grid-cols-2 gap-5" x-data="{ formName: '', get isLiquid() { return ['syrup', 'drops', 'injection', 'iv-fluid'].includes(this.formName.toLowerCase()); }, isBulk: false, packCount: 1, unitsPerPack: 1 }" x-effect="if (isBulk) { initialStock = packCount * unitsPerPack; }">
                                         <!-- Item Code -->
                                         <div>
                                             <label class="block text-sm font-semibold text-slate-700 mb-1.5">Item Code <span class="text-red-500">*</span></label>
@@ -526,7 +618,7 @@
                                         <!-- Form Type -->
                                         <div>
                                             <label class="block text-sm font-semibold text-slate-700 mb-1.5">Form Type <span class="text-red-500">*</span></label>
-                                            <select name="form_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                            <select name="form_id" @change="formName = $event.target.options[$event.target.selectedIndex].text" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
                                                 <option value="" disabled selected>Select Form...</option>
                                                 @foreach($medicineForms as $form)
                                                     <option value="{{ $form->id }}">{{ $form->form_name }}</option>
@@ -552,7 +644,7 @@
                                         </div>
 
                                         <!-- Min, Warning & Initial Stock -->
-                                        <div class="grid grid-cols-3 gap-3">
+                                        <div class="col-span-2 grid grid-cols-4 gap-3">
                                             <div>
                                                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Level</label>
                                                 <input type="number" name="min_level" value="10" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
@@ -561,21 +653,48 @@
                                                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Warning</label>
                                                 <input type="number" name="warning_limit" value="20" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
                                             </div>
-                                            <div>
-                                                <label class="block text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-1">Initial Stock</label>
-                                                <input type="number" name="initial_stock" x-model="initialStock" value="0" min="0" required class="w-full rounded-lg border border-blue-100 bg-blue-50/30 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-blue-700 font-semibold">
+                                            <div class="col-span-2">
+                                                <div class="flex items-center justify-between mb-1.5">
+                                                    <label class="block text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-1">Initial Stock Input</label>
+                                                    <label class="inline-flex items-center cursor-pointer">
+                                                        <input type="checkbox" x-model="isBulk" class="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+                                                        <span class="ml-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Enter as Bulk/Packs</span>
+                                                    </label>
+                                                </div>
+
+                                                <!-- Bulk Inputs -->
+                                                <div x-show="isBulk" x-cloak class="grid grid-cols-2 gap-3 mb-2.5 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                                                    <div>
+                                                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Number of Packs/Bottles</label>
+                                                        <input type="number" x-model.number="packCount" min="1" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tablets/Units per Pack</label>
+                                                        <input type="number" x-model.number="unitsPerPack" min="1" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                    </div>
+                                                </div>
+
+                                                <div class="flex gap-2">
+                                                    <input type="number" name="initial_stock" x-model.number="initialStock" value="0" min="0" required :readonly="isBulk" :class="[isLiquid ? 'w-1/3' : 'w-full', isBulk ? 'bg-slate-100 cursor-not-allowed opacity-80' : 'bg-blue-50/30']" class="rounded-lg border border-blue-100 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-blue-700 font-semibold">
+                                                    <div x-show="isLiquid" x-cloak class="w-2/3">
+                                                        <select name="stock_input_type" class="w-full h-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                            <option value="unit">Bottles / Full Units</option>
+                                                            <option value="base">Base Volume (ml / mg)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
                                         <!-- Batch Info (Shown if Initial Stock > 0) -->
-                                        <div class="grid grid-cols-2 gap-3 mt-3" x-show="initialStock > 0" x-transition x-cloak>
+                                        <div class="col-span-2 grid grid-cols-2 gap-3 mt-1" x-show="initialStock > 0" x-transition x-cloak>
                                             <div>
                                                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Batch Number <span class="text-red-500">*</span></label>
                                                 <input type="text" name="batch_no" :required="initialStock > 0" class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 placeholder:text-slate-400 placeholder:normal-case" placeholder="e.g. BATCH-001" oninput="this.value = this.value.toUpperCase()">
                                             </div>
                                             <div>
                                                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expiry Date <span class="text-red-500">*</span></label>
-                                                <input type="date" name="expiry_date" :required="initialStock > 0" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                <input type="date" name="expiry_date" :required="initialStock > 0" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
                                             </div>
                                         </div>
                                     </div>
@@ -738,6 +857,7 @@
                             </div>
 
                             <div class="grid grid-cols-2 gap-5 mb-5">
+                                @if(strtolower($category) !== 'bulk')
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">B.H.T. No. <span class="text-red-500">*</span></label>
                                     <div x-data="{
@@ -783,7 +903,8 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div>
+                                @endif
+                                <div class="{{ strtolower($category) === 'bulk' ? 'col-span-2' : '' }}">
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Batch No. <span class="text-red-500">*</span></label>
                                     <div x-data="{
                                         open: false,
@@ -952,7 +1073,10 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Req. No. <span class="text-red-500">*</span></label>
-                                    <input type="text" name="req_no" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 uppercase" placeholder="e.g. REQ-123">
+                                    <input type="text" name="req_no" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 uppercase" placeholder="e.g. REQ-123" value="{{ old('req_no') }}">
+                                    @error('req_no')
+                                        <p class="mt-1.5 text-[11px] font-bold text-red-500">{{ $message }}</p>
+                                    @enderror
                                 </div>
                             </div>
                             <div class="mb-5">

@@ -17,9 +17,9 @@ class MedicineController extends Controller
 {
     public function index($category, Request $request)
     {
-        $medicines = Medicine::with(['unit', 'form'])->whereHas('category', function($q) use ($category) {
-            $q->where('name', $category);
-        })->get();
+        $currentCategory = Category::where('name', $category)->firstOrFail();
+
+        $medicines = Medicine::with(['unit', 'form'])->where('category_id', $currentCategory->id)->get();
         
         $firstMedicine = $medicines->first();
 
@@ -30,10 +30,6 @@ class MedicineController extends Controller
         $selectedMedicine = null;
         $pharmacyOrders = collect([]);
         $patientAdministrations = collect([]);
-        $admissions = collect([]);
-        $availableBatches = collect([]);
-
-        $currentCategory = Category::where('name', $category)->first();
         $units = Unit::all();
         $medicineForms = MedicineForm::all();
 
@@ -44,9 +40,9 @@ class MedicineController extends Controller
 
     public function getDetails($category, $id)
     {
-        $medicines = Medicine::with(['unit', 'form'])->whereHas('category', function($q) use ($category) {
-            $q->where('name', $category);
-        })->get();
+        $currentCategory = Category::where('name', $category)->firstOrFail();
+
+        $medicines = Medicine::with(['unit', 'form'])->where('category_id', $currentCategory->id)->get();
         
         $selectedMedicine = $medicines->firstWhere('id', $id) ?? $medicines->first();
 
@@ -186,6 +182,7 @@ class MedicineController extends Controller
             'min_level' => 'required|integer|min:0',
             'warning_limit' => 'required|integer|min:0',
             'initial_stock' => 'nullable|integer|min:0',
+            'stock_input_type' => 'nullable|string|in:unit,base',
             'batch_no' => $request->input('initial_stock', 0) > 0 ? 'required|string|max:100' : 'nullable|string|max:100',
             'expiry_date' => $request->input('initial_stock', 0) > 0 ? 'required|date' : 'nullable|date',
         ]);
@@ -204,11 +201,22 @@ class MedicineController extends Controller
             $validated['batch_no'] = strtoupper(trim($validated['batch_no']));
         }
 
-        $initialStock = $validated['initial_stock'] ?? 0;
+        $initialStock = (int) ($validated['initial_stock'] ?? 0);
         $batchNo = $validated['batch_no'] ?? null;
         $expiryDate = $validated['expiry_date'] ?? null;
+        $stockInputType = $validated['stock_input_type'] ?? 'unit';
+        $form = \App\Models\MedicineForm::find($validated['form_id']);
+        $isLiquid = $form && in_array(strtolower($form->form_name), ['syrup', 'drops', 'injection', 'iv-fluid']);
+
+        if ($isLiquid && $stockInputType === 'unit') {
+            preg_match('/(\d+)/', $validated['strength'] ?? '', $matches);
+            $baseVolume = (int) ($matches[1] ?? 1);
+            if ($baseVolume > 0) {
+                $initialStock = $initialStock * $baseVolume;
+            }
+        }
         
-        unset($validated['initial_stock'], $validated['batch_no'], $validated['expiry_date']);
+        unset($validated['initial_stock'], $validated['batch_no'], $validated['expiry_date'], $validated['stock_input_type']);
 
         $medicine = Medicine::create($validated);
 
@@ -267,14 +275,35 @@ class MedicineController extends Controller
 
     public function storeAdministration(Request $request, $category, $id)
     {
+        $medicine = Medicine::with('category')->findOrFail($id);
+        $isBulk = strtolower($medicine->category->name ?? '') === 'bulk';
+
         $validated = $request->validate([
             'date' => 'required|date',
-            'admission_id' => 'required|integer|exists:admissions,id',
+            'admission_id' => $isBulk ? 'nullable' : 'required|integer|exists:admissions,id',
             'batch_id' => 'required|integer|exists:medicine_batches,id',
             'qty_given' => 'required|integer|min:1',
             'dosage' => 'required|string|max:100',
             'usage_time' => 'nullable|string|max:100',
         ]);
+
+        if ($isBulk) {
+            $dummyPatient = \App\Models\Patient::firstOrCreate(
+                ['patient_name' => 'Ward General Use']
+            );
+
+            $wardId = auth()->user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
+
+            $dummyAdmission = \App\Models\Admission::firstOrCreate(
+                ['bht_no' => 'BULK-GENERAL'],
+                [
+                    'patient_id' => $dummyPatient->id,
+                    'ward_id' => $wardId,
+                    'status' => 'Admitted'
+                ]
+            );
+            $validated['admission_id'] = $dummyAdmission->id;
+        }
 
         $batch = \App\Models\MedicineBatch::findOrFail($validated['batch_id']);
         
@@ -388,8 +417,10 @@ class MedicineController extends Controller
     {
         $validated = $request->validate([
             'date' => 'required|date',
-            'req_no' => 'required|string|max:100',
+            'req_no' => 'required|string|max:100|unique:orders,req_no',
             'qty_requested' => 'required|integer|min:1',
+        ], [
+            'req_no.unique' => 'This Requisition Number already exists. Please enter a new requisition number.'
         ]);
 
         $medicine = Medicine::findOrFail($id);
