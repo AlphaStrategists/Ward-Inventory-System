@@ -1,5 +1,3 @@
-<?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -39,6 +37,12 @@ class GeneralStockAdjustment extends Model
     }
 
     public function adjuster(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'adjusted_by');
+    }
+
+
+    public function adjustedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class, 'adjusted_by');
     }

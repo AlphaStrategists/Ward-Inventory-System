@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Category extends Model
 {
     protected $table = 'categories';
-    const UPDATED_AT = null;
+    public $timestamps = false;
 
     protected $fillable = [
         'name',

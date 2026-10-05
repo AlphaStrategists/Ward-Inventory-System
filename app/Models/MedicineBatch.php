@@ -1,5 +1,3 @@
-<?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -53,5 +51,21 @@ class MedicineBatch extends Model
     public function getCurrentBalanceAttribute(): int
     {
         return (int) $this->stockLedger()->sum('quantity');
+    }
+
+
+    public function receipts(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(StockReceipt::class, 'batch_id');
+    }
+
+    public function ledgerEntries(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(StockLedger::class, 'batch_id');
+    }
+
+    public function adjustments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(MedicineStockAdjustment::class, 'batch_id');
     }
 }

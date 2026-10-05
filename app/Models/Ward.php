@@ -1,5 +1,3 @@
-<?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -38,5 +36,11 @@ class Ward extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class, 'ward_id');
+    }
+
+
+    public function stockReceipts(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(StockReceipt::class, 'ward_id');
     }
 }

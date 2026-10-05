@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ward Inventory System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', searchQuery: '', searchDate: '', openAddModal: false, openAdminModal: false, showAdjustmentModal: false, openOrderModal: {{ $errors->has('req_no') ? 'true' : 'false' }}, openReceiveModal: false, receiveModalDetailId: '', editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
+
+    @if(session('success'))
+    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
+         x-transition.opacity.duration.500ms
+         class="fixed top-5 right-5 z-50 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg font-semibold flex items-center gap-3">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        {{ session('success') }}
+    </div>
+    @endif
+
+    @if(session('error'))
+    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" 
+         x-transition.opacity.duration.500ms
+         class="fixed top-5 right-5 z-50 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg font-semibold flex items-center gap-3 max-w-md">
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span>{{ session('error') }}</span>
+    </div>
+    @endif
+
+    <!-- Left Sidebar -->
+    <div class="w-[320px] bg-white border-r border-slate-200 flex flex-col h-full shadow-[2px_0_10px_rgba(0,0,0,0.02)] z-10">
+        <!-- Sidebar Header -->
+        <div class="p-6 pb-4 border-b border-transparent">
+            <div class="flex items-center gap-3 mb-6">
+                <!-- Icon -->
+                <div class="text-[#3B82F6]">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-[#1E3A8A] tracking-tight leading-tight">Ward Inventory</h1>
+                    <p class="text-[10px] font-bold text-slate-400 tracking-[0.15em] uppercase mt-0.5">{{ Str::title(str_replace('-', ' ', $category)) }}</p>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="relative mb-5">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input type="text" id="sidebarSearchInput" class="bg-slate-50/80 border border-slate-200/80 text-slate-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="Search medicines...">
+            </div>
+
+            <!-- Add Button -->
+            @if(auth()->check() && auth()->user()->role_id == 1)
+            <button @click="openAddModal = true" class="w-full bg-[#3B82F6] hover:bg-blue-700 text-white font-semibold rounded-xl text-sm px-5 py-3 transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_10px_rgba(59,130,246,0.3)] hover:shadow-[0_4px_15px_rgba(59,130,246,0.4)] active:scale-[0.98] mb-5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                Add Medicine
+            </button>
+            @endif
+        </div>
+
+        <!-- Medicine List -->
+        <div class="flex-1 overflow-y-auto no-scrollbar px-4 pb-6 space-y-1.5">
+            @foreach($medicines as $medicine)
+                @php
+                    $isActive = $selectedMedicine && $medicine->id === $selectedMedicine->id;
+                    $stock = (int) $medicine->stock;
+                    $min = (int) $medicine->min_level;
+                    $warning = (int) $medicine->warning_limit;
+                    
+                    $compareValue = $stock;
+                    if (stripos($medicine->strength, 'ml') !== false) {
+                        preg_match('/(\d+)/', $medicine->strength, $matches);
+                        $baseVol = (int) ($matches[1] ?? 1);
+                        if ($baseVol > 0) {
+                            $compareValue = $stock / $baseVol;
+                        }
+                    }
+
+                    if ($compareValue <= $min) {
+                        $badgeClass = 'bg-red-100 text-red-700';
+                    } elseif ($compareValue <= $warning) {
+                        $badgeClass = 'bg-yellow-100 text-yellow-700';
+                    } else {
+                        $badgeClass = 'bg-green-100 text-green-700';
+                    }
+                @endphp
+                <a href="{{ route('inventory.details', ['category' => $category, 'id' => $medicine->id]) }}" class="medicine-list-item block w-full text-left rounded-xl transition-all duration-200 {{ $isActive ? 'bg-[#EFF6FF] shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)] border border-blue-100/50' : 'hover:bg-slate-50 border border-transparent' }} group relative overflow-hidden">
+                    @if($isActive)
+                        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-[#3B82F6] rounded-l-xl"></div>
+                    @endif
+                    <div class="p-4 pl-5">
+                        <div class="medicine-name font-semibold text-[14.5px] text-slate-800 mb-2.5 {{ $isActive ? 'text-[#1E3A8A]' : 'group-hover:text-blue-700 transition-colors' }}">{{ $medicine->name }}</div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex gap-2.5 text-slate-400 relative z-10">
+                                @if(auth()->check() && auth()->user()->role_id == 1)
+                                <!-- Edit Button -->
+                                <button type="button" class="hover:text-blue-500 transition-colors p-1 -m-1"
+                                    title="Edit"
+                                    @click.prevent="editModalId = {{ $medicine->id }}">
+                                    <svg class="w-4 h-4 {{ $isActive ? 'text-[#60A5FA]' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                </button>
+                                <!-- Delete Button -->
+                                <form action="{{ url('/inventory/medicines/'.$medicine->id) }}" method="POST" class="inline delete-form">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="button" class="hover:text-red-500 transition-colors p-1 -m-1 delete-btn" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                    </button>
+                                </form>
+                                @endif
+                            </div>
+                            <span class="text-[11px] font-bold px-2.5 py-1 rounded-full {{ $badgeClass }}">
+                                @if(stripos($medicine->strength, 'ml') !== false)
+                                    @php
+                                        preg_match('/(\d+)/', $medicine->strength, $matches);
+                                        $baseVol = (int) ($matches[1] ?? 1);
+                                        $bottles = $baseVol > 0 ? floor($medicine->stock / $baseVol) : 0;
+                                        $remainingMl = $baseVol > 0 ? $medicine->stock % $baseVol : 0;
+                                    @endphp
+                                    @if($remainingMl > 0)
+                                        {{ $bottles }} Bottle(s) & {{ $remainingMl }}ml (Total: {{ $medicine->stock }}ml)
+                                    @else
+                                        {{ $bottles }} Bottle(s) (Total: {{ $medicine->stock }}ml)
+                                    @endif
+                                @else
+                                    {{ $medicine->stock }} {{ $medicine->form->form_name ?? $medicine->unit->unit_name ?? '' }}
+                                @endif
+                            </span>
+                        </div>
+                    </div>
+                </a>
+            @endforeach
+        </div>
+    </div>
+
+    <!-- Right Content Area -->
+    <div class="flex-1 flex flex-col h-full bg-[#F8FAFC]">
+        <!-- Top Header / User Profile -->
+        <div class="w-full bg-white border-b border-slate-200 px-8 py-3 flex shadow-sm">
+            <div class="ms-auto justify-content-end w-full flex justify-end">
+                <div x-data="{ open: false }" class="relative dropdown">
+                    <button @click="open = !open" @click.away="open = false" class="dropdown-toggle flex items-center gap-3 focus:outline-none hover:bg-slate-50 p-1.5 pr-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">
+                        <div class="text-right hidden sm:block">
+                            <div class="text-sm font-bold text-slate-700 leading-tight">{{ auth()->user()->name ?? 'Guest User' }}</div>
+                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ auth()->user()->role->role_name ?? 'Nurse' }}</div>
+                        </div>
+                        <div class="w-9 h-9 rounded-full bg-blue-100 text-[#3B82F6] flex items-center justify-center font-bold text-sm border border-blue-200 shadow-sm">
+                            {{ substr(auth()->user()->name ?? 'U', 0, 1) }}
+                        </div>
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    
+                    <div x-show="open" x-cloak 
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         class="dropdown-menu absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
+                        <div class="px-4 py-3 border-b border-slate-50 mb-1">
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Signed in as</p>
+                            <p class="text-sm font-semibold text-slate-700 truncate">{{ auth()->user()->email ?? 'user@example.com' }}</p>
+                        </div>
+                        <form action="{{ route('logout') }}" method="POST" class="w-full m-0 p-0">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-semibold transition-colors flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                                Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Scrollable Area -->
+        <div class="flex-1 overflow-y-auto p-8 pt-7 max-w-7xl mx-auto w-full">
+            
+            <!-- Hero Banner -->
+            <div class="bg-gradient-to-r from-[#3B82F6] to-[#4F46E5] rounded-2xl p-7 mb-6 text-white shadow-[0_10px_25px_-5px_rgba(59,130,246,0.4)] flex justify-between items-center relative overflow-hidden">
+                <div class="relative z-10">
+                    <h2 class="text-[28px] font-bold mb-1.5 tracking-tight">{{ $selectedMedicine ? $selectedMedicine->name : 'No Medicine Selected' }}</h2>
+                    <p class="text-blue-100/90 font-medium tracking-wide text-[13px]">Current Ward Stock Balance</p>
+                </div>
+                <div class="bg-white rounded-xl px-7 py-3 text-center shadow-[0_4px_20px_rgba(0,0,0,0.1)] relative z-10 transform transition-transform hover:scale-105 duration-300">
+                    @php
+                        $stockColor = 'text-[#16A34A]'; // Safe/Healthy (Green)
+                        $availColor = 'text-[#65A30D]'; 
+                        
+                        if ($selectedMedicine) {
+                            $stock = (int) $selectedMedicine->stock;
+                            $min = (int) $selectedMedicine->min_level;
+                            $warning = (int) $selectedMedicine->warning_limit;
+                            
+                            $compareValue = $stock;
+                            if (stripos($selectedMedicine->strength, 'ml') !== false) {
+                                preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
+                                $baseVol = (int) ($matches[1] ?? 1);
+                                if ($baseVol > 0) {
+                                    $compareValue = $stock / $baseVol;
+                                }
+                            }
+
+                            if ($compareValue <= $min) {
+                                $stockColor = 'text-red-600'; // Danger/Critical
+                                $availColor = 'text-red-500';
+                            } elseif ($compareValue <= $warning) {
+                                $stockColor = 'text-yellow-500'; // Warning/Low
+                                $availColor = 'text-yellow-600';
+                            }
+                        }
+                    @endphp
+                    <div class="text-[32px] font-extrabold tracking-tight leading-none mb-1 {{ $stockColor }}">
+                        @if($selectedMedicine)
+                            @if(stripos($selectedMedicine->strength, 'ml') !== false)
+                                @php
+                                    preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
+                                    $baseVolume = (int) ($matches[1] ?? 1);
+                                    $bottleCount = $baseVolume > 0 ? floor($stock / $baseVolume) : 0;
+                                    $remainingMl = $baseVolume > 0 ? $stock % $baseVolume : 0;
+                                @endphp
+                                @if($remainingMl > 0)
+                                    {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s) & {{ $remainingMl }}ml</span> <span class="text-xl text-white/80 font-semibold ml-2">(Total: {{ $stock }}ml)</span>
+                                @else
+                                    {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s)</span> <span class="text-xl text-white/80 font-semibold ml-2">(Total: {{ $stock }}ml)</span>
+                                @endif
+                            @else
+                                {{ $stock }} <span class="text-lg font-bold">{{ $selectedMedicine->form->form_name ?? $selectedMedicine->unit->unit_name ?? 'Unit' }}</span>
+                            @endif
+                        @else
+                            0 <span class="text-lg font-bold">units</span>
+                        @endif
+                    </div>
+                    <div class="text-[10px] font-bold tracking-[0.2em] uppercase mt-1 {{ $availColor }}">Available</div>
+                </div>
+            </div>
+
+            <!-- Expiry Warning Alerts -->
+            @if(isset($availableBatches) && $availableBatches->count() > 0)
+                @foreach($availableBatches as $batch)
+                    @if($batch->expiry_date)
+                        @php
+                            $expiryDate = \Carbon\Carbon::parse($batch->expiry_date)->startOfDay();
+                            $today = \Carbon\Carbon::today();
+                            $daysToExpiry = $today->diffInDays($expiryDate, false);
+                        @endphp
+                        
+                        @if($daysToExpiry < 0)
+                            <div class="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 mb-6 rounded-r-xl shadow-sm text-sm" role="alert">
+                                <div class="flex items-center">
+                                    <svg class="w-5 h-5 mr-2.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    <span class="font-bold">CRITICAL:</span>
+                                    <span class="ml-1.5 font-medium tracking-wide">Batch <span class="font-bold text-red-900 bg-red-100 px-1.5 py-0.5 rounded">{{ $batch->batch_no }}</span> EXPIRED on <span class="font-bold">{{ $expiryDate->format('d M Y') }}</span>. Do not use!</span>
+                                </div>
+                            </div>
+                        @elseif($daysToExpiry <= 30)
+                            <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-6 rounded-r-xl shadow-sm text-sm" role="alert">
+                                <div class="flex items-center">
+                                    <svg class="w-5 h-5 mr-2.5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    <span class="font-bold">WARNING:</span>
+                                    <span class="ml-1.5 font-medium tracking-wide">Batch <span class="font-bold text-yellow-900 bg-yellow-100 px-1.5 py-0.5 rounded">{{ $batch->batch_no }}</span> is expiring soon on <span class="font-bold">{{ $expiryDate->format('d M Y') }}</span>.</span>
+                                </div>
+                            </div>
+                        @endif
+                    @endif
+                @endforeach
+            @endif
+
+            <!-- Action / Filter Bar -->
+            <div class="flex items-center justify-between bg-white rounded-[14px] p-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100/80 mb-6">
+                <!-- Tabs -->
+                <div class="flex items-center p-1 relative z-0">
+                    <button @click="tab = 'pharmacy'" 
+                            :class="tab === 'pharmacy' ? 'bg-[#F8FAFC] text-slate-800 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-semibold'"
+                            class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200">
+                        Pharmacy Orders ({{ isset($pharmacyOrders) ? $pharmacyOrders->count() : 0 }})
+                    </button>
+                    @if(strtolower(auth()->user()->role->role_name ?? '') !== 'pharmacist')
+                    <button @click="tab = 'patient'" 
+                            :class="tab === 'patient' ? 'bg-[#F8FAFC] text-slate-800 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-semibold'"
+                            class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200 ml-1">
+                        Patient Administrations ({{ isset($patientAdministrations) ? $patientAdministrations->count() : 0 }})
+                    </button>
+                    <button @click="tab = 'adjustments'" 
+                            :class="tab === 'adjustments' ? 'bg-[#F8FAFC] text-slate-800 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-semibold'"
+                            class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200 ml-1">
+                        Stock Adjustments ({{ isset($stockAdjustments) ? $stockAdjustments->count() : 0 }})
+                    </button>
+                    @endif
+                </div>
+
+                <!-- Filters -->
+                <div class="flex items-center space-x-2.5 px-2">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <input type="text" x-model="searchQuery" id="searchInput" class="bg-[#F8FAFC] border border-slate-100 text-slate-700 text-[13px] font-medium rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-200 block w-52 pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="Search records...">
+                    </div>
+                    
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        </div>
+                        <input type="date" x-model="searchDate" id="dateInput" class="bg-[#F8FAFC] border border-slate-100 text-slate-600 text-[13px] font-medium rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-200 block w-36 pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="mm/dd/yyyy">
+                    </div>
+
+                    <button @click="searchQuery = ''; searchDate = ''" id="clearFiltersBtn" class="flex items-center gap-1.5 text-slate-500 hover:text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all shadow-sm active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="bg-white rounded-[16px] shadow-[0_2px_15px_rgba(0,0,0,0.03)] border border-slate-100/80 overflow-hidden">
+                
+                <!-- Pharmacy Tab Content -->
+                <div x-show="tab === 'pharmacy'" x-cloak x-transition.opacity.duration.300ms>
+                    <!-- Header -->
+                    <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
+                        <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
+                        <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            Add Order
+                        </button>
+                        @endif
+                    </div>
+                    
+                    <!-- Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-[13px] text-left text-slate-600">
+                            <thead class="text-[11px] text-slate-400 uppercase font-bold tracking-wider border-b border-slate-100/80">
+                                <tr>
+                                    <th scope="col" class="px-6 py-4">Date</th>
+                                    <th scope="col" class="px-6 py-4">Req. No.</th>
+                                    <th scope="col" class="px-6 py-4">Qty Requested</th>
+                                    <th scope="col" class="px-6 py-4">Requested By</th>
+                                    <th scope="col" class="px-6 py-4">MS Approval</th>
+                                    <th scope="col" class="px-6 py-4">Qty Received</th>
+                                    <th scope="col" class="px-6 py-4">Issuing Officer</th>
+                                    <th scope="col" class="px-6 py-4">Receiving Officer</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                @foreach($pharmacyOrders ?? [] as $detail)
+                                @php $order = $detail->order; @endphp
+                                <tr x-show="(searchQuery === '' || '{{ strtolower($order->req_no ?? '') }}'.includes(searchQuery.toLowerCase())) && (searchDate === '' || '{{ $order->date ? \Carbon\Carbon::parse($order->date)->format('Y-m-d') : '' }}' === searchDate)" class="hover:bg-slate-50/60 transition-colors group">
+                                    <td class="px-6 py-4 font-semibold text-slate-700">
+                                        {{ $order->date ? \Carbon\Carbon::parse($order->date)->format('M d, Y') : 'N/A' }} <br>
+                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $order->date ? \Carbon\Carbon::parse($order->date)->format('h:i A') : 'N/A' }}</small>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $order->req_no ?? 'N/A' }}</span>
+                                    </td>
+                                    <td class="px-6 py-4 font-bold text-slate-800">
+                                        @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
+                                            <form id="approve-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.approve', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
+                                                @csrf @method('PATCH')
+                                            </form>
+                                            <div class="flex items-center gap-1">
+                                                @php
+                                                    $isLiquid = stripos($selectedMedicine->strength ?? '', 'ml') !== false;
+                                                    $baseVol = 1;
+                                                    if ($isLiquid) {
+                                                        preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
+                                                        $baseVol = (int) ($matches[1] ?? 1);
+                                                    }
+                                                    $displayValue = $isLiquid && $baseVol > 0 ? floor($detail->qty_requested / $baseVol) : $detail->qty_requested;
+                                                    $unitDisplay = $isLiquid ? 'Bottle(s)' : ($selectedMedicine->unit->unit_name ?? '');
+                                                @endphp
+                                                <input type="number" form="approve-form-{{$detail->id}}" name="qty_requested" value="{{ $displayValue }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
+                                                <span class="text-[11px] font-normal text-slate-500">{{ $unitDisplay }}</span>
+                                                @if($isLiquid)
+                                                    <input type="hidden" form="approve-form-{{$detail->id}}" name="order_unit" value="bottle">
+                                                @endif
+                                            </div>
+                                        @else
+                                            @if($detail->remark)
+                                                {{ trim(preg_replace('/\[.*?\]\s*/', '', $detail->remark)) }} <span class="text-[11px] font-normal text-slate-500">(Total: {{ $detail->qty_requested }} {{ $selectedMedicine->form->form_name ?? '' }})</span>
+                                            @else
+                                                {{ $detail->qty_requested }} <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->form->form_name ?? '' }}</span>
+                                            @endif
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $order->requester->name ?? 'N/A' }}</td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex flex-col items-start gap-2">
+                                            <div class="flex flex-col items-start gap-1">
+                                                <span class="{{ $order->ms_approval_status === 'Approved' ? 'bg-[#DCFCE7] text-[#16A34A]' : ($order->ms_approval_status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700') }} font-bold px-3 py-1 rounded-full text-[11px]">
+                                                    {{ $order->ms_approval_status ?? 'Pending' }}
+                                                </span>
+                                                @if($order->approver)
+                                                <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver->name }}</span>
+                                                @endif
+                                            </div>
+                                            @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
+                                                <div class="flex gap-1.5 mt-1">
+                                                    <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Approve" class="bg-[#16A34A] hover:bg-green-700 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Approve</button>
+                                                    <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Reject" class="bg-red-500 hover:bg-red-600 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Reject</button>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 font-bold text-slate-800">
+                                        @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
+                                            <form id="issue-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.issue', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
+                                                @csrf @method('PATCH')
+                                            </form>
+                                            <div class="flex items-center gap-1">
+                                                @php
+                                                    $isLiquid = stripos($selectedMedicine->strength ?? '', 'ml') !== false;
+                                                    $baseVol = 1;
+                                                    if ($isLiquid) {
+                                                        preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
+                                                        $baseVol = (int) ($matches[1] ?? 1);
+                                                    }
+                                                    $displayValue = $isLiquid && $baseVol > 0 ? floor($detail->qty_requested / $baseVol) : $detail->qty_requested;
+                                                    $unitDisplay = $isLiquid ? 'Bottle(s)' : ($selectedMedicine->unit->unit_name ?? '');
+                                                @endphp
+                                                <input type="number" form="issue-form-{{$detail->id}}" name="qty_issued" value="{{ $displayValue }}" max="{{ $displayValue }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
+                                                <span class="text-[11px] font-normal text-slate-500">{{ $unitDisplay }}</span>
+                                                @if($isLiquid)
+                                                    <input type="hidden" form="issue-form-{{$detail->id}}" name="order_unit" value="bottle">
+                                                @endif
+                                            </div>
+                                        @else
+                                            @if($detail->qty_issued > 0)
+                                                @if($detail->remark)
+                                                    @php
+                                                        $cleanRemark = trim(preg_replace('/\[.*?\]\s*/', '', $detail->remark));
+                                                        $packQtyStr = preg_replace('/[^0-9]/', '', $cleanRemark);
+                                                        $packQty = $packQtyStr !== '' ? (int)$packQtyStr : 0;
+                                                        
+                                                        $issuedPackStr = '';
+                                                        if ($packQty > 0 && $detail->qty_requested > 0) {
+                                                            $unitsPerPack = $detail->qty_requested / $packQty;
+                                                            if ($unitsPerPack > 0) {
+                                                                $issuedPacks = round($detail->qty_issued / $unitsPerPack, 2);
+                                                                $issuedPackStr = preg_replace('/^\d+/', $issuedPacks, $cleanRemark);
+                                                            }
+                                                        }
+                                                        
+                                                        // Fallback if parsing fails or division by zero is imminent
+                                                        if (!$issuedPackStr) {
+                                                            $issuedPackStr = $detail->qty_issued . ' Unit(s)';
+                                                        }
+                                                    @endphp
+                                                    {{ $issuedPackStr }} <span class="text-[11px] font-normal text-slate-500">(Total: {{ $detail->qty_issued }} {{ $selectedMedicine->form->form_name ?? '' }})</span>
+                                                @else
+                                                    {{ $detail->qty_issued }} <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->form->form_name ?? '' }}</span>
+                                                @endif
+                                            @else
+                                                0
+                                            @endif
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-500 font-medium">
+                                        @if(str_contains($detail->remark ?? '', '[ISSUED_BY:'))
+                                            @php
+                                                preg_match('/\[ISSUED_BY:(.*?)\]/', $detail->remark ?? '', $issMatches);
+                                                $issName = $issMatches[1] ?? 'N/A';
+                                            @endphp
+                                            {{ $issName }}
+                                        @else
+                                            @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
+                                                <button type="submit" form="issue-form-{{$detail->id}}" class="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Issue Batch</button>
+                                            @else
+                                                <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
+                                            @endif
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 font-semibold text-slate-700">
+                                        @if(str_contains($detail->remark ?? '', '[RECEIVED_BY:') || str_contains($detail->remark ?? '', '[RECEIVED]'))
+                                            @php
+                                                preg_match('/\[RECEIVED_BY:(.*?)\]/', $detail->remark ?? '', $rxMatches);
+                                                $rxName = $rxMatches[1] ?? '';
+                                            @endphp
+                                            <div class="flex flex-col gap-1 items-start">
+                                                <span class="bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-full text-[11px]">Received</span>
+                                                @if($rxName) <span class="text-[10px] text-slate-500 font-medium">{{ $rxName }}</span> @endif
+                                            </div>
+                                        @else
+                                            @if($detail->qty_issued == 0)
+                                                <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
+                                            @elseif(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'nurse')
+                                                <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
+                                            @else
+                                                <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
+                                            @endif
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                @if(strtolower(auth()->user()->role->role_name ?? '') !== 'pharmacist')
+                <!-- Patient Tab Content -->
+                <div x-show="tab === 'patient'" x-cloak x-transition.opacity.duration.300ms>
+                    <!-- Header -->
+                    <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
+                        <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
+                        <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            Add Administration
+                        </button>
+                        @endif
+                    </div>
+                    
+                    <!-- Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-[13px] text-left text-slate-600">
+                            <thead class="text-[11px] text-slate-400 uppercase font-bold tracking-wider border-b border-slate-100/80">
+                                <tr>
+                                    <th scope="col" class="px-6 py-4">DATE & TIME</th>
+                                    @if(strtolower($category) !== 'bulk')
+                                    <th scope="col" class="px-6 py-4">B.H.T No.</th>
+                                    @endif
+                                    @if($category === 'narcotics')
+                                    <th scope="col" class="px-6 py-4">Patient Name</th>
+                                    @endif
+                                    <th scope="col" class="px-6 py-4">Qty Given</th>
+                                    <th scope="col" class="px-6 py-4">Balance</th>
+                                    <th scope="col" class="px-6 py-4">Sister Initials</th>
+                                    <th scope="col" class="px-6 py-4">Remark</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                @foreach($patientAdministrations ?? [] as $admin)
+                                <tr class="hover:bg-slate-50/60 transition-colors group admin-record-row">
+                                    <td class="px-6 py-4 font-semibold text-slate-700">
+                                        {{ \Carbon\Carbon::parse($admin->date)->format('M d, Y') }} <br>
+                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $admin->usage_time ? \Carbon\Carbon::parse($admin->usage_time)->format('h:i A') : 'N/A' }}</small>
+                                    </td>
+                                    @if(strtolower($category) !== 'bulk')
+                                    <td class="px-6 py-4">
+                                        <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $admin->bht_no }}</span>
+                                    </td>
+                                    @endif
+                                    @if($category === 'narcotics')
+                                    <td class="px-6 py-4">
+                                        <input type="text" class="bg-white border border-slate-200 text-slate-700 text-xs rounded focus:ring-blue-500 focus:border-blue-500 block w-full p-1.5 outline-none" placeholder="Enter Patient Name..." value="{{ $admin->patient_name ?? '' }}">
+                                    </td>
+                                    @endif
+                                    <td class="px-6 py-4 font-bold text-slate-800">{{ $admin->qty_given }}</td>
+                                    <td class="px-6 py-4 font-bold {{ (int) $admin->dynamic_balance < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
+                                        @php
+                                            $isLiquid = false;
+                                            if (isset($selectedMedicine) && $selectedMedicine->form) {
+                                                $formName = strtolower($selectedMedicine->form->form_name);
+                                                $isLiquid = in_array($formName, ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']);
+                                            }
+                                        @endphp
+                                        {{ $admin->dynamic_balance }} {{ $isLiquid ? 'ml' : ($selectedMedicine->unit->unit_name ?? '') }}
+                                    </td>
+                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $admin->sister_initials }}</td>
+                                    <td class="px-6 py-4 text-slate-500 font-medium">{{ $admin->remark }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
+
+                @if(strtolower(auth()->user()->role->role_name ?? '') !== 'pharmacist')
+                <!-- Adjustments Tab Content -->
+                <div x-show="tab === 'adjustments'" x-cloak x-transition.opacity.duration.300ms>
+                    <!-- Header -->
+                    <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
+                        <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
+                        <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            Add Adjustment
+                        </button>
+                        @endif
+                    </div>
+                    
+                    <!-- Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-[13px] text-left text-slate-600">
+                            <thead class="text-[11px] text-slate-400 uppercase font-bold tracking-wider border-b border-slate-100/80">
+                                <tr>
+                                    <th scope="col" class="px-6 py-4">Date</th>
+                                    <th scope="col" class="px-6 py-4">Type</th>
+                                    <th scope="col" class="px-6 py-4">Quantity</th>
+                                    <th scope="col" class="px-6 py-4">Balance</th>
+                                    <th scope="col" class="px-6 py-4">Reason / Notes</th>
+                                    <th scope="col" class="px-6 py-4">Adjusted By</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                @foreach($stockAdjustments ?? [] as $adj)
+                                <tr class="hover:bg-slate-50/60 transition-colors group">
+                                    <td class="px-6 py-4 font-semibold text-slate-700">
+                                        {{ \Carbon\Carbon::parse($adj->created_at)->format('M d, Y') }} <br>
+                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ \Carbon\Carbon::parse($adj->created_at)->format('h:i A') }}</small>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        @php
+                                            $typeColors = [
+                                                'EXPIRY' => 'bg-red-100 text-red-700',
+                                                'DAMAGED' => 'bg-red-100 text-red-700',
+                                                'LOST' => 'bg-orange-100 text-orange-700',
+                                                'COUNT_CORRECTION' => 'bg-blue-100 text-blue-700',
+                                                'RETURN' => 'bg-green-100 text-green-700',
+                                            ];
+                                            $color = $typeColors[$adj->adjustment_type] ?? 'bg-slate-100 text-slate-700';
+                                        @endphp
+                                        <span class="font-bold px-2.5 py-1 rounded-md text-[11px] {{ $color }}">{{ str_replace('_', ' ', $adj->adjustment_type) }}</span>
+                                    </td>
+                                    <td class="px-6 py-4 font-bold {{ $adj->quantity < 0 ? 'text-red-600' : 'text-green-600' }}">
+                                        {{ $adj->quantity > 0 ? '+' : '' }}{{ $adj->quantity }}
+                                    </td>
+                                    <td class="px-6 py-4 font-bold {{ (int) ($adj->dynamic_balance ?? 0) < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
+                                        @php
+                                            $isLiquid = false;
+                                            if (isset($selectedMedicine) && $selectedMedicine->form) {
+                                                $formName = strtolower($selectedMedicine->form->form_name);
+                                                $isLiquid = in_array($formName, ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']);
+                                            }
+                                        @endphp
+                                        {{ $adj->dynamic_balance ?? 0 }} {{ $isLiquid ? 'ml' : ($selectedMedicine->unit->unit_name ?? '') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-500 font-medium">{{ $adj->reason }}</td>
+                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $adj->adjustedBy->name ?? 'N/A' }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Medicine Modal -->
+    <div x-show="openAddModal" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <!-- Backdrop -->
+        <div x-show="openAddModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
+
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <!-- Modal Panel -->
+                <div x-show="openAddModal" 
+                     x-transition:enter="ease-out duration-300" 
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" 
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     @click.away="openAddModal = false"
+                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                    
+                    <form action="{{ route('inventory.store', ['category' => $category]) }}" method="POST">
+                        @csrf
+                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
+                            <div class="sm:flex sm:items-start">
+                                <div class="mt-3 text-center sm:ml-0 sm:mt-0 sm:text-left w-full">
+                                    <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6" id="modal-title">Add New Medicine</h3>
+                                    
+                                    <input type="hidden" name="category_id" value="{{ $currentCategory->id ?? '' }}">
+
+                                    <div class="grid grid-cols-2 gap-5" x-data="{ formName: '', get isLiquid() { return ['syrup', 'drops', 'injection', 'iv-fluid'].includes(this.formName.toLowerCase()); }, isBulk: false, packCount: 1, unitsPerPack: 1 }" x-effect="if (isBulk) { initialStock = packCount * unitsPerPack; }">
+                                        <!-- Item Code -->
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Item Code <span class="text-red-500">*</span></label>
+                                            <input type="text" name="item_code" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" placeholder="e.g. MED-001" oninput="this.value = this.value.toUpperCase()">
+                                        </div>
+
+                                        <!-- Medicine Name -->
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Medicine Name <span class="text-red-500">*</span></label>
+                                            <input type="text" name="name" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" placeholder="e.g. Amoxicillin" oninput="this.value = this.value.toUpperCase()">
+                                        </div>
+
+                                        <!-- Form Type -->
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Form Type <span class="text-red-500">*</span></label>
+                                            <select name="form_id" @change="formName = $event.target.options[$event.target.selectedIndex].text" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                <option value="" disabled selected>Select Form...</option>
+                                                @foreach($medicineForms as $form)
+                                                    <option value="{{ $form->id }}">{{ $form->form_name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <!-- Unit -->
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Unit <span class="text-red-500">*</span></label>
+                                            <select name="unit_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                <option value="" disabled selected>Select Unit...</option>
+                                                @foreach($units as $unit)
+                                                    <option value="{{ $unit->id }}">{{ $unit->unit_name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <!-- Strength -->
+                                        <div class="col-span-2">
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
+                                            <input type="text" name="strength" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. 500mg">
+                                        </div>
+
+                                        <!-- Min, Warning & Units per Pack -->
+                                        <div class="col-span-2 grid grid-cols-3 gap-3">
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Level</label>
+                                                <div class="input-group flex items-center">
+                                                    <input type="number" name="min_level" value="10" required class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                                    <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Warning</label>
+                                                <div class="input-group flex items-center">
+                                                    <input type="number" name="warning_limit" value="20" required class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                                    <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Units/Pack</label>
+                                                <div class="input-group flex items-center">
+                                                    <input type="number" name="units_per_pack" value="1" required min="1" class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                                    <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-span-2">
+                                                <div class="flex items-center justify-between mb-1.5">
+                                                    <label class="block text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-1">Initial Stock Input</label>
+                                                    <label class="inline-flex items-center cursor-pointer">
+                                                        <input type="checkbox" x-model="isBulk" class="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+                                                        <span class="ml-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Enter as Bulk/Packs</span>
+                                                    </label>
+                                                </div>
+
+                                                <!-- Bulk Inputs -->
+                                                <div x-show="isBulk" x-cloak class="grid grid-cols-2 gap-3 mb-2.5 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                                                    <div>
+                                                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Number of Packs/Bottles</label>
+                                                        <input type="number" x-model.number="packCount" min="1" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tablets/Units per Pack</label>
+                                                        <input type="number" x-model.number="unitsPerPack" min="1" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                    </div>
+                                                </div>
+
+                                                <div class="flex gap-2">
+                                                    <input type="number" name="initial_stock" x-model.number="initialStock" value="0" min="0" required :readonly="isBulk" :class="[isLiquid ? 'w-1/3' : 'w-full', isBulk ? 'bg-slate-100 cursor-not-allowed opacity-80' : 'bg-blue-50/30']" class="rounded-lg border border-blue-100 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-blue-700 font-semibold">
+                                                    <div x-show="isLiquid" x-cloak class="w-2/3">
+                                                        <select name="stock_input_type" class="w-full h-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                            <option value="unit">Bottles / Full Units</option>
+                                                            <option value="base">Base Volume (ml / mg)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Batch Info (Shown if Initial Stock > 0) -->
+                                        <div class="col-span-2 grid grid-cols-2 gap-3 mt-1" x-show="initialStock > 0" x-transition x-cloak>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Batch Number <span class="text-red-500">*</span></label>
+                                                <input type="text" name="batch_no" :required="initialStock > 0" class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 placeholder:text-slate-400 placeholder:normal-case" placeholder="e.g. BATCH-001" oninput="this.value = this.value.toUpperCase()">
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expiry Date <span class="text-red-500">*</span></label>
+                                                <input type="date" name="expiry_date" :required="initialStock > 0" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Is Controlled -->
+                                    <div class="mt-5 flex items-center gap-3 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                                        <div class="flex items-center h-5">
+                                            <input id="is_controlled" name="is_controlled" type="checkbox" value="1" x-model="isControlled" 
+                                                :disabled="'{{ $category }}' === 'narcotics'"
+                                                class="w-4 h-4 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                                        </div>
+                                        <label for="is_controlled" class="text-sm font-medium text-slate-700 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': '{{ $category }}' === 'narcotics' }">
+                                            Controlled Drug (e.g. Narcotics)
+                                        </label>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
+                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Save Medicine</button>
+                            <button type="button" @click="openAddModal = false" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @foreach($medicines as $medicine)
+    <!-- Edit Medicine Modal -->
+    <div x-show="editModalId === {{ $medicine->id }}" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <!-- Backdrop -->
+        <div x-show="editModalId === {{ $medicine->id }}" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
+
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <!-- Modal Panel -->
+                <div x-show="editModalId === {{ $medicine->id }}" 
+                     x-transition:enter="ease-out duration-300" 
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" 
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     @click.away="editModalId = null"
+                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                    
+                    <form method="POST" action="{{ url('/inventory/medicines/'.$medicine->id) }}">
+                        @csrf
+                        @method('PUT')
+                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
+                            <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6">Edit Medicine</h3>
+                            <div class="grid grid-cols-2 gap-5">
+                                <!-- Item Code -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Item Code <span class="text-red-500">*</span></label>
+                                    <input type="text" name="item_code" value="{{ $medicine->item_code }}" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" oninput="this.value = this.value.toUpperCase()">
+                                </div>
+                                <!-- Medicine Name -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Medicine Name <span class="text-red-500">*</span></label>
+                                    <input type="text" name="name" value="{{ $medicine->name }}" required class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 placeholder:normal-case" oninput="this.value = this.value.toUpperCase()">
+                                </div>
+                                <!-- Form Type -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Form Type <span class="text-red-500">*</span></label>
+                                    <select name="form_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                        <option value="" disabled>Select Form...</option>
+                                        @foreach($medicineForms as $form)
+                                            <option value="{{ $form->id }}" {{ $medicine->form_id == $form->id ? 'selected' : '' }}>{{ $form->form_name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <!-- Unit -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Unit <span class="text-red-500">*</span></label>
+                                    <select name="unit_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                        <option value="" disabled>Select Unit...</option>
+                                        @foreach($units as $unit)
+                                            <option value="{{ $unit->id }}" {{ $medicine->unit_id == $unit->id ? 'selected' : '' }}>{{ $unit->unit_name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <!-- Strength -->
+                                <div class="col-span-2">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
+                                    <input type="text" name="strength" value="{{ $medicine->strength }}" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                </div>
+                                <!-- Min, Warning & Units per Pack Stock -->
+                                <div class="col-span-2 grid grid-cols-3 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Level</label>
+                                        <div class="input-group flex items-center">
+                                            <input type="number" name="min_level" value="{{ $medicine->min_level }}" required class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                            <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Warning</label>
+                                        <div class="input-group flex items-center">
+                                            <input type="number" name="warning_limit" value="{{ $medicine->warning_limit }}" required class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                            <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Units/Pack</label>
+                                        <div class="input-group flex items-center">
+                                            <input type="number" name="units_per_pack" value="{{ $medicine->units_per_pack ?? 1 }}" required min="1" class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                            <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Is Controlled -->
+                            <div class="mt-5 flex items-center gap-3 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                                <div class="flex items-center h-5">
+                                    <input name="is_controlled" type="checkbox" value="1" 
+                                        {{ $medicine->is_controlled ? 'checked' : '' }}
+                                        {{ $category === 'narcotics' ? 'disabled' : '' }}
+                                        class="w-4 h-4 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                                </div>
+                                <label class="text-sm font-medium text-slate-700 cursor-pointer {{ $category === 'narcotics' ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                    Controlled Drug (e.g. Narcotics)
+                                </label>
+                            </div>
+
+                        </div>
+                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
+                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Save Changes</button>
+                            <button type="button" @click="editModalId = null" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endforeach
+
+    <!-- Add Administration Modal -->
+    <div x-show="openAdminModal" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <!-- Backdrop -->
+        <div x-show="openAdminModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
+
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <!-- Modal Panel -->
+                <div x-show="openAdminModal" 
+                     x-transition:enter="ease-out duration-300" 
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" 
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     @click.away="openAdminModal = false"
+                     class="relative transform overflow-visible rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                    
+                    <form action="{{ $selectedMedicine ? route('medicines.administration.store', ['category' => $category, 'id' => $selectedMedicine->id]) : '#' }}" method="POST">
+                        @csrf
+                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
+                            <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6">Add Administration</h3>
+                            
+                            <div class="grid grid-cols-2 gap-5 mb-5">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Administration Date <span class="text-red-500">*</span></label>
+                                    <input type="date" name="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ date('Y-m-d') }}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Usage Time <span class="text-red-500">*</span></label>
+                                    <input type="time" name="usage_time" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" value="{{ \Carbon\Carbon::now('Asia/Colombo')->format('H:i') }}" required>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-5 mb-5">
+                                @if(strtolower($category) !== 'bulk')
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">B.H.T. No. <span class="text-red-500">*</span></label>
+                                    <div x-data="{
+                                        open: false,
+                                        search: '',
+                                        selectedAdmissionId: '',
+                                        selectedAdmissionText: 'Select BHT / Patient...',
+                                        options: [
+                                            @if(isset($admissions))
+                                                @foreach($admissions as $admission)
+                                                    { id: '{{ $admission->id }}', text: '{{ $admission->bht_no }} - {{ addslashes($admission->patient->name ?? $admission->patient->patient_name ?? 'Patient') }}' },
+                                                @endforeach
+                                            @endif
+                                        ],
+                                        get filteredOptions() {
+                                            if (this.search === '') return this.options;
+                                            return this.options.filter(opt => opt.text.toLowerCase().includes(this.search.toLowerCase()));
+                                        },
+                                        selectOption(opt) {
+                                            this.selectedAdmissionId = opt.id;
+                                            this.selectedAdmissionText = opt.text;
+                                            this.open = false;
+                                            this.search = '';
+                                        }
+                                    }" class="relative w-full">
+                                        <input type="hidden" name="admission_id" :value="selectedAdmissionId" required>
+                                        
+                                        <button type="button" @click="open = !open" @click.away="open = false" class="w-full text-left rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 flex justify-between items-center bg-white" :class="{'ring-1 ring-blue-500 border-blue-500': open}">
+                                            <span x-text="selectedAdmissionText" :class="{ 'text-slate-400': !selectedAdmissionId }"></span>
+                                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        </button>
+
+                                        <div x-show="open" x-cloak x-transition class="absolute z-[100] mt-1 w-full bg-white rounded-lg border border-slate-200 shadow-xl max-h-60 flex flex-col overflow-hidden">
+                                            <div class="p-2 border-b border-slate-100 shrink-0">
+                                                <input type="text" x-model="search" placeholder="Search BHT No. or Patient Name..." class="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" @click.stop @keydown.enter.prevent>
+                                            </div>
+                                            <ul class="py-1 overflow-y-auto grow">
+                                                <template x-for="opt in filteredOptions" :key="opt.id">
+                                                    <li @click="selectOption(opt)" class="px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 cursor-pointer" x-text="opt.text" :class="{'bg-blue-50 font-semibold text-blue-700': selectedAdmissionId === opt.id}"></li>
+                                                </template>
+                                                <li x-show="filteredOptions.length === 0" class="px-3 py-2 text-sm text-slate-500 text-center">No results found</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endif
+                                <div class="{{ strtolower($category) === 'bulk' ? 'col-span-2' : '' }}">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Batch No. <span class="text-red-500">*</span></label>
+                                    <div x-data="{
+                                        open: false,
+                                        search: '',
+                                        selectedBatchId: '',
+                                        selectedBatchText: 'Select Batch...',
+                                        options: [
+                                            @if(isset($availableBatches))
+                                                @foreach($availableBatches as $batch)
+                                                    { id: '{{ $batch->id }}', text: '{{ $batch->batch_no }} (Exp: {{ $batch->expiry_date }} | Avail: {{ $batch->available_qty }})' },
+                                                @endforeach
+                                            @endif
+                                        ],
+                                        get filteredOptions() {
+                                            if (this.search === '') return this.options;
+                                            return this.options.filter(opt => opt.text.toLowerCase().includes(this.search.toLowerCase()));
+                                        },
+                                        selectOption(opt) {
+                                            this.selectedBatchId = opt.id;
+                                            this.selectedBatchText = opt.text;
+                                            this.open = false;
+                                            this.search = '';
+                                        },
+                                        init() {
+                                            if (this.options.length > 0) {
+                                                this.selectOption(this.options[0]);
+                                            }
+                                        }
+                                    }" class="relative w-full">
+                                        <input type="hidden" name="batch_id" :value="selectedBatchId" required>
+                                        
+                                        <button type="button" @click="open = !open" @click.away="open = false" class="w-full text-left rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 flex justify-between items-center bg-white" :class="{'ring-1 ring-blue-500 border-blue-500': open, 'cursor-not-allowed opacity-75 bg-slate-100': options.length === 0}" :disabled="options.length === 0">
+                                            <span x-text="selectedBatchText" :class="{ 'text-slate-400': !selectedBatchId }"></span>
+                                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        </button>
+
+                                        <div x-show="open" x-cloak x-transition class="absolute z-[100] mt-1 w-full bg-white rounded-lg border border-slate-200 shadow-xl max-h-60 flex flex-col overflow-hidden">
+                                            <div class="p-2 border-b border-slate-100 shrink-0">
+                                                <input type="text" x-model="search" placeholder="Search Batch No. or Expiry Date..." class="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" @click.stop @keydown.enter.prevent>
+                                            </div>
+                                            <ul class="py-1 overflow-y-auto grow">
+                                                <template x-for="opt in filteredOptions" :key="opt.id">
+                                                    <li @click="selectOption(opt)" class="px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 cursor-pointer" x-text="opt.text" :class="{'bg-blue-50 font-semibold text-blue-700': selectedBatchId === opt.id}"></li>
+                                                </template>
+                                                <li x-show="filteredOptions.length === 0" class="px-3 py-2 text-sm text-slate-500 text-center">No results found</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Quantity Given <span class="text-red-500">*</span></label>
+                                    <input type="number" name="qty_given" required min="1" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Remark / Dosage <span class="text-red-500">*</span></label>
+                                    <input type="text" name="dosage" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. 1 Capsule / TDS / After meals">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
+                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Save Administration</button>
+                            <button type="button" @click="openAdminModal = false" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Adjustment Modal -->
+    <div x-show="showAdjustmentModal" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div x-show="showAdjustmentModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div x-show="showAdjustmentModal" 
+                     x-transition:enter="ease-out duration-300" 
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" 
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     @click.away="showAdjustmentModal = false"
+                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                    <form action="{{ route('inventory.medicines.adjustment.store', ['category' => $category, 'id' => $selectedMedicine ? $selectedMedicine->id : 0]) }}" method="POST">
+                        @csrf
+                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
+                            <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6" id="modal-title">Add Stock Adjustment</h3>
+                            
+                            <div class="grid grid-cols-2 gap-5 mb-5">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Adjustment Date <span class="text-red-500">*</span></label>
+                                    <input type="datetime-local" name="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ now()->timezone('Asia/Colombo')->format('Y-m-d\TH:i') }}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Adjustment Type <span class="text-red-500">*</span></label>
+                                    <select name="adjustment_type" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required>
+                                        <option value="" disabled selected>Select Type...</option>
+                                        <option value="DAMAGED">Damaged / Broken</option>
+                                        <option value="LOST">Missing / Lost</option>
+                                        <option value="EXPIRY">Expired</option>
+                                        <option value="COUNT_CORRECTION">Count Correction (Found)</option>
+                                        <option value="RETURN">Return</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-5">
+                                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Batch No. <span class="text-red-500">*</span></label>
+                                <select name="batch_id" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                    <option value="" disabled selected>Select Batch...</option>
+                                    @if(isset($availableBatches))
+                                        @foreach($availableBatches as $batch)
+                                            <option value="{{ $batch->id }}">{{ $batch->batch_no }} (Exp: {{ $batch->expiry_date }} | Avail: {{ $batch->available_qty }})</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-5 mb-5">
+                                <div class="col-span-2 sm:col-span-1">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Quantity <span class="text-red-500">*</span></label>
+                                    <input type="number" name="quantity" required min="1" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Reason / Notes <span class="text-red-500">*</span></label>
+                                <textarea name="reason" required rows="3" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. Found during physical count"></textarea>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
+                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Save Adjustment</button>
+                            <button type="button" @click="showAdjustmentModal = false" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Order Modal -->
+    <div x-show="openOrderModal" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div x-show="openOrderModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div x-show="openOrderModal" 
+                     x-transition:enter="ease-out duration-300" 
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" 
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     @click.away="openOrderModal = false"
+                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                    <form action="{{ $selectedMedicine ? route('inventory.medicines.orders.store', ['category' => $category, 'id' => $selectedMedicine->id]) : '#' }}" method="POST">
+                        @csrf
+                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
+                            <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6">Add Pharmacy Order</h3>
+                            <div class="grid grid-cols-2 gap-5 mb-5">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Date <span class="text-red-500">*</span></label>
+                                    <input type="datetime-local" name="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ now()->timezone('Asia/Colombo')->format('Y-m-d\TH:i') }}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Req. No. <span class="text-red-500">*</span></label>
+                                    <input type="text" name="req_no" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 uppercase" placeholder="e.g. REQ-123" value="{{ old('req_no') }}">
+                                    @error('req_no')
+                                        <p class="mt-1.5 text-[11px] font-bold text-red-500">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-5 mb-5">
+                                <div>
+                                    @php
+                                        $formNameStr = strtolower($selectedMedicine->form->form_name ?? '');
+                                        $packLabel = 'Pack(s)';
+                                        if (in_array($formNameStr, ['syrup', 'drops', 'suspension', 'solution', 'iv-fluid'])) {
+                                            $packLabel = 'Bottle(s)';
+                                        } elseif (in_array($formNameStr, ['injection'])) {
+                                            $packLabel = 'Box(es) / Vial(s)';
+                                        }
+                                        
+                                        $baseUnitLabel = 'Unit(s)';
+                                        if (in_array($formNameStr, ['syrup', 'drops', 'suspension', 'solution', 'iv-fluid'])) {
+                                            $baseUnitLabel = 'ml';
+                                        } elseif (in_array($formNameStr, ['capsule', 'tablet', 'pill'])) {
+                                            $baseUnitLabel = ucfirst($formNameStr) . '(s)';
+                                        } else {
+                                            $baseUnitLabel = ucfirst($formNameStr) . '(s)';
+                                        }
+                                    @endphp
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Qty Requested <span class="text-red-500">*</span></label>
+                                    <div class="relative flex items-center">
+                                        <input type="number" name="qty_requested" required min="1" class="w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                        <div class="rounded-r-lg border-y border-r border-l-0 border-slate-200 bg-slate-100 text-slate-500 px-4 py-2.5 text-sm flex items-center justify-center whitespace-nowrap">
+                                            {{ $packLabel }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Units per {{ rtrim($packLabel, '(s)') }} <span class="text-red-500">*</span></label>
+                                    <div class="relative flex items-center">
+                                        <input type="number" name="units_per_pack" value="{{ $selectedMedicine->units_per_pack ?? 1 }}" readonly required min="1" class="w-full rounded-l-lg border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-500 font-semibold cursor-not-allowed">
+                                        <div class="rounded-r-lg border-y border-r border-l-0 border-slate-200 bg-slate-100 text-slate-500 px-4 py-2.5 text-sm flex items-center justify-center whitespace-nowrap">
+                                            {{ $baseUnitLabel }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
+                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Submit Order</button>
+                            <button type="button" @click="openOrderModal = false" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Receipt Modal -->
+    <div x-show="openReceiveModal" x-cloak class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div x-show="openReceiveModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div x-show="openReceiveModal" 
+                     x-data="{ isNewBatch: false }"
+                     x-transition:enter="ease-out duration-300" 
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" 
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     @click.away="openReceiveModal = false"
+                     class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
+                    <form :action="'{{ route('inventory.medicines.orders.receive', ['category' => $category, 'id' => 'DETAIL_ID']) }}'.replace('DETAIL_ID', receiveModalDetailId)" method="POST">
+                        @csrf
+                        <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
+                            <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6">Confirm Receipt</h3>
+                            
+                            <div class="mb-5 flex items-center gap-4">
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="batch_type" value="existing" @click="isNewBatch = false" checked class="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm font-semibold text-slate-700">Select Existing Batch</span>
+                                </label>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="batch_type" value="new" @click="isNewBatch = true" class="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm font-semibold text-slate-700">Add New Batch</span>
+                                </label>
+                            </div>
+
+                            <div x-show="!isNewBatch" class="mb-5">
+                                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Select Batch Received <span class="text-red-500">*</span></label>
+                                <select name="batch_id" :required="!isNewBatch" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                    <option value="" disabled selected>Select Batch...</option>
+                                    @if(isset($selectedMedicine) && $selectedMedicine->batches)
+                                        @foreach($selectedMedicine->batches as $batch)
+                                            <option value="{{ $batch->id }}">{{ $batch->batch_no }} (Exp: {{ $batch->expiry_date }})</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+
+                            <div x-show="isNewBatch" style="display: none;" class="grid grid-cols-2 gap-5 mb-5">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">New Batch No. <span class="text-red-500">*</span></label>
+                                    <input type="text" name="new_batch_no" :required="isNewBatch" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 uppercase" placeholder="e.g. BATCH-002" oninput="this.value = this.value.toUpperCase()">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Expiry Date <span class="text-red-500">*</span></label>
+                                    <input type="date" name="new_expiry_date" :required="isNewBatch" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                </div>
+                            </div>
+                            
+                            <p class="mt-2 text-xs text-slate-500">Note: Receipt will update stock automatically.</p>
+                        </div>
+                        <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
+                            <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-600 sm:w-auto transition-colors active:scale-95">Confirm Receipt</button>
+                            <button type="button" @click="openReceiveModal = false" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors active:scale-95">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const deleteButtons = document.querySelectorAll('.delete-btn');
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const form = this.closest('.delete-form');
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: "You want to delete this medicine? This action cannot be undone.",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#EF4444',
+                        cancelButtonColor: '#94A3B8',
+                        confirmButtonText: 'Yes, delete it!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            form.submit();
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            function updateUnitLabels(modalId) {
+                const modal = document.getElementById(modalId);
+                if (!modal) return;
+                
+                const formSelect = modal.querySelector('select[name="form_id"]');
+                const unitLabels = modal.querySelectorAll('.input-group-text');
+                
+                if (formSelect && unitLabels.length > 0) {
+                    formSelect.addEventListener('change', function() {
+                        const selectedText = this.options[this.selectedIndex].text.toLowerCase();
+                        let unitText = 'Units';
+                        if (selectedText.includes('syrup') || selectedText.includes('liquid') || selectedText.includes('solution') || selectedText.includes('drops') || selectedText.includes('suspension')) {
+                            unitText = 'Bottles';
+                        } else if (selectedText.includes('capsule') || selectedText.includes('tablet') || selectedText.includes('pill')) {
+                            unitText = 'Pills';
+                        } else if (selectedText.includes('injection') || selectedText.includes('iv') || selectedText.includes('vial')) {
+                            unitText = 'Vials';
+                        }
+                        
+                        unitLabels.forEach(label => {
+                            label.textContent = unitText;
+                        });
+                    });
+                    
+                    // Trigger initially if something is selected
+                    if (formSelect.value) {
+                        formSelect.dispatchEvent(new Event('change'));
+                    }
+                }
+            }
+            
+            updateUnitLabels('addMedicineModal');
+            @if(isset($selectedMedicine))
+            updateUnitLabels('editMedicineModal');
+            @endif
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const dateInput = document.getElementById('dateInput');
+            const clearBtn = document.getElementById('clearFiltersBtn');
+            const rows = document.querySelectorAll('.admin-record-row');
+
+            function filterTable() {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                const dateTerm = dateInput.value;
+
+                rows.forEach(row => {
+                    // Prevent errors if row doesn't have enough cells
+                    if (!row.cells[0] || !row.cells[1]) return;
+                    
+                    // Use textContent for cleaner text extraction and trim any accidental spaces
+                    const dateText = row.cells[0].textContent.toLowerCase().trim();
+                    const bhtText = row.cells[1].textContent.toLowerCase().trim();
+
+                    // Check if the cell text includes the typed search term
+                    const matchesSearch = searchTerm === '' || bhtText.includes(searchTerm);
+                    
+                    const matchesDate = dateTerm === '' || 
+                                        dateText.includes(dateTerm) || 
+                                        dateText.includes(formatDateToTableString(dateTerm));
+
+                    if (matchesSearch && matchesDate) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            }
+
+            // Helper to convert HTML date (YYYY-MM-DD) to Table format (e.g., 'Oct 01, 2026')
+            function formatDateToTableString(dateString) {
+                if(!dateString) return '';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).toLowerCase();
+            }
+
+            if(searchInput) searchInput.addEventListener('keyup', filterTable);
+            if(dateInput) dateInput.addEventListener('change', filterTable);
+            
+            if(clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    searchInput.value = '';
+                    dateInput.value = '';
+                    filterTable();
+                });
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarSearchInput = document.getElementById('sidebarSearchInput');
+            const medicineListItems = document.querySelectorAll('.medicine-list-item');
+
+            if (sidebarSearchInput) {
+                sidebarSearchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase().trim();
+
+                    medicineListItems.forEach(item => {
+                        const medicineNameEl = item.querySelector('.medicine-name');
+                        if (medicineNameEl) {
+                            const nameText = medicineNameEl.textContent.toLowerCase().trim();
+                            if (nameText.includes(searchTerm)) {
+                                item.style.display = '';
+                            } else {
+                                item.style.display = 'none';
+                            }
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+</html>

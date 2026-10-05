@@ -22,6 +22,7 @@ class Medicine extends Model
         'is_controlled',
         'min_level',
         'warning_limit',
+        'units_per_pack',
         'created_at',
     ];
 
@@ -31,6 +32,7 @@ class Medicine extends Model
             'is_controlled' => 'boolean',
             'min_level' => 'integer',
             'warning_limit' => 'integer',
+            'units_per_pack' => 'integer',
             'created_at' => 'datetime',
         ];
     }
@@ -58,5 +60,10 @@ class Medicine extends Model
     public function scopeControlled(Builder $query): Builder
     {
         return $query->where('is_controlled', 1);
+    }
+
+    public function getStockAttribute()
+    {
+        return \App\Models\StockLedger::whereIn('batch_id', $this->batches()->pluck('id'))->sum('quantity');
     }
 }
