@@ -57,7 +57,7 @@
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
-                <input type="text" class="bg-slate-50/80 border border-slate-200/80 text-slate-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="Search medicines...">
+                <input type="text" id="sidebarSearchInput" class="bg-slate-50/80 border border-slate-200/80 text-slate-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 outline-none transition-all placeholder:text-slate-400" placeholder="Search medicines...">
             </div>
 
             <!-- Add Button -->
@@ -95,12 +95,12 @@
                         $badgeClass = 'bg-green-100 text-green-700';
                     }
                 @endphp
-                <a href="{{ route('inventory.details', ['category' => $category, 'id' => $medicine->id]) }}" class="block w-full text-left rounded-xl transition-all duration-200 {{ $isActive ? 'bg-[#EFF6FF] shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)] border border-blue-100/50' : 'hover:bg-slate-50 border border-transparent' }} group relative overflow-hidden">
+                <a href="{{ route('inventory.details', ['category' => $category, 'id' => $medicine->id]) }}" class="medicine-list-item block w-full text-left rounded-xl transition-all duration-200 {{ $isActive ? 'bg-[#EFF6FF] shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)] border border-blue-100/50' : 'hover:bg-slate-50 border border-transparent' }} group relative overflow-hidden">
                     @if($isActive)
                         <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-[#3B82F6] rounded-l-xl"></div>
                     @endif
                     <div class="p-4 pl-5">
-                        <div class="font-semibold text-[14.5px] text-slate-800 mb-2.5 {{ $isActive ? 'text-[#1E3A8A]' : 'group-hover:text-blue-700 transition-colors' }}">{{ $medicine->name }}</div>
+                        <div class="medicine-name font-semibold text-[14.5px] text-slate-800 mb-2.5 {{ $isActive ? 'text-[#1E3A8A]' : 'group-hover:text-blue-700 transition-colors' }}">{{ $medicine->name }}</div>
                         <div class="flex items-center justify-between">
                             <div class="flex gap-2.5 text-slate-400 relative z-10">
                                 @if(auth()->check() && auth()->user()->role_id == 1)
@@ -287,6 +287,7 @@
                             class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200">
                         Pharmacy Orders ({{ isset($pharmacyOrders) ? $pharmacyOrders->count() : 0 }})
                     </button>
+                    @if(strtolower(auth()->user()->role->role_name ?? '') !== 'pharmacist')
                     <button @click="tab = 'patient'" 
                             :class="tab === 'patient' ? 'bg-[#F8FAFC] text-slate-800 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-semibold'"
                             class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200 ml-1">
@@ -297,6 +298,7 @@
                             class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200 ml-1">
                         Stock Adjustments ({{ isset($stockAdjustments) ? $stockAdjustments->count() : 0 }})
                     </button>
+                    @endif
                 </div>
 
                 <!-- Filters -->
@@ -330,7 +332,7 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
-                        @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') !== 'pharmacist')
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
                         <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Order
@@ -370,11 +372,28 @@
                                                 @csrf @method('PATCH')
                                             </form>
                                             <div class="flex items-center gap-1">
-                                                <input type="number" form="approve-form-{{$detail->id}}" name="qty_requested" value="{{ $detail->qty_requested }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
-                                                <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->unit->unit_name ?? '' }}</span>
+                                                @php
+                                                    $isLiquid = stripos($selectedMedicine->strength ?? '', 'ml') !== false;
+                                                    $baseVol = 1;
+                                                    if ($isLiquid) {
+                                                        preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
+                                                        $baseVol = (int) ($matches[1] ?? 1);
+                                                    }
+                                                    $displayValue = $isLiquid && $baseVol > 0 ? floor($detail->qty_requested / $baseVol) : $detail->qty_requested;
+                                                    $unitDisplay = $isLiquid ? 'Bottle(s)' : ($selectedMedicine->unit->unit_name ?? '');
+                                                @endphp
+                                                <input type="number" form="approve-form-{{$detail->id}}" name="qty_requested" value="{{ $displayValue }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
+                                                <span class="text-[11px] font-normal text-slate-500">{{ $unitDisplay }}</span>
+                                                @if($isLiquid)
+                                                    <input type="hidden" form="approve-form-{{$detail->id}}" name="order_unit" value="bottle">
+                                                @endif
                                             </div>
                                         @else
-                                            {{ $detail->qty_requested }} <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->unit->unit_name ?? '' }}</span>
+                                            @if($detail->remark)
+                                                {{ trim(preg_replace('/\[.*?\]\s*/', '', $detail->remark)) }} <span class="text-[11px] font-normal text-slate-500">(Total: {{ $detail->qty_requested }} {{ $selectedMedicine->form->form_name ?? '' }})</span>
+                                            @else
+                                                {{ $detail->qty_requested }} <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->form->form_name ?? '' }}</span>
+                                            @endif
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 font-semibold text-slate-700">{{ $order->requester->name ?? 'N/A' }}</td>
@@ -402,11 +421,51 @@
                                                 @csrf @method('PATCH')
                                             </form>
                                             <div class="flex items-center gap-1">
-                                                <input type="number" form="issue-form-{{$detail->id}}" name="qty_issued" value="{{ $detail->qty_requested }}" max="{{ $detail->qty_requested }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
-                                                <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->unit->unit_name ?? '' }}</span>
+                                                @php
+                                                    $isLiquid = stripos($selectedMedicine->strength ?? '', 'ml') !== false;
+                                                    $baseVol = 1;
+                                                    if ($isLiquid) {
+                                                        preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
+                                                        $baseVol = (int) ($matches[1] ?? 1);
+                                                    }
+                                                    $displayValue = $isLiquid && $baseVol > 0 ? floor($detail->qty_requested / $baseVol) : $detail->qty_requested;
+                                                    $unitDisplay = $isLiquid ? 'Bottle(s)' : ($selectedMedicine->unit->unit_name ?? '');
+                                                @endphp
+                                                <input type="number" form="issue-form-{{$detail->id}}" name="qty_issued" value="{{ $displayValue }}" max="{{ $displayValue }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
+                                                <span class="text-[11px] font-normal text-slate-500">{{ $unitDisplay }}</span>
+                                                @if($isLiquid)
+                                                    <input type="hidden" form="issue-form-{{$detail->id}}" name="order_unit" value="bottle">
+                                                @endif
                                             </div>
                                         @else
-                                            {{ $detail->qty_issued }} <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->unit->unit_name ?? '' }}</span>
+                                            @if($detail->qty_issued > 0)
+                                                @if($detail->remark)
+                                                    @php
+                                                        $cleanRemark = trim(preg_replace('/\[.*?\]\s*/', '', $detail->remark));
+                                                        $packQtyStr = preg_replace('/[^0-9]/', '', $cleanRemark);
+                                                        $packQty = $packQtyStr !== '' ? (int)$packQtyStr : 0;
+                                                        
+                                                        $issuedPackStr = '';
+                                                        if ($packQty > 0 && $detail->qty_requested > 0) {
+                                                            $unitsPerPack = $detail->qty_requested / $packQty;
+                                                            if ($unitsPerPack > 0) {
+                                                                $issuedPacks = round($detail->qty_issued / $unitsPerPack, 2);
+                                                                $issuedPackStr = preg_replace('/^\d+/', $issuedPacks, $cleanRemark);
+                                                            }
+                                                        }
+                                                        
+                                                        // Fallback if parsing fails or division by zero is imminent
+                                                        if (!$issuedPackStr) {
+                                                            $issuedPackStr = $detail->qty_issued . ' Unit(s)';
+                                                        }
+                                                    @endphp
+                                                    {{ $issuedPackStr }} <span class="text-[11px] font-normal text-slate-500">(Total: {{ $detail->qty_issued }} {{ $selectedMedicine->form->form_name ?? '' }})</span>
+                                                @else
+                                                    {{ $detail->qty_issued }} <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->form->form_name ?? '' }}</span>
+                                                @endif
+                                            @else
+                                                0
+                                            @endif
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 text-slate-500 font-medium">
@@ -451,12 +510,13 @@
                     </div>
                 </div>
 
+                @if(strtolower(auth()->user()->role->role_name ?? '') !== 'pharmacist')
                 <!-- Patient Tab Content -->
                 <div x-show="tab === 'patient'" x-cloak x-transition.opacity.duration.300ms>
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['admin', 'nurse']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
                         <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Administration
@@ -483,7 +543,6 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-50">
-                                @php $runningBalance = $selectedMedicine ? (int)$selectedMedicine->stock : 0; @endphp
                                 @foreach($patientAdministrations ?? [] as $admin)
                                 <tr class="hover:bg-slate-50/60 transition-colors group admin-record-row">
                                     <td class="px-6 py-4 font-semibold text-slate-700">
@@ -501,25 +560,33 @@
                                     </td>
                                     @endif
                                     <td class="px-6 py-4 font-bold text-slate-800">{{ $admin->qty_given }}</td>
-                                    <td class="px-6 py-4 font-bold {{ (int) $runningBalance < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
-                                        {{ $runningBalance }}
+                                    <td class="px-6 py-4 font-bold {{ (int) $admin->dynamic_balance < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
+                                        @php
+                                            $isLiquid = false;
+                                            if (isset($selectedMedicine) && $selectedMedicine->form) {
+                                                $formName = strtolower($selectedMedicine->form->form_name);
+                                                $isLiquid = in_array($formName, ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']);
+                                            }
+                                        @endphp
+                                        {{ $admin->dynamic_balance }} {{ $isLiquid ? 'ml' : ($selectedMedicine->unit->unit_name ?? '') }}
                                     </td>
                                     <td class="px-6 py-4 font-semibold text-slate-700">{{ $admin->sister_initials }}</td>
                                     <td class="px-6 py-4 text-slate-500 font-medium">{{ $admin->remark }}</td>
                                 </tr>
-                                @php $runningBalance += (int)$admin->qty_given; @endphp
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
                 </div>
+                @endif
 
+                @if(strtolower(auth()->user()->role->role_name ?? '') !== 'pharmacist')
                 <!-- Adjustments Tab Content -->
                 <div x-show="tab === 'adjustments'" x-cloak x-transition.opacity.duration.300ms>
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['admin', 'nurse']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
                         <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Adjustment
@@ -535,6 +602,7 @@
                                     <th scope="col" class="px-6 py-4">Date</th>
                                     <th scope="col" class="px-6 py-4">Type</th>
                                     <th scope="col" class="px-6 py-4">Quantity</th>
+                                    <th scope="col" class="px-6 py-4">Balance</th>
                                     <th scope="col" class="px-6 py-4">Reason / Notes</th>
                                     <th scope="col" class="px-6 py-4">Adjusted By</th>
                                 </tr>
@@ -562,6 +630,16 @@
                                     <td class="px-6 py-4 font-bold {{ $adj->quantity < 0 ? 'text-red-600' : 'text-green-600' }}">
                                         {{ $adj->quantity > 0 ? '+' : '' }}{{ $adj->quantity }}
                                     </td>
+                                    <td class="px-6 py-4 font-bold {{ (int) ($adj->dynamic_balance ?? 0) < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
+                                        @php
+                                            $isLiquid = false;
+                                            if (isset($selectedMedicine) && $selectedMedicine->form) {
+                                                $formName = strtolower($selectedMedicine->form->form_name);
+                                                $isLiquid = in_array($formName, ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']);
+                                            }
+                                        @endphp
+                                        {{ $adj->dynamic_balance ?? 0 }} {{ $isLiquid ? 'ml' : ($selectedMedicine->unit->unit_name ?? '') }}
+                                    </td>
                                     <td class="px-6 py-4 text-slate-500 font-medium">{{ $adj->reason }}</td>
                                     <td class="px-6 py-4 font-semibold text-slate-700">{{ $adj->adjustedBy->name ?? 'N/A' }}</td>
                                 </tr>
@@ -570,6 +648,7 @@
                         </table>
                     </div>
                 </div>
+                @endif
 
             </div>
         </div>
@@ -638,20 +717,33 @@
                                         </div>
 
                                         <!-- Strength -->
-                                        <div>
+                                        <div class="col-span-2">
                                             <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
                                             <input type="text" name="strength" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. 500mg">
                                         </div>
 
-                                        <!-- Min, Warning & Initial Stock -->
-                                        <div class="col-span-2 grid grid-cols-4 gap-3">
+                                        <!-- Min, Warning & Units per Pack -->
+                                        <div class="col-span-2 grid grid-cols-3 gap-3">
                                             <div>
                                                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Level</label>
-                                                <input type="number" name="min_level" value="10" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                <div class="input-group flex items-center">
+                                                    <input type="number" name="min_level" value="10" required class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                                    <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                                </div>
                                             </div>
                                             <div>
                                                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Warning</label>
-                                                <input type="number" name="warning_limit" value="20" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                                <div class="input-group flex items-center">
+                                                    <input type="number" name="warning_limit" value="20" required class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                                    <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Units/Pack</label>
+                                                <div class="input-group flex items-center">
+                                                    <input type="number" name="units_per_pack" value="1" required min="1" class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                                    <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                                </div>
                                             </div>
                                             <div class="col-span-2">
                                                 <div class="flex items-center justify-between mb-1.5">
@@ -780,19 +872,32 @@
                                     </select>
                                 </div>
                                 <!-- Strength -->
-                                <div>
+                                <div class="col-span-2">
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
                                     <input type="text" name="strength" value="{{ $medicine->strength }}" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
                                 </div>
-                                <!-- Min & Warning Stock -->
-                                <div class="grid grid-cols-2 gap-3">
+                                <!-- Min, Warning & Units per Pack Stock -->
+                                <div class="col-span-2 grid grid-cols-3 gap-3">
                                     <div>
                                         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Level</label>
-                                        <input type="number" name="min_level" value="{{ $medicine->min_level }}" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                        <div class="input-group flex items-center">
+                                            <input type="number" name="min_level" value="{{ $medicine->min_level }}" required class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                            <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Warning</label>
-                                        <input type="number" name="warning_limit" value="{{ $medicine->warning_limit }}" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                        <div class="input-group flex items-center">
+                                            <input type="number" name="warning_limit" value="{{ $medicine->warning_limit }}" required class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                            <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Units/Pack</label>
+                                        <div class="input-group flex items-center">
+                                            <input type="number" name="units_per_pack" value="{{ $medicine->units_per_pack ?? 1 }}" required min="1" class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                            <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -999,7 +1104,7 @@
                             <div class="grid grid-cols-2 gap-5 mb-5">
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Adjustment Date <span class="text-red-500">*</span></label>
-                                    <input type="date" name="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ date('Y-m-d') }}">
+                                    <input type="datetime-local" name="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ now()->timezone('Asia/Colombo')->format('Y-m-d\TH:i') }}">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Adjustment Type <span class="text-red-500">*</span></label>
@@ -1069,7 +1174,7 @@
                             <div class="grid grid-cols-2 gap-5 mb-5">
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Date <span class="text-red-500">*</span></label>
-                                    <input type="date" name="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ date('Y-m-d') }}">
+                                    <input type="datetime-local" name="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700" required value="{{ now()->timezone('Asia/Colombo')->format('Y-m-d\TH:i') }}">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Req. No. <span class="text-red-500">*</span></label>
@@ -1079,12 +1184,41 @@
                                     @enderror
                                 </div>
                             </div>
-                            <div class="mb-5">
-                                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Quantity Requested <span class="text-red-500">*</span></label>
-                                <div class="relative">
-                                    <input type="number" name="qty_requested" required min="1" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 pr-16 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
-                                    <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-500 text-sm">
-                                        {{ $selectedMedicine->unit->unit_name ?? '' }}
+                            <div class="grid grid-cols-2 gap-5 mb-5">
+                                <div>
+                                    @php
+                                        $formNameStr = strtolower($selectedMedicine->form->form_name ?? '');
+                                        $packLabel = 'Pack(s)';
+                                        if (in_array($formNameStr, ['syrup', 'drops', 'suspension', 'solution', 'iv-fluid'])) {
+                                            $packLabel = 'Bottle(s)';
+                                        } elseif (in_array($formNameStr, ['injection'])) {
+                                            $packLabel = 'Box(es) / Vial(s)';
+                                        }
+                                        
+                                        $baseUnitLabel = 'Unit(s)';
+                                        if (in_array($formNameStr, ['syrup', 'drops', 'suspension', 'solution', 'iv-fluid'])) {
+                                            $baseUnitLabel = 'ml';
+                                        } elseif (in_array($formNameStr, ['capsule', 'tablet', 'pill'])) {
+                                            $baseUnitLabel = ucfirst($formNameStr) . '(s)';
+                                        } else {
+                                            $baseUnitLabel = ucfirst($formNameStr) . '(s)';
+                                        }
+                                    @endphp
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Qty Requested <span class="text-red-500">*</span></label>
+                                    <div class="relative flex items-center">
+                                        <input type="number" name="qty_requested" required min="1" class="w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                        <div class="rounded-r-lg border-y border-r border-l-0 border-slate-200 bg-slate-100 text-slate-500 px-4 py-2.5 text-sm flex items-center justify-center whitespace-nowrap">
+                                            {{ $packLabel }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Units per {{ rtrim($packLabel, '(s)') }} <span class="text-red-500">*</span></label>
+                                    <div class="relative flex items-center">
+                                        <input type="number" name="units_per_pack" value="{{ $selectedMedicine->units_per_pack ?? 1 }}" readonly required min="1" class="w-full rounded-l-lg border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-500 font-semibold cursor-not-allowed">
+                                        <div class="rounded-r-lg border-y border-r border-l-0 border-slate-200 bg-slate-100 text-slate-500 px-4 py-2.5 text-sm flex items-center justify-center whitespace-nowrap">
+                                            {{ $baseUnitLabel }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1190,6 +1324,45 @@
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            function updateUnitLabels(modalId) {
+                const modal = document.getElementById(modalId);
+                if (!modal) return;
+                
+                const formSelect = modal.querySelector('select[name="form_id"]');
+                const unitLabels = modal.querySelectorAll('.input-group-text');
+                
+                if (formSelect && unitLabels.length > 0) {
+                    formSelect.addEventListener('change', function() {
+                        const selectedText = this.options[this.selectedIndex].text.toLowerCase();
+                        let unitText = 'Units';
+                        if (selectedText.includes('syrup') || selectedText.includes('liquid') || selectedText.includes('solution') || selectedText.includes('drops') || selectedText.includes('suspension')) {
+                            unitText = 'Bottles';
+                        } else if (selectedText.includes('capsule') || selectedText.includes('tablet') || selectedText.includes('pill')) {
+                            unitText = 'Pills';
+                        } else if (selectedText.includes('injection') || selectedText.includes('iv') || selectedText.includes('vial')) {
+                            unitText = 'Vials';
+                        }
+                        
+                        unitLabels.forEach(label => {
+                            label.textContent = unitText;
+                        });
+                    });
+                    
+                    // Trigger initially if something is selected
+                    if (formSelect.value) {
+                        formSelect.dispatchEvent(new Event('change'));
+                    }
+                }
+            }
+            
+            updateUnitLabels('addMedicineModal');
+            @if(isset($selectedMedicine))
+            updateUnitLabels('editMedicineModal');
+            @endif
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('searchInput');
             const dateInput = document.getElementById('dateInput');
             const clearBtn = document.getElementById('clearFiltersBtn');
@@ -1237,6 +1410,30 @@
                     searchInput.value = '';
                     dateInput.value = '';
                     filterTable();
+                });
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarSearchInput = document.getElementById('sidebarSearchInput');
+            const medicineListItems = document.querySelectorAll('.medicine-list-item');
+
+            if (sidebarSearchInput) {
+                sidebarSearchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase().trim();
+
+                    medicineListItems.forEach(item => {
+                        const medicineNameEl = item.querySelector('.medicine-name');
+                        if (medicineNameEl) {
+                            const nameText = medicineNameEl.textContent.toLowerCase().trim();
+                            if (nameText.includes(searchTerm)) {
+                                item.style.display = '';
+                            } else {
+                                item.style.display = 'none';
+                            }
+                        }
+                    });
                 });
             }
         });

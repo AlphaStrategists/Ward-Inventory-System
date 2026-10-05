@@ -117,35 +117,106 @@ class MedicineController extends Controller
             ->where('medicine_id', $selectedMedicine->id)
             ->get();
 
-        // Fetch Patient Administrations using Dispensation mapping
-        $patientAdministrations = Dispensation::with(['admission.patient', 'issuedBy', 'batch'])
+        // 1. Fetch all transactions (dispensations, receipts, adjustments) and map them for the ledger
+        $dispensations = Dispensation::with(['admission.patient', 'issuedBy', 'batch'])
             ->whereHas('batch', function($q) use ($selectedMedicine) {
                 $q->where('medicine_id', $selectedMedicine->id);
             })
-            ->orderBy('date', 'desc')
-            ->orderBy('usage_time', 'desc')
+            ->whereHas('admission', function($q) use ($wardId) {
+                $q->where('ward_id', $wardId);
+            })
             ->get()
-            ->map(function ($admin) use ($selectedMedicine) {
+            ->map(function ($item) {
+                $dateOnly = \Carbon\Carbon::parse($item->date)->format('Y-m-d');
+                $time = $item->usage_time ? $item->usage_time : '00:00:00';
+                $datetime = \Carbon\Carbon::parse($dateOnly . ' ' . $time);
+                
+                return (object) [
+                    'type' => 'dispensation',
+                    'timestamp' => $datetime->timestamp,
+                    'id' => $item->id,
+                    'model' => $item,
+                    'qty' => -($item->qty_given) // Subtracted from balance
+                ];
+            });
+
+        $receipts = \App\Models\StockReceipt::whereHas('batch', function($q) use ($selectedMedicine) {
+                $q->where('medicine_id', $selectedMedicine->id);
+            })
+            ->where('ward_id', $wardId)
+            ->get()
+            ->map(function ($item) {
+                return (object) [
+                    'type' => 'receipt',
+                    'timestamp' => \Carbon\Carbon::parse($item->date)->timestamp,
+                    'id' => $item->id,
+                    'model' => $item,
+                    'qty' => $item->quantity_received // Added to balance
+                ];
+            });
+
+        $adjustments = \App\Models\MedicineStockAdjustment::with(['batch', 'adjustedBy', 'ward'])
+            ->whereHas('batch', function($q) use ($selectedMedicine) {
+                $q->where('medicine_id', $selectedMedicine->id);
+            })
+            ->where('ward_id', $wardId)
+            ->get()
+            ->map(function ($item) {
+                return (object) [
+                    'type' => 'adjustment',
+                    'timestamp' => \Carbon\Carbon::parse($item->created_at)->timestamp,
+                    'id' => $item->id,
+                    'model' => $item,
+                    'qty' => $item->quantity // Can be positive or negative
+                ];
+            });
+
+        // 2. Merge them into one collection and sort them ASCENDING by date/time and ID
+        $ledger = $dispensations->concat($receipts)->concat($adjustments)->sortBy([
+            ['timestamp', 'asc'],
+            ['id', 'asc']
+        ])->values();
+
+        // 3 & 4 & 5. Loop FORWARD through the merged ledger
+        $runningTotal = 0;
+        foreach ($ledger as $entry) {
+            $runningTotal += $entry->qty;
+            $entry->model->dynamic_balance = $runningTotal;
+        }
+
+        // 6. Filter to keep only dispensations, and sort them DESCENDING (newest first)
+        $patientAdministrations = $ledger->where('type', 'dispensation')
+            ->sortBy([
+                ['timestamp', 'desc'],
+                ['id', 'desc']
+            ])
+            ->values()
+            ->map(function ($entry) use ($selectedMedicine) {
+                $admin = $entry->model;
                 return (object) [
                     'id' => $admin->id,
                     'date' => $admin->date ? \Carbon\Carbon::parse($admin->date)->format('d M Y') : 'N/A',
                     'bht_no' => $admin->admission->bht_no ?? 'N/A',
                     'patient_name' => $admin->admission->patient->patient_name ?? 'N/A',
                     'qty_given' => $admin->qty_given . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
-                    'balance' => $selectedMedicine->stock . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
+                    'balance' => $admin->dynamic_balance . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
+                    'dynamic_balance' => $admin->dynamic_balance, // Raw number for the UI
                     'sister_initials' => $admin->issuedBy->name ?? 'N/A',
                     'remark' => $admin->dosage ?? '',
                     'usage_time' => $admin->usage_time,
                 ];
             });
 
-        // Fetch Stock Adjustments
-        $stockAdjustments = \App\Models\MedicineStockAdjustment::with(['batch', 'adjustedBy', 'ward'])
-            ->whereHas('batch', function($q) use ($selectedMedicine) {
-                $q->where('medicine_id', $selectedMedicine->id);
-            })
-            ->orderBy('created_at', 'desc')
-            ->get();
+        // Fetch Stock Adjustments from ledger to maintain dynamic_balance
+        $stockAdjustments = $ledger->where('type', 'adjustment')
+            ->sortBy([
+                ['timestamp', 'desc'],
+                ['id', 'desc']
+            ])
+            ->values()
+            ->map(function ($entry) {
+                return $entry->model;
+            });
 
         $currentCategory = Category::where('name', $category)->first();
         $units = Unit::all();
@@ -181,6 +252,7 @@ class MedicineController extends Controller
             'strength' => 'nullable|string|max:50',
             'min_level' => 'required|integer|min:0',
             'warning_limit' => 'required|integer|min:0',
+            'units_per_pack' => 'required|integer|min:1',
             'initial_stock' => 'nullable|integer|min:0',
             'stock_input_type' => 'nullable|string|in:unit,base',
             'batch_no' => $request->input('initial_stock', 0) > 0 ? 'required|string|max:100' : 'nullable|string|max:100',
@@ -359,7 +431,7 @@ class MedicineController extends Controller
             'quantity' => $isDeduction ? -$validated['quantity'] : $validated['quantity'],
             'reason' => $validated['reason'],
             'adjusted_by' => $userId,
-            'created_at' => $validated['date'] . ' ' . date('H:i:s'),
+            'created_at' => \Carbon\Carbon::parse($validated['date'])->format('Y-m-d H:i:s'),
         ]);
 
         return redirect()->back()->with('success', 'Stock adjustment recorded successfully.');
@@ -377,6 +449,7 @@ class MedicineController extends Controller
             'strength' => 'nullable|string|max:50',
             'min_level' => 'required|integer|min:0',
             'warning_limit' => 'required|integer|min:0',
+            'units_per_pack' => 'required|integer|min:1',
         ]);
 
         $medicine = Medicine::findOrFail($id);
@@ -419,27 +492,41 @@ class MedicineController extends Controller
             'date' => 'required|date',
             'req_no' => 'required|string|max:100|unique:orders,req_no',
             'qty_requested' => 'required|integer|min:1',
+            'units_per_pack' => 'required|integer|min:1',
         ], [
             'req_no.unique' => 'This Requisition Number already exists. Please enter a new requisition number.'
         ]);
 
         $medicine = Medicine::findOrFail($id);
+        
+        $qtyRequested = $validated['qty_requested'] * $validated['units_per_pack'];
+
         $wardId = auth()->user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
         $userId = auth()->id() ?? 1;
 
         $order = Order::create([
             'ward_id' => $wardId,
             'req_no' => $validated['req_no'],
-            'date' => $validated['date'],
+            'date' => \Carbon\Carbon::parse($validated['date'])->format('Y-m-d H:i:s'),
             'requested_by' => $userId,
             'ms_approval_status' => 'Pending',
         ]);
 
+        $formNameStr = strtolower($medicine->form->form_name ?? '');
+        $packLabel = 'Pack(s)';
+        if (in_array($formNameStr, ['syrup', 'drops', 'suspension', 'solution', 'iv-fluid'])) {
+            $packLabel = 'Bottle(s)';
+        } elseif (in_array($formNameStr, ['injection'])) {
+            $packLabel = 'Box(es) / Vial(s)';
+        }
+        $remark = $validated['qty_requested'] . ' ' . $packLabel;
+
         OrderDetail::create([
             'order_id' => $order->id,
             'medicine_id' => $medicine->id,
-            'qty_requested' => $validated['qty_requested'],
+            'qty_requested' => $qtyRequested,
             'qty_issued' => 0,
+            'remark' => $remark,
         ]);
 
         return redirect()->back()->with('success', 'Order created successfully.');
@@ -449,13 +536,23 @@ class MedicineController extends Controller
     {
         $detail = OrderDetail::findOrFail($id);
         $order = $detail->order;
+        $medicine = $detail->medicine;
 
         if ($request->input('action') === 'Approve') {
             $validated = $request->validate([
                 'qty_requested' => 'required|integer|min:1',
             ]);
             
-            $detail->update(['qty_requested' => $validated['qty_requested']]);
+            $qtyRequested = $validated['qty_requested'];
+            if ($request->input('order_unit') === 'bottle') {
+                preg_match('/(\d+)/', $medicine->strength ?? '', $matches);
+                $baseVolume = (int) ($matches[1] ?? 1);
+                if ($baseVolume > 0) {
+                    $qtyRequested = $qtyRequested * $baseVolume;
+                }
+            }
+            
+            $detail->update(['qty_requested' => $qtyRequested]);
             $order->update([
                 'ms_approval_status' => 'Approved',
                 'approved_by' => auth()->id() ?? 1,
@@ -473,13 +570,27 @@ class MedicineController extends Controller
     public function issueOrder(Request $request, $category, $id)
     {
         $detail = OrderDetail::findOrFail($id);
+        $medicine = $detail->medicine;
         
         $validated = $request->validate([
-            'qty_issued' => 'required|integer|min:1|max:' . $detail->qty_requested,
+            'qty_issued' => 'required|integer|min:1',
         ]);
+        
+        $qtyIssued = $validated['qty_issued'];
+        if ($request->input('order_unit') === 'bottle') {
+            preg_match('/(\d+)/', $medicine->strength ?? '', $matches);
+            $baseVolume = (int) ($matches[1] ?? 1);
+            if ($baseVolume > 0) {
+                $qtyIssued = $qtyIssued * $baseVolume;
+            }
+        }
+
+        if ($qtyIssued > $detail->qty_requested) {
+            return redirect()->back()->with('error', 'Issued quantity cannot exceed requested quantity.');
+        }
 
         $detail->update([
-            'qty_issued' => $validated['qty_issued'],
+            'qty_issued' => $qtyIssued,
             'remark' => '[ISSUED_BY:' . \Illuminate\Support\Facades\Auth::user()->name . '] ' . ($detail->remark ?? '')
         ]);
         

@@ -5,7 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 class Medicine extends Model {
     protected $table = 'medicines';
     public $timestamps = false;
-    protected $fillable = ['item_code', 'name', 'category_id', 'unit_id', 'form_id', 'strength', 'is_controlled', 'min_level', 'warning_limit'];
+    protected $fillable = ['item_code', 'name', 'category_id', 'unit_id', 'form_id', 'strength', 'is_controlled', 'min_level', 'warning_limit', 'units_per_pack'];
 
     public function category() {
         return $this->belongsTo(Category::class, 'category_id');
