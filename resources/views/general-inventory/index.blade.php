@@ -249,7 +249,7 @@
                     title="Stock Adjustments & Loss/Damage Log"
                     :actionModalId="auth()->user()->hasRole('Staff Nurse') ? 'addAdjustmentModal' : null"
                     actionLabel="Add Adjustment"
-                    >
+                    
                 >
                     <x-slot:headers>
                         <th>Date</th>
