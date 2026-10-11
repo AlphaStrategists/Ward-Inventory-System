@@ -28,7 +28,10 @@ class PatientController extends Controller
                 'currentAdmission.ward',
                 'admissions.ward',
                 'admissions.dispensations' => function ($q) {
-                    $q->with(['batch.medicine.unit', 'batch.medicine.form', 'issuedBy', 'witnessedBy'])
+                    $q->whereHas('batch.medicine', function ($mq) {
+                        $mq->where('is_controlled', 1);
+                    })
+                      ->with(['batch.medicine.unit', 'batch.medicine.form', 'issuedBy', 'witnessedBy'])
                       ->orderBy('date', 'desc');
                 },
             ]);
@@ -53,7 +56,7 @@ class PatientController extends Controller
             $selectedPatient = $patients->first();
         }
 
-        // Gather all dispensations for selected patient across all admissions
+        // Gather all dispensations for selected patient across all admissions (controlled medicines only)
         $dispensations = collect();
         if ($selectedPatient) {
             $dispensations = $selectedPatient->admissions->flatMap(function ($admission) {
@@ -61,7 +64,11 @@ class PatientController extends Controller
                     $d->admission_info = $admission;
                     return $d;
                 });
-            })->sortByDesc('date');
+            })
+            ->filter(function ($d) {
+                return (bool) ($d->batch?->medicine?->is_controlled);
+            })
+            ->sortByDesc('date');
 
             // Apply date / keyword filters if provided
             $filterDate = $request->query('filter_date');

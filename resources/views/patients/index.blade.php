@@ -234,9 +234,11 @@
                                     {{ $disp->batch?->medicine?->name ?? 'Controlled Drug' }}
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.65rem;">
-                                        <i class="bi bi-shield-lock-fill me-1"></i>CONTROLLED
-                                    </span>
+                                    @if($disp->batch?->medicine?->is_controlled == 1)
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.65rem;">
+                                            <i class="bi bi-shield-lock-fill me-1"></i>CONTROLLED
+                                        </span>
+                                    @endif
                                     <small class="text-muted" style="font-size: 0.725rem;">
                                         {{ $disp->batch?->medicine?->strength ?? '' }}
                                     </small>
