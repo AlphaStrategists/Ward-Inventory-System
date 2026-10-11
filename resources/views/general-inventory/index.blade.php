@@ -14,7 +14,6 @@
         addModalId="createGeneralItemModal"
         :showAddButton="auth()->user()->hasRole('Staff Nurse')"
     >
-    >
         @forelse($items as $item)
             @php
                 $isActive = $selectedItem && $selectedItem->id === $item->id;
@@ -376,15 +375,14 @@
                                         </select>
                                     </div>
                                 </div>
-
-                                
+                            </div>
 
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
                                 <button type="submit" class="btn btn-primary rounded-pill px-4">Record Transaction</button>
                             </div>
                         </form>
-                                      </div>
+                    </div>
                 </div>
             </div>
             @endif
