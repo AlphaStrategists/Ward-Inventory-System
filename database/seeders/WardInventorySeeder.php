@@ -26,44 +26,11 @@ class WardInventorySeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Roles & Permissions
-        $adminRole = Role::firstOrCreate(['role_name' => 'Admin']);
-        $sisterRole = Role::firstOrCreate(['role_name' => 'Ward Sister']);
-        $nurseRole = Role::firstOrCreate(['role_name' => 'Staff Nurse']);
-        $doctorRole = Role::firstOrCreate(['role_name' => 'Medical Officer']);
-
-        $perms = [
-            'view_inventory',
-            'manage_inventory',
-            'dispense_narcotics',
-            'witness_narcotics',
-            'manage_admissions',
-        ];
-
-        foreach ($perms as $permName) {
-            $perm = Permission::firstOrCreate(['permission_name' => $permName]);
-            if (!DB::table('role_permissions')->where('role_id', $adminRole->id)->where('permission_id', $perm->id)->exists()) {
-                DB::table('role_permissions')->insert([
-                    'role_id' => $adminRole->id,
-                    'permission_id' => $perm->id,
-                    'created_at' => now(),
-                ]);
-            }
-            if (!DB::table('role_permissions')->where('role_id', $sisterRole->id)->where('permission_id', $perm->id)->exists()) {
-                DB::table('role_permissions')->insert([
-                    'role_id' => $sisterRole->id,
-                    'permission_id' => $perm->id,
-                    'created_at' => now(),
-                ]);
-            }
-            if (in_array($permName, ['view_inventory', 'dispense_narcotics']) && !DB::table('role_permissions')->where('role_id', $nurseRole->id)->where('permission_id', $perm->id)->exists()) {
-                DB::table('role_permissions')->insert([
-                    'role_id' => $nurseRole->id,
-                    'permission_id' => $perm->id,
-                    'created_at' => now(),
-                ]);
-            }
-        }
+        // 1. Roles (Seeded in RoleSeeder)
+        $adminRole = Role::where('role_name', 'Admin')->first() ?? Role::firstOrCreate(['role_name' => 'Admin']);
+        $sisterRole = Role::where('role_name', 'Ward Sister')->first() ?? Role::firstOrCreate(['role_name' => 'Ward Sister']);
+        $nurseRole = Role::where('role_name', 'Staff Nurse')->first() ?? Role::firstOrCreate(['role_name' => 'Staff Nurse']);
+        $doctorRole = Role::where('role_name', 'Medical Officer')->first() ?? Role::firstOrCreate(['role_name' => 'Medical Officer']);
 
         // 2. Wards
         $ward48 = Ward::firstOrCreate(

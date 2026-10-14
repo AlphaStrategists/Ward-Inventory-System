@@ -15,7 +15,7 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', searchQuery: '', searchDate: '', openAddModal: false, openAdminModal: false, showAdjustmentModal: false, openOrderModal: {{ $errors->has('req_no') ? 'true' : 'false' }}, openReceiveModal: false, receiveModalDetailId: '', editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
+<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', searchQuery: '', searchDate: '', openAddModal: {{ $errors->any() && old('item_code') && !request()->isMethod('put') ? 'true' : 'false' }}, openAdminModal: false, showAdjustmentModal: false, openOrderModal: {{ $errors->has('req_no') ? 'true' : 'false' }}, openReceiveModal: false, receiveModalDetailId: '', editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
 
     @if(session('success'))
     <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
@@ -32,6 +32,24 @@
          class="fixed top-5 right-5 z-50 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg font-semibold flex items-center gap-3 max-w-md">
         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
         <span>{{ session('error') }}</span>
+    </div>
+    @endif
+
+    @if($errors->any())
+    <div x-data="{ show: true }" x-show="show" 
+         class="fixed top-20 right-5 z-[60] bg-red-500 text-white px-6 py-4 rounded-xl shadow-lg flex items-start gap-3 max-w-md">
+        <svg class="w-6 h-6 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <div>
+            <span class="font-bold block mb-1">Please fix the following errors:</span>
+            <ul class="list-disc pl-5 text-sm font-medium space-y-1">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+        <button type="button" @click="show = false" class="ml-auto flex-shrink-0 text-red-200 hover:text-white transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
     </div>
     @endif
 
@@ -332,7 +350,7 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['staff nurse', 'ward sister', 'medical officer']))
                         <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Order
@@ -367,7 +385,7 @@
                                         <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $order->req_no ?? 'N/A' }}</span>
                                     </td>
                                     <td class="px-6 py-4 font-bold text-slate-800">
-                                        @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
+                                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['medical officer', 'ms']) && $order->ms_approval_status === 'Pending')
                                             <form id="approve-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.approve', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
                                                 @csrf @method('PATCH')
                                             </form>
@@ -407,7 +425,7 @@
                                                 <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver->name }}</span>
                                                 @endif
                                             </div>
-                                            @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
+                                            @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['medical officer', 'ms']) && $order->ms_approval_status === 'Pending')
                                                 <div class="flex gap-1.5 mt-1">
                                                     <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Approve" class="bg-[#16A34A] hover:bg-green-700 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Approve</button>
                                                     <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Reject" class="bg-red-500 hover:bg-red-600 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Reject</button>
@@ -496,7 +514,7 @@
                                         @else
                                             @if($detail->qty_issued == 0)
                                                 <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
-                                            @elseif(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'nurse')
+                                            @elseif(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['staff nurse', 'ward sister']))
                                                 <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                             @else
                                                 <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
@@ -516,7 +534,7 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['staff nurse', 'ward sister', 'medical officer']))
                         <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Administration
@@ -539,6 +557,9 @@
                                     <th scope="col" class="px-6 py-4">Qty Given</th>
                                     <th scope="col" class="px-6 py-4">Balance</th>
                                     <th scope="col" class="px-6 py-4">Sister Initials</th>
+                                    @if($category === 'narcotics')
+                                    <th scope="col" class="px-6 py-4">Witness By</th>
+                                    @endif
                                     <th scope="col" class="px-6 py-4">Remark</th>
                                 </tr>
                             </thead>
@@ -571,6 +592,9 @@
                                         {{ $admin->dynamic_balance }} {{ $isLiquid ? 'ml' : ($selectedMedicine->unit->unit_name ?? '') }}
                                     </td>
                                     <td class="px-6 py-4 font-semibold text-slate-700">{{ $admin->sister_initials }}</td>
+                                    @if($category === 'narcotics')
+                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $admin->witness }}</td>
+                                    @endif
                                     <td class="px-6 py-4 text-slate-500 font-medium">{{ $admin->remark }}</td>
                                 </tr>
                                 @endforeach
@@ -586,7 +610,7 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['staff nurse', 'ward sister', 'medical officer']))
                         <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Adjustment
@@ -1071,6 +1095,17 @@
                                     <input type="text" name="dosage" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. 1 Capsule / TDS / After meals">
                                 </div>
                             </div>
+                            @if($selectedMedicine && $selectedMedicine->is_controlled)
+                            <div class="mt-5">
+                                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Witnessed By (Medical Officer) <span class="text-red-500">*</span></label>
+                                <select name="witnessed_by" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                    <option value="" disabled selected>Select Witness...</option>
+                                    @foreach($medicalOfficers as $officer)
+                                        <option value="{{ $officer->id }}">{{ $officer->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @endif
                         </div>
                         <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
                             <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Save Administration</button>

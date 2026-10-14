@@ -44,7 +44,7 @@ class Dispensation extends Model
         return $this->belongsTo(User::class, 'issued_by');
     }
 
-    public function witnessedBy(): BelongsTo
+    public function witness(): BelongsTo
     {
         return $this->belongsTo(User::class, 'witnessed_by');
     }

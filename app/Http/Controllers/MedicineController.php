@@ -35,7 +35,8 @@ class MedicineController extends Controller
 
         $admissions = collect([]);
         $availableBatches = collect([]);
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'currentCategory', 'units', 'medicineForms', 'admissions', 'availableBatches'));
+        $medicalOfficers = \App\Models\User::whereHas('role', function($q) { $q->where('role_name', 'Medical Officer'); })->get();
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'currentCategory', 'units', 'medicineForms', 'admissions', 'availableBatches', 'medicalOfficers'));
     }
 
     public function getDetails($category, $id)
@@ -118,7 +119,7 @@ class MedicineController extends Controller
             ->get();
 
         // 1. Fetch all transactions (dispensations, receipts, adjustments) and map them for the ledger
-        $dispensations = Dispensation::with(['admission.patient', 'issuedBy', 'batch'])
+        $dispensations = Dispensation::with(['admission.patient', 'issuedBy', 'witness', 'batch'])
             ->whereHas('batch', function($q) use ($selectedMedicine) {
                 $q->where('medicine_id', $selectedMedicine->id);
             })
@@ -202,6 +203,7 @@ class MedicineController extends Controller
                     'balance' => $admin->dynamic_balance . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
                     'dynamic_balance' => $admin->dynamic_balance, // Raw number for the UI
                     'sister_initials' => $admin->issuedBy->name ?? 'N/A',
+                    'witness' => $admin->witness->name ?? 'N/A',
                     'remark' => $admin->dosage ?? '',
                     'usage_time' => $admin->usage_time,
                 ];
@@ -238,7 +240,9 @@ class MedicineController extends Controller
                 return $batch->available_qty > 0;
             });
 
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'admissions', 'availableBatches'));
+        $medicalOfficers = \App\Models\User::whereHas('role', function($q) { $q->where('role_name', 'Medical Officer'); })->get();
+
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'admissions', 'availableBatches', 'medicalOfficers'));
     }
 
     public function storeMedicine($category, Request $request)
@@ -357,6 +361,7 @@ class MedicineController extends Controller
             'qty_given' => 'required|integer|min:1',
             'dosage' => 'required|string|max:100',
             'usage_time' => 'nullable|string|max:100',
+            'witnessed_by' => $medicine->is_controlled ? 'required|integer|exists:users,id' : 'nullable|integer|exists:users,id',
         ]);
 
         if ($isBulk) {
