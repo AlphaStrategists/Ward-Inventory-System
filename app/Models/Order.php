@@ -21,6 +21,10 @@ class Order extends Model
         'remark',
     ];
 
+    protected $casts = [
+        'date' => 'datetime',
+    ];
+
     public function ward()
     {
         return $this->belongsTo(Ward::class);

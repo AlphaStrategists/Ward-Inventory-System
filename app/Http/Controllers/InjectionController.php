@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Medicine;
 use App\Models\MedicineForm;
-use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Unit;
 use App\Models\User;
@@ -14,29 +13,41 @@ use Illuminate\Http\Request;
 
 class InjectionController extends Controller
 {
+    /** Category shown by this page (overridden by sibling pages). */
+    protected string $categoryName = 'Injection';
+
+    protected string $categoryDescription = 'Injection medicines for ward inventory';
+
+    protected string $view = 'injections.index';
+
     public function index(Request $request)
     {
-        // 1. Ensure Category 'Injection' exists
+        // 1. Ensure the category exists
         $category = Category::firstOrCreate(
-            ['name' => 'Injection'],
-            ['description' => 'Injection medicines for ward inventory']
+            ['name' => $this->categoryName],
+            ['description' => $this->categoryDescription]
         );
 
-        // 2. Fetch medicines under Injection category with search filter
-        $medicineQuery = Medicine::where('category_id', $category->id)->with(['unit', 'form']);
-        
-        if ($request->filled('search_medicine')) {
-            $medicineQuery->where('name', 'like', '%' . $request->search_medicine . '%')
-                          ->orWhere('item_code', 'like', '%' . $request->search_medicine . '%');
-        }
+        // 2. Fetch medicines under this category with optional search filter
+        $medicines = Medicine::where('category_id', $category->id)
+            ->with(['unit', 'form'])
+            ->when($request->filled('search_medicine'), function ($query) use ($request) {
+                $term = $request->search_medicine;
+                // Grouped so the OR cannot escape the category filter
+                $query->where(function ($q) use ($term) {
+                    $q->where('name', 'like', '%' . $term . '%')
+                      ->orWhere('item_code', 'like', '%' . $term . '%');
+                });
+            })
+            ->orderBy('name')
+            ->get();
 
-        $medicines = $medicineQuery->get();
+        // 3. Selected medicine: requested one, otherwise the first in the list
+        $selectedMedicine = $request->filled('medicine_id')
+            ? ($medicines->firstWhere('id', (int) $request->medicine_id) ?? $medicines->first())
+            : $medicines->first();
 
-        // 3. Determine selected medicine (defaults to first medicine or requested medicine)
-        $selectedMedicineId = $request->get('medicine_id', $medicines->first()?->id);
-        $selectedMedicine = $medicines->firstWhere('id', $selectedMedicineId) ?? $medicines->first();
-
-        // 4. Fetch orders / requisitions log for selected medicine or category
+        // 4. Requisition log for the selected medicine (or the whole category)
         $ordersQuery = OrderDetail::with(['order.requester', 'order.approver', 'order.ward', 'medicine.unit'])
             ->whereHas('medicine', function ($q) use ($category) {
                 $q->where('category_id', $category->id);
@@ -48,13 +59,16 @@ class InjectionController extends Controller
 
         if ($request->filled('search_records')) {
             $searchTerm = $request->search_records;
-            $ordersQuery->whereHas('order', function ($q) use ($searchTerm) {
-                $q->where('req_no', 'like', '%' . $searchTerm . '%')
-                  ->orWhereHas('requester', function ($u) use ($searchTerm) {
-                      $u->where('name', 'like', '%' . $searchTerm . '%');
-                  });
-            })->orWhereHas('medicine', function ($m) use ($searchTerm) {
-                $m->where('name', 'like', '%' . $searchTerm . '%');
+            // Grouped so the OR cannot escape the category / medicine filters
+            $ordersQuery->where(function ($query) use ($searchTerm) {
+                $query->whereHas('order', function ($q) use ($searchTerm) {
+                    $q->where('req_no', 'like', '%' . $searchTerm . '%')
+                      ->orWhereHas('requester', function ($u) use ($searchTerm) {
+                          $u->where('name', 'like', '%' . $searchTerm . '%');
+                      });
+                })->orWhereHas('medicine', function ($m) use ($searchTerm) {
+                    $m->where('name', 'like', '%' . $searchTerm . '%');
+                });
             });
         }
 
@@ -71,9 +85,9 @@ class InjectionController extends Controller
         $units = Unit::all();
         $forms = MedicineForm::all();
         $wards = Ward::all();
-        $users = User::all();
+        $users = User::with('role')->get();
 
-        return view('injections.index', compact(
+        return view($this->view, compact(
             'category',
             'medicines',
             'selectedMedicine',

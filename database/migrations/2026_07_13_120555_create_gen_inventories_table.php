@@ -14,11 +14,11 @@ return new class extends Migration
     Schema::create('gen_inventories', function (Blueprint $table) {
         $table->id();
         $table->string('item');
-        $table->date('received date');
+        $table->date('received_date');
         $table->string('code')->unique();
         $table->integer('received')->default(0);
         $table->integer('issued')->default(0);
-        $table->date('issueed date');
+        $table->date('issued_date')->nullable();
         $table->timestamps();
     });
 }

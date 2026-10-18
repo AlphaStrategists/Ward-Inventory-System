@@ -61,7 +61,7 @@
                         </div>
                     </div>
                     <nav class="hidden items-center gap-2 rounded-[2rem] border border-slate-200 bg-white/95 px-4 py-3 text-sm font-medium text-slate-700 md:flex">
-                        <a href="" class="rounded-[2rem] bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Home</a>
+                        <a href="{{ route('home') }}" class="rounded-[2rem] bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Home</a>
                         <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                             <button @click="open = !open" class="inline-flex items-center gap-2 rounded-[2rem] bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">
                                 Surgical
@@ -96,13 +96,13 @@
                                 <span class="text-slate-400">▾</span>
                             </button>
                             <div x-show="open" x-cloak class="absolute left-0 top-full mt-2 w-52 rounded-[2rem] border border-slate-200 bg-white p-2 shadow-2xl">
-                                <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Injections</a>
-                                <a href="#" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Antibiotic-Injections</a>
+                                <a href="{{ route('injections.index') }}" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Injections</a>
+                                <a href="{{ route('injection-antibiotics.index') }}" class="block rounded-[2rem] px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">Antibiotic-Injections</a>
                             </div>
                         </div>
                         <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Patients</a>
                         <a href="#" class="rounded-2xl bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50">Settings</a>
-                        <a href="/" class="rounded-2xl px-4 py-2 text-white transition hover:bg-red-700 bg-red-600">LogOut</a>
+                        <a href="{{ route('login') }}" class="rounded-2xl px-4 py-2 text-white transition hover:bg-red-700 bg-red-600">LogOut</a>
                     </nav>
                     <div class="flex items-center justify-between gap-3 md:hidden">
                         <span class="text-sm text-slate-500">Menu</span>

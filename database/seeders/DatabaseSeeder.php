@@ -1,12 +1,11 @@
 <?php
 
-namespace DatabaseSeeders;
-
-// Note: standard Laravel seeder class is Database\Seeders\DatabaseSeeder or DatabaseSeeder depending on namespace
 namespace Database\Seeders;
 
-
 use App\Models\Category;
+use App\Models\MedicineBatch;
+use App\Models\StockReceipt;
+use Illuminate\Support\Facades\DB;
 use App\Models\Medicine;
 use App\Models\MedicineForm;
 use App\Models\Order;
@@ -164,6 +163,31 @@ class DatabaseSeeder extends Seeder
                 'warning_limit' => 80,
             ]
         );
+
+        // 7b. Opening stock: one batch + receipt + ledger entry per medicine
+        foreach (Medicine::all() as $medicine) {
+            $batch = MedicineBatch::firstOrCreate(
+                ['medicine_id' => $medicine->id, 'batch_no' => 'OPEN-' . $medicine->item_code],
+                ['expiry_date' => '2027-12-31']
+            );
+
+            if (! DB::table('stock_ledger')->where('batch_id', $batch->id)->exists()) {
+                StockReceipt::create([
+                    'batch_id' => $batch->id,
+                    'ward_id' => $ward->id,
+                    'quantity_received' => $medicine->warning_limit,
+                    'received_by' => $nurse->id,
+                    'date' => '2026-09-01 08:00:00',
+                ]);
+                DB::table('stock_ledger')->insert([
+                    'batch_id' => $batch->id,
+                    'ward_id' => $ward->id,
+                    'quantity' => $medicine->warning_limit,
+                    'transaction_type' => 'receipt',
+                    'transaction_date' => '2026-09-01 08:00:00',
+                ]);
+            }
+        }
 
         // 8. Sample Orders matching user screenshot
         $sampleOrdersData = [

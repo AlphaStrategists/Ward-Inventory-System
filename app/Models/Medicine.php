@@ -49,22 +49,20 @@ class Medicine extends Model
         return $this->hasMany(OrderDetail::class);
     }
 
+    protected $casts = [
+        'is_controlled' => 'boolean',
+    ];
+
     /**
-     * Calculate current available stock for this medicine.
+     * Current available stock: the signed sum of all ledger movements
+     * (receipts positive, issues negative) across this medicine's batches.
+     * A medicine with no movements has 0 stock.
      */
-    public function getAvailableStockAttribute()
+    public function getAvailableStockAttribute(): int
     {
-        // Calculate stock from ledger if batches exist, or fallback to sum of receipts
-        $stockFromLedger = DB::table('stock_ledger')
+        return (int) DB::table('stock_ledger')
             ->join('medicine_batches', 'stock_ledger.batch_id', '=', 'medicine_batches.id')
             ->where('medicine_batches.medicine_id', $this->id)
-            ->sum('quantity');
-
-        if ($stockFromLedger != 0) {
-            return $stockFromLedger;
-        }
-
-        // Fallback default stock for presentation if no batch transaction exists yet
-        return $this->min_level ?? 30;
+            ->sum('stock_ledger.quantity');
     }
 }

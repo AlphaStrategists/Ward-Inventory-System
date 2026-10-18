@@ -55,15 +55,17 @@ class MsApprovalController extends Controller
         $requisitionLogs = $ordersQuery->orderBy('id', 'desc')->get();
 
         // Statistics
-        $allOrders = OrderDetail::with('order')->get();
-        $totalCount = $allOrders->count();
-        $pendingCount = $allOrders->where('order.ms_approval_status', 'Pending')->count();
-        $completedCount = $allOrders->where('order.ms_approval_status', 'Completed')->count();
-        $approvedCount = $allOrders->where('order.ms_approval_status', 'Approved')->count();
+        $totalCount = OrderDetail::count();
+        $countByStatus = fn (string $status) => OrderDetail::whereHas(
+            'order', fn ($q) => $q->where('ms_approval_status', $status)
+        )->count();
+        $pendingCount = $countByStatus('Pending');
+        $completedCount = $countByStatus('Completed');
+        $approvedCount = $countByStatus('Approved');
 
         $categories = Category::all();
         $wards = Ward::all();
-        $users = User::all();
+        $users = User::with('role')->get();
 
         return view('ms.index', compact(
             'requisitionLogs',

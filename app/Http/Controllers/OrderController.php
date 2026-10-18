@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderDetail;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -22,9 +23,13 @@ class OrderController extends Controller
             'remark' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($validated, &$order) {
-            // Generate unique requisition number
-            $reqNo = 'REQ-' . date('Ymd') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+        $order = DB::transaction(function () use ($validated) {
+            // Sequential requisition number per day, e.g. REQ-20261018-003
+            $prefix = 'REQ-' . date('Ymd') . '-';
+            $next = Order::where('req_no', 'like', $prefix . '%')->count() + 1;
+            do {
+                $reqNo = $prefix . str_pad($next++, 3, '0', STR_PAD_LEFT);
+            } while (Order::where('req_no', $reqNo)->exists());
 
             // 1. Create order record
             $order = Order::create([
@@ -45,9 +50,11 @@ class OrderController extends Controller
                 'qty_issued' => 0,
                 'remark' => $validated['remark'] ?? null,
             ]);
+
+            return $order;
         });
 
-        return redirect()->back()->with('success', 'Pharmacy requisition order created successfully! Requisition No: ' . ($order->req_no ?? ''));
+        return redirect()->back()->with('success', 'Pharmacy requisition order created successfully! Requisition No: ' . $order->req_no);
     }
 
     /**
@@ -60,11 +67,15 @@ class OrderController extends Controller
             'approved_by' => 'nullable|exists:users,id',
         ]);
 
-        $msOfficerId = $request->approved_by 
-            ?? $order->approved_by 
-            ?? \App\Models\User::whereHas('role', function ($q) {
-                $q->where('role_name', 'like', '%MS%');
-            })->first()?->id;
+        // A pending order has no approver yet; any other status records who decided it.
+        $msOfficerId = null;
+        if ($request->ms_approval_status !== 'Pending') {
+            $msOfficerId = $request->approved_by
+                ?? $order->approved_by
+                ?? User::whereHas('role', function ($q) {
+                    $q->where('role_name', 'MS Officer');
+                })->value('id');
+        }
 
         $order->update([
             'ms_approval_status' => $request->ms_approval_status,

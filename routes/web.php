@@ -1,25 +1,17 @@
 <?php
 
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\InjectionAntibioticController;
 use App\Http\Controllers\InjectionController;
 use App\Http\Controllers\MedicineController;
-use App\Http\Controllers\OrderController;
 use App\Http\Controllers\MsApprovalController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Route;
 
-
-
+// Login / landing
 Route::get('/', [UserController::class, 'login'])->name('login');
 Route::get('/home', [UserController::class, 'home'])->name('home');
 Route::get('/password/reset', [UserController::class, 'showPasswordResetForm'])->name('password.request');
-
-
-
-plate compatibility
-// Redirect root to Injections page
-Route::get('/', function () {
-    return redirect()->route('injections.index');
-});
 
 // Injection Inventory Page
 Route::get('/injections', [InjectionController::class, 'index'])->name('injections.index');

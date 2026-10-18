@@ -20,7 +20,7 @@ class MedicineController extends Controller
             'form_id' => 'required|exists:medicine_forms,id',
             'strength' => 'nullable|string|max:50',
             'min_level' => 'required|integer|min:1',
-            'warning_limit' => 'required|integer|min:1',
+            'warning_limit' => 'required|integer|min:1|gte:min_level',
         ]);
 
         $medicine = Medicine::create($validated);
@@ -34,6 +34,14 @@ class MedicineController extends Controller
     public function destroy(Medicine $medicine)
     {
         $medicineName = $medicine->name;
+
+        // Medicines that already appear on requisition orders are kept for the audit trail.
+        if ($medicine->orderDetails()->exists()) {
+            return redirect()->back()->withErrors([
+                'medicine' => 'Medicine "' . $medicineName . '" cannot be deleted because it has requisition orders.',
+            ]);
+        }
+
         $medicine->delete();
 
         return redirect()->back()->with('success', 'Medicine "' . $medicineName . '" deleted successfully.');
