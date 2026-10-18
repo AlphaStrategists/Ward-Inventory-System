@@ -121,7 +121,6 @@
 
         .nav-link {
             text-decoration: none;
-<<<<<<< Updated upstream
             padding: 8px 14px;
             font-size: 13px;
             font-weight: 600;
@@ -375,7 +374,6 @@
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 16px;
             margin-bottom: 16px;
-=======
             color: var(--text-muted);
             font-weight: 600;
             font-size: 14px;
@@ -850,7 +848,6 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
->>>>>>> Stashed changes
         }
 
         .form-group {
@@ -1083,6 +1080,30 @@
             }
         };
     </script>
+
+    
+<html lang="en">
+<head>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{{ route('injection.index') }}" class="sidebar__link {{ request()->routeIs('injection.*') ? 'sidebar__link--active' : '' }}">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M2 12h4l2 8 4-16 2 8h8"/></svg>
+                        Injection
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{{ route('injection-antibiotics.index') }}" class="sidebar__link {{ request()->routeIs('injection-antibiotics.*') ? 'sidebar__link--active' : '' }}">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        Injection Antibiotics
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="{{ route('requested-stock.index') }}" class="sidebar__link {{ request()->routeIs('requested-stock.*') ? 'sidebar__link--active' : '' }}">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Stock Requisitions
+</body>
+</html>
 >>>>>>> Stashed changes
 </body>
 </html>
