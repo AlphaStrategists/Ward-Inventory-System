@@ -14,11 +14,26 @@ class MedicineStockAdjustment extends Model
         'batch_id',
         'ward_id',
         'adjustment_type',
+        'type',
         'quantity',
         'reason',
         'adjusted_by',
         'created_at',
     ];
+
+    public function getTypeAttribute(): string
+    {
+        return in_array($this->adjustment_type, ['EXPIRY', 'DAMAGED', 'LOST']) ? 'deduction' : 'addition';
+    }
+
+    public function setTypeAttribute($value): void
+    {
+        if (strtolower($value) === 'deduction') {
+            $this->attributes['adjustment_type'] = 'EXPIRY';
+        } else {
+            $this->attributes['adjustment_type'] = strtoupper($value);
+        }
+    }
 
     protected function casts(): array
     {

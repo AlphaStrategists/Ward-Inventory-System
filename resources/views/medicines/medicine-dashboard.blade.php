@@ -332,7 +332,7 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
                         <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Order
@@ -496,7 +496,7 @@
                                         @else
                                             @if($detail->qty_issued == 0)
                                                 <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
-                                            @elseif(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'nurse')
+                                            @elseif(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'staff nurse', 'ward sister']))
                                                 <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                             @else
                                                 <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
@@ -516,7 +516,7 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
                         <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Administration
@@ -586,7 +586,7 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'doctor']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
                         <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Adjustment

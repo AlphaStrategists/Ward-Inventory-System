@@ -225,6 +225,7 @@ class MedicineController extends Controller
         $admissions = \App\Models\Admission::with('patient')->orderBy('admit_date', 'desc')->get();
 
         $availableBatches = \App\Models\MedicineBatch::where('medicine_id', $selectedMedicine->id)
+            ->where('expiry_date', '>=', now()->toDateString())
             ->orderBy('expiry_date', 'asc')
             ->get()
             ->map(function ($batch) {
@@ -640,5 +641,22 @@ class MedicineController extends Controller
         $detail->update(['remark' => trim('[RECEIVED_BY:' . (auth()->user()->name ?? 'Nurse') . '] ' . ($detail->remark ?? ''))]);
 
         return redirect()->back()->with('success', 'Stock received successfully.');
+    }
+
+    /**
+     * Process expired medicine batches, creating StockAdjustment deductions.
+     */
+    public function expireBatches()
+    {
+        \Illuminate\Support\Facades\Artisan::call('narcotics:expire-batches');
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Expired batches processed successfully.'
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Expired batches processed successfully.');
     }
 }

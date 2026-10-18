@@ -84,19 +84,60 @@ class User extends Authenticatable
         return $this->hasMany(Dispensation::class, 'witnessed_by');
     }
 
+    public const NURSE_ROLES = ['Nurse', 'Staff Nurse', 'Ward Sister'];
+
     /**
-     * True if the logged-in user's role name matches exactly.
+     * True if the logged-in user's role name matches exactly or an equivalent nursing role.
+     * Can also accept an array of role names.
      */
-    public function hasRole(string $roleName): bool
+    public function hasRole(string|array $roleName): bool
     {
-        return $this->role && $this->role->role_name === $roleName;
+        if (is_array($roleName)) {
+            return $this->hasAnyRole($roleName);
+        }
+
+        if (!$this->role) {
+            return false;
+        }
+
+        if ($this->role->role_name === $roleName) {
+            return true;
+        }
+
+        // If checking for any nursing role, allow any of the equivalent nursing roles
+        if (in_array($roleName, self::NURSE_ROLES, true) && in_array($this->role->role_name, self::NURSE_ROLES, true)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
      * True if the logged-in user's role name matches any in the list.
+     * If the list contains any nursing role, users with any nursing role match.
      */
     public function hasAnyRole(array $roleNames): bool
     {
-        return $this->role && in_array($this->role->role_name, $roleNames, true);
+        if (!$this->role) {
+            return false;
+        }
+
+        if (in_array($this->role->role_name, $roleNames, true)) {
+            return true;
+        }
+
+        if (array_intersect($roleNames, self::NURSE_ROLES) && in_array($this->role->role_name, self::NURSE_ROLES, true)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * True if the user has any nursing role ('Nurse', 'Staff Nurse', 'Ward Sister').
+     */
+    public function isNurse(): bool
+    {
+        return $this->role && in_array($this->role->role_name, self::NURSE_ROLES, true);
     }
 }

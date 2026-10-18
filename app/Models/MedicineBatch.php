@@ -1,3 +1,5 @@
+<?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -51,6 +53,34 @@ class MedicineBatch extends Model
     public function getCurrentBalanceAttribute(): int
     {
         return (int) $this->stockLedger()->sum('quantity');
+    }
+
+    public function getQuantityAttribute(): int
+    {
+        return $this->current_balance;
+    }
+
+    public function setQuantityAttribute($value): void
+    {
+        // Handled via stock_ledger adjustments
+    }
+
+    public function getStatusAttribute(): string
+    {
+        if ($this->expiry_date && \Carbon\Carbon::parse($this->expiry_date)->startOfDay()->isPast()) {
+            return 'expired';
+        }
+        return $this->current_balance > 0 ? 'active' : 'depleted';
+    }
+
+    public function setStatusAttribute($value): void
+    {
+        // Stored dynamically
+    }
+
+    public function getIsExpiredAttribute(): bool
+    {
+        return $this->expiry_date ? \Carbon\Carbon::parse($this->expiry_date)->startOfDay()->isPast() : false;
     }
 
 
