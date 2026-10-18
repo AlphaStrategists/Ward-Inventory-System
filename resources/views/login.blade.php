@@ -110,16 +110,16 @@
 
                 <!-- Session status (e.g. after registration or password reset) -->
                 @if (session('status'))
-                    <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                        {{ session('status') }}
-                    </div>
+                <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                    {{ session('status') }}
+                </div>
                 @endif
 
                 <!-- General error banner (e.g. invalid credentials) -->
                 @if ($errors->any() && !$errors->has('email') && !$errors->has('password'))
-                    <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                        {{ $errors->first() }}
-                    </div>
+                <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {{ $errors->first() }}
+                </div>
                 @endif
 
                 <form method="POST" action="{{ route('login.submit') }}" class="space-y-5">
@@ -144,11 +144,10 @@
                                 autocomplete="username"
                                 placeholder="you@hospital.com"
                                 class="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm text-slate-800 outline-none transition focus:border-transparent focus:ring-2"
-                                style="--tw-ring-color: var(--color-primary);"
-                            />
+                                style="--tw-ring-color: var(--color-primary);" />
                         </div>
                         @error('email')
-                            <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
+                        <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
                         @enderror
                     </div>
 
@@ -177,25 +176,11 @@
                                 autocomplete="current-password"
                                 placeholder="••••••••"
                                 class="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm text-slate-800 outline-none transition focus:border-transparent focus:ring-2"
-                                style="--tw-ring-color: var(--color-primary);"
-                            />
+                                style="--tw-ring-color: var(--color-primary);" />
                         </div>
                         @error('password')
-                            <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
+                        <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
                         @enderror
-                    </div>
-
-                    <!-- Remember me -->
-                    <div class="flex items-center gap-2">
-                        <input
-                            id="remember"
-                            type="checkbox"
-                            name="remember"
-                            class="h-4 w-4 rounded border-slate-300"
-                        />
-                        <label for="remember" class="text-sm text-slate-600">
-                            Remember me
-                        </label>
                     </div>
 
                     <!-- Submit -->
@@ -209,6 +194,7 @@
                 </form>
 
                 <!-- Create a new user -->
+                @if (auth()->check() && auth()->user()->is_admin)
                 <div class="mt-8 border-t border-slate-100 pt-6 text-center">
                     <p class="text-sm" style="color: var(--color-secondary);">
                         Don't have an account?
@@ -220,6 +206,7 @@
                         </a>
                     </p>
                 </div>
+                @endif
 
                 <div class="mt-4 text-center">
                     <a href="{{ route('home') }}" class="text-xs hover:underline" style="color: var(--color-secondary)">

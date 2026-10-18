@@ -40,10 +40,6 @@
         </div>
     </div>
 
-    <div class="mx-auto max-w-7xl h-screen px-8 py-6">
-        <h1>Admin dashboard</h1>
-    </div>
-
     <!-- =========================================================
          FOOTER (mirrors the home page footer)
     ========================================================== -->
