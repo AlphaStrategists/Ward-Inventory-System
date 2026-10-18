@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<<<<<<< Updated upstream
     <title>@yield('title', 'Ward Inventory Management System')</title>
     <style>
         * {
@@ -65,7 +64,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-=======
     <title>@yield('title', 'Ward Inventory System')</title>
 
     <!-- Google Fonts: Inter -->
@@ -119,7 +117,6 @@
         .nav-links {
             display: flex;
             gap: 20px;
->>>>>>> Stashed changes
         }
 
         .nav-link {

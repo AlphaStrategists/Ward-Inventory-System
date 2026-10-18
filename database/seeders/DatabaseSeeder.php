@@ -5,7 +5,6 @@ namespace DatabaseSeeders;
 // Note: standard Laravel seeder class is Database\Seeders\DatabaseSeeder or DatabaseSeeder depending on namespace
 namespace Database\Seeders;
 
-<<<<<<< Updated upstream
 use Illuminate\Database\Seeder;
 use App\Models\Staff;
 use App\Models\Patient;
@@ -255,7 +254,6 @@ class DatabaseSeeder extends Seeder
             'received' => 40,
             'issued' => 15,
             'balance' => 25,
-=======
 use App\Models\Category;
 use App\Models\Medicine;
 use App\Models\MedicineForm;
@@ -281,7 +279,6 @@ class DatabaseSeeder extends Seeder
         $ward = Ward::firstOrCreate([
             'ward_number' => '48',
             'ward_name' => 'Ward 48 - General Ward'
->>>>>>> Stashed changes
         ]);
 
         // 3. Users
