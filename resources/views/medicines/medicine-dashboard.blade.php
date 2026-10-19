@@ -153,7 +153,7 @@
                     <button @click="open = !open" @click.away="open = false" class="dropdown-toggle flex items-center gap-3 focus:outline-none hover:bg-slate-50 p-1.5 pr-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">
                         <div class="text-right hidden sm:block">
                             <div class="text-sm font-bold text-slate-700 leading-tight">{{ auth()->user()->name ?? 'Guest User' }}</div>
-                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ auth()->user()->role->role_name ?? 'Nurse' }}</div>
+                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ auth()->user()->role ?? 'Nurse' }}</div>
                         </div>
                         <div class="w-9 h-9 rounded-full bg-blue-100 text-[#3B82F6] flex items-center justify-center font-bold text-sm border border-blue-200 shadow-sm">
                             {{ substr(auth()->user()->name ?? 'U', 0, 1) }}
@@ -287,7 +287,7 @@
                             class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200">
                         Pharmacy Orders ({{ isset($pharmacyOrders) ? $pharmacyOrders->count() : 0 }})
                     </button>
-                    @if(strtolower(auth()->user()->role->role_name ?? '') !== 'pharmacist')
+                    @if(strtolower(auth()->user()->role ?? '') !== 'pharmacist')
                     <button @click="tab = 'patient'" 
                             :class="tab === 'patient' ? 'bg-[#F8FAFC] text-slate-800 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-semibold'"
                             class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200 ml-1">
@@ -332,7 +332,7 @@
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
                         <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Order
@@ -367,7 +367,7 @@
                                         <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $order->req_no ?? 'N/A' }}</span>
                                     </td>
                                     <td class="px-6 py-4 font-bold text-slate-800">
-                                        @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
+                                        @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
                                             <form id="approve-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.approve', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
                                                 @csrf @method('PATCH')
                                             </form>
@@ -407,7 +407,7 @@
                                                 <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver->name }}</span>
                                                 @endif
                                             </div>
-                                            @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
+                                            @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
                                                 <div class="flex gap-1.5 mt-1">
                                                     <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Approve" class="bg-[#16A34A] hover:bg-green-700 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Approve</button>
                                                     <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Reject" class="bg-red-500 hover:bg-red-600 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Reject</button>
@@ -416,7 +416,7 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 font-bold text-slate-800">
-                                        @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
+                                        @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
                                             <form id="issue-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.issue', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
                                                 @csrf @method('PATCH')
                                             </form>
@@ -476,7 +476,7 @@
                                             @endphp
                                             {{ $issName }}
                                         @else
-                                            @if(auth()->check() && strtolower(auth()->user()->role->role_name ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
+                                            @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
                                                 <button type="submit" form="issue-form-{{$detail->id}}" class="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Issue Batch</button>
                                             @else
                                                 <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
@@ -496,7 +496,7 @@
                                         @else
                                             @if($detail->qty_issued == 0)
                                                 <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
-                                            @elseif(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'staff nurse', 'ward sister']))
+                                            @elseif(auth()->check() && in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister']))
                                                 <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                             @else
                                                 <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
@@ -510,13 +510,13 @@
                     </div>
                 </div>
 
-                @if(strtolower(auth()->user()->role->role_name ?? '') !== 'pharmacist')
+                @if(strtolower(auth()->user()->role ?? '') !== 'pharmacist')
                 <!-- Patient Tab Content -->
                 <div x-show="tab === 'patient'" x-cloak x-transition.opacity.duration.300ms>
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
                         <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Administration
@@ -580,13 +580,13 @@
                 </div>
                 @endif
 
-                @if(strtolower(auth()->user()->role->role_name ?? '') !== 'pharmacist')
+                @if(strtolower(auth()->user()->role ?? '') !== 'pharmacist')
                 <!-- Adjustments Tab Content -->
                 <div x-show="tab === 'adjustments'" x-cloak x-transition.opacity.duration.300ms>
                     <!-- Header -->
                     <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                         <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
-                        @if(auth()->check() && in_array(strtolower(auth()->user()->role->role_name ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
+                        @if(auth()->check() && in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
                         <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Add Adjustment
