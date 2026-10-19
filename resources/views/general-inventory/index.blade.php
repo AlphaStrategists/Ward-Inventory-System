@@ -178,7 +178,7 @@
             </div>
 
             <!-- Tab 1: General Transactions Log -->
-            <div id="transactionsTab" style="{{ request('tab', 'transactions') === 'transactions' ? '' : 'display: none;' }}">
+            <div id="transactionsTab" class="{{ request('tab', 'transactions') === 'transactions' ? '' : 'display: none;' }}">
                                 <x-log-table 
                     title="General Transactions Log"
                     :actionModalId="auth()->user()->hasAnyRole(['Nurse', 'Staff Nurse', 'Ward Sister']) ? 'addTransactionModal' : null"
@@ -243,7 +243,7 @@
             </div>
 
             <!-- Tab 2: Stock Adjustments Log -->
-            <div id="adjustmentsTab" style="{{ request('tab') === 'adjustments' ? '' : 'display: none;' }}">
+            <div id="adjustmentsTab" class="{{ request('tab') === 'adjustments' ? '' : 'display: none;' }}">
                 <x-log-table 
                     title="Stock Adjustments & Loss/Damage Log"
                     :actionModalId="auth()->user()->hasAnyRole(['Nurse', 'Staff Nurse', 'Ward Sister']) ? 'addAdjustmentModal' : null"
