@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->integer('quantity');
             $table->string('source_table', 50);
             $table->integer('source_id');
-            $table->integer('recorded_by');
+            $table->unsignedBigInteger('recorded_by');
             $table->timestamp('created_at')->useCurrent();
             
             $table->unique(['source_table', 'source_id'], 'uk_ledger_source');
