@@ -11,7 +11,7 @@ return new class extends Migration {
             $table->integer('batch_id');
             $table->integer('ward_id');
             $table->integer('quantity_received');
-            $table->integer('received_by');
+            $table->unsignedBigInteger('received_by');
             $table->timestamp('date')->useCurrent();
             
             $table->foreign('batch_id')->references('id')->on('medicine_batches')->onDelete('restrict');
