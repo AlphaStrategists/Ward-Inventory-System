@@ -14,9 +14,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
             'permission' => \App\Http\Middleware\CheckRolePermission::class,
-        ]);
-
-        $middleware->redirectGuestsTo('/login');
             'admin' => \App\Http\Middleware\IsAdmin::class,
         ]);
     })
