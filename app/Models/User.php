@@ -88,7 +88,7 @@ class User extends Authenticatable
         return $this->hasMany(Dispensation::class, 'witnessed_by');
     }
 
-    public const NURSE_ROLES = ['Nurse', 'Staff Nurse', 'Ward Sister'];
+    public const NURSE_ROLES = ['Nurse', 'Staff_Nurse', 'Ward_Sister'];
 
     /**
      * True if the logged-in user's role name matches exactly or an equivalent nursing role.
@@ -126,11 +126,11 @@ class User extends Authenticatable
             return false;
         }
 
-        if (in_array($this->role->role, $roleNames, true)) {
+        if (in_array($this->role, $roleNames, true)) {
             return true;
         }
 
-        if (array_intersect($roleNames, self::NURSE_ROLES) && in_array($this->role->role, self::NURSE_ROLES, true)) {
+        if (array_intersect($roleNames, self::NURSE_ROLES) && in_array($this->role, self::NURSE_ROLES, true)) {
             return true;
         }
 
@@ -142,6 +142,6 @@ class User extends Authenticatable
      */
     public function isNurse(): bool
     {
-        return $this->role && in_array($this->role->role_name, self::NURSE_ROLES, true);
+        return $this->role && in_array($this->role, self::NURSE_ROLES, true);
     }
 }
