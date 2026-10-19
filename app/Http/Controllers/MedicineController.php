@@ -442,7 +442,7 @@ class MedicineController extends Controller
 
     public function update(Request $request, $id)
     {
-        abort_if(!Auth::check() || Auth::user()->role->role_name !== 'Admin', 403, 'Unauthorized action.');
+        abort_if(!Auth::check() || Auth::user()->role !== 'Admin', 403, 'Unauthorized action.');
 
         $validated = $request->validate([
             'item_code' => 'required|string|max:50|unique:medicines,item_code,'.$id,
@@ -473,7 +473,7 @@ class MedicineController extends Controller
 
     public function destroy($id)
     {
-        abort_if(!Auth::check() || Auth::user()->role->role_name !== 'Admin', 403, 'Unauthorized action.');
+        abort_if(!Auth::check() || Auth::user()->role !== 'Admin', 403, 'Unauthorized action.');
 
         $medicine = Medicine::findOrFail($id);
         
