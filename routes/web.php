@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -16,16 +20,6 @@ use App\Http\Controllers\GeneralStockAdjustmentController;
 use App\Http\Controllers\GeneralTransactionController;
 use App\Http\Controllers\PatientController;
 
-// ============================================================================
-// Public / Guest Routes
-// ============================================================================
-Route::get('/test', function () {
-    return "Laravel is working perfectly!";
-});
-
-Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [LoginController::class, 'login']);
-Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // DEV-ONLY — remove before final submission.
 Route::get('/test-login/{role}', [TestLoginController::class, 'login'])->name('test-login');
@@ -34,10 +28,6 @@ Route::get('/test-login/{role}', [TestLoginController::class, 'login'])->name('t
 // Authenticated routes — every page requires login.
 // ============================================================================
 Route::middleware(['auth'])->group(function () {
-
-    Route::get('/', function () {
-        return redirect()->route('general-inventory.index');
-    });
 
     // ---- General Inventory ----------------------------------------------
     Route::prefix('general-inventory')->name('general-inventory.')->group(function () {
@@ -88,3 +78,31 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/admissions/{admission}/dispensations', [DispensationController::class, 'store'])->name('admissions.dispensations.store');
     });
 });
+// Home page router
+Route::get('/', function () {
+    return view('home');
+})->name('home');
+
+
+// Auth controller routes(login)
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
+
+//logout 
+Route::post('/logout', [AuthController::class, 'logout'])
+    ->middleware('auth')
+    ->name('logout');
+
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware('auth')->name('dashboard');
+
+Route::get('/test', function () {
+    return view('test');
+})->name('test');
+
+// User controller routers
+Route::get('/users', [UserController::class, 'index'])->name('getAllUsers');
+Route::get('/users/create', [UserController::class, 'create'])->name('createUser');
+Route::post('/users', [UserController::class, 'store'])->name('storeUser');
+Route::get('/users/{id}', [UserController::class, 'show'])->name('getUser');
