@@ -104,12 +104,12 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($this->role->role_name === $roleName) {
+        if ($this->role->role === $roleName) {
             return true;
         }
 
         // If checking for any nursing role, allow any of the equivalent nursing roles
-        if (in_array($roleName, self::NURSE_ROLES, true) && in_array($this->role->role_name, self::NURSE_ROLES, true)) {
+        if (in_array($roleName, self::NURSE_ROLES, true) && in_array($this->role->role, self::NURSE_ROLES, true)) {
             return true;
         }
 
@@ -126,11 +126,11 @@ class User extends Authenticatable
             return false;
         }
 
-        if (in_array($this->role->role_name, $roleNames, true)) {
+        if (in_array($this->role->role, $roleNames, true)) {
             return true;
         }
 
-        if (array_intersect($roleNames, self::NURSE_ROLES) && in_array($this->role->role_name, self::NURSE_ROLES, true)) {
+        if (array_intersect($roleNames, self::NURSE_ROLES) && in_array($this->role->role, self::NURSE_ROLES, true)) {
             return true;
         }
 
