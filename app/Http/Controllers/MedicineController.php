@@ -12,6 +12,7 @@ use App\Models\Dispensation;
 use App\Models\Admission;
 use App\Models\Order;
 use App\Models\OrderDetail;
+use Illuminate\Support\Facades\Auth;
 
 class MedicineController extends Controller
 {
@@ -73,7 +74,7 @@ class MedicineController extends Controller
                 }
 
                 // Ensure a user exists
-                $userId = auth()->id() ?? \Illuminate\Support\Facades\DB::table('users')->value('id');
+                $userId = Auth::id() ?? \Illuminate\Support\Facades\DB::table('users')->value('id');
                 if (!$userId) {
                     $userId = \Illuminate\Support\Facades\DB::table('users')->insertGetId([
                         'name' => 'System Admin',
@@ -102,7 +103,8 @@ class MedicineController extends Controller
             }
         }
 
-        $wardId = auth()->user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
+        /** @var \App\Models\User $user */
+        $wardId = Auth::user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
 
         foreach ($medicines as $medicine) {
             $medicine->stock = \Illuminate\Support\Facades\DB::table('stock_ledger')
@@ -313,7 +315,7 @@ class MedicineController extends Controller
             }
 
             // Ensure a user exists
-            $userId = auth()->id() ?? \Illuminate\Support\Facades\DB::table('users')->value('id');
+            $userId = Auth::id() ?? \Illuminate\Support\Facades\DB::table('users')->value('id');
             if (!$userId) {
                 $userId = \Illuminate\Support\Facades\DB::table('users')->insertGetId([
                     'name' => 'System Admin',
@@ -365,7 +367,7 @@ class MedicineController extends Controller
                 ['patient_name' => 'Ward General Use']
             );
 
-            $wardId = auth()->user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
+            $wardId = Auth::user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
 
             $dummyAdmission = \App\Models\Admission::firstOrCreate(
                 ['bht_no' => 'BULK-GENERAL'],
@@ -388,7 +390,7 @@ class MedicineController extends Controller
             return redirect()->back()->with('error', 'Quantity given exceeds available batch quantity.');
         }
 
-        $validated['issued_by'] = auth()->id() ?? 1;
+        $validated['issued_by'] = Auth::id() ?? 1;
 
         // Ensure usage_time is saved exactly as requested
         $validated['usage_time'] = $request->usage_time;
@@ -422,8 +424,8 @@ class MedicineController extends Controller
             return redirect()->back()->with('error', 'Adjustment quantity exceeds available batch quantity.');
         }
 
-        $wardId = auth()->user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
-        $userId = auth()->id() ?? 1;
+        $wardId = Auth::user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
+        $userId = Auth::id() ?? 1;
 
         \App\Models\MedicineStockAdjustment::create([
             'batch_id' => $validated['batch_id'],
@@ -440,7 +442,7 @@ class MedicineController extends Controller
 
     public function update(Request $request, $id)
     {
-        abort_if(!auth()->check() || auth()->user()->role->role_name !== 'Admin', 403, 'Unauthorized action.');
+        abort_if(!Auth::check() || Auth::user()->role->role_name !== 'Admin', 403, 'Unauthorized action.');
 
         $validated = $request->validate([
             'item_code' => 'required|string|max:50|unique:medicines,item_code,'.$id,
@@ -471,7 +473,7 @@ class MedicineController extends Controller
 
     public function destroy($id)
     {
-        abort_if(!auth()->check() || auth()->user()->role->role_name !== 'Admin', 403, 'Unauthorized action.');
+        abort_if(!Auth::check() || Auth::user()->role->role_name !== 'Admin', 403, 'Unauthorized action.');
 
         $medicine = Medicine::findOrFail($id);
         
@@ -502,8 +504,8 @@ class MedicineController extends Controller
         
         $qtyRequested = $validated['qty_requested'] * $validated['units_per_pack'];
 
-        $wardId = auth()->user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
-        $userId = auth()->id() ?? 1;
+        $wardId = Auth::user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
+        $userId = Auth::id() ?? 1;
 
         $order = Order::create([
             'ward_id' => $wardId,
@@ -556,13 +558,13 @@ class MedicineController extends Controller
             $detail->update(['qty_requested' => $qtyRequested]);
             $order->update([
                 'ms_approval_status' => 'Approved',
-                'approved_by' => auth()->id() ?? 1,
+                'approved_by' => Auth::id() ?? 1,
             ]);
             return redirect()->back()->with('success', 'Order approved successfully.');
         } else {
             $order->update([
                 'ms_approval_status' => 'Rejected',
-                'approved_by' => auth()->id() ?? 1,
+                'approved_by' => Auth::id() ?? 1,
             ]);
             return redirect()->back()->with('success', 'Order rejected successfully.');
         }
@@ -627,8 +629,8 @@ class MedicineController extends Controller
             $batchId = $validated['batch_id'];
         }
 
-        $wardId = auth()->user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
-        $userId = auth()->id() ?? 1;
+        $wardId = Auth::user()->ward_id ?? \Illuminate\Support\Facades\DB::table('wards')->value('id');
+        $userId = Auth::id() ?? 1;
 
         \Illuminate\Support\Facades\DB::table('stock_receipts')->insert([
             'batch_id' => $batchId,
@@ -638,7 +640,7 @@ class MedicineController extends Controller
             'date' => now(),
         ]);
 
-        $detail->update(['remark' => trim('[RECEIVED_BY:' . (auth()->user()->name ?? 'Nurse') . '] ' . ($detail->remark ?? ''))]);
+        $detail->update(['remark' => trim('[RECEIVED_BY:' . (Auth::user()->name ?? 'Nurse') . '] ' . ($detail->remark ?? ''))]);
 
         return redirect()->back()->with('success', 'Stock received successfully.');
     }

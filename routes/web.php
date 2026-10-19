@@ -78,11 +78,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/admissions/{admission}/dispensations', [DispensationController::class, 'store'])->name('admissions.dispensations.store');
     });
 });
+
 // Home page router
 Route::get('/', function () {
     return view('home');
 })->name('home');
-
 
 // Auth controller routes(login)
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
