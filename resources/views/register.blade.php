@@ -189,8 +189,15 @@
                                 <option value="" disabled {{ old('role') ? '' : 'selected' }}>
                                     Select a role
                                 </option>
-                                <option value="nurse" {{ old('role') === 'nurse' ? 'selected' : '' }}>
+                                <option value="Nurse" {{ old('role') === 'Nurse' ? 'selected' : '' }}>
                                     Nurse
+                                </option>
+                                <option value="Staff Nurse" {{ old('role') === 'Staff_Nurse' ? 'selected' : '' }}>
+                                    Staff_Nurse
+                                </option>
+                                <option value="Nurse" {{ old('role') === 'Ward_Sister ? 'selected' : '' }}>
+                                    Ward_Sister
+                                </option>
                             </select>
                             <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
                                 <i class="fa-solid fa-chevron-down text-xs"></i>
