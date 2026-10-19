@@ -39,7 +39,7 @@ class CheckRole
             $parsedRoles = array_unique(array_merge($parsedRoles, self::NURSE_ROLES));
         }
 
-        if (!$user || !$user->role || !in_array($user->role->role_name, $parsedRoles, true)) {
+        if (!$user || !$user->role || !in_array($user->role, $parsedRoles, true)) {
             abort(403, 'Your role does not have permission to perform this action.');
         }
 
