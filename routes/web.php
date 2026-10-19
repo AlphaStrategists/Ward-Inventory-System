@@ -62,13 +62,13 @@ Route::middleware(['auth'])->group(function () {
 
     // ---- Patients & Narcotic Dispensing -----------------------------------
     Route::prefix('patients')->name('patients.')->group(function () {
-        Route::get('/', [PatientController::class, 'index'])->name('index');
-        Route::get('/{patient}', [PatientController::class, 'show'])->name('show');
+        Route::get('/', [PatientController::class, 'index'])->name('patient-index');
+        Route::get('/{patient}', [PatientController::class, 'show'])->name('patient-show');
 
         // Nurse-only write actions (Nurse, Staff Nurse, Ward Sister)
         Route::middleware(['role:Nurse,Staff Nurse,Ward Sister'])->group(function () {
-            Route::post('/', [PatientController::class, 'store'])->name('store');
-            Route::post('/{patient}/admissions', [AdmissionController::class, 'store'])->name('admissions.store');
+            Route::post('/', [PatientController::class, 'store'])->name('patient-store');
+            Route::post('/{patient}/admissions', [AdmissionController::class, 'store'])->name('patient-admissions.store');
         });
     });
 
