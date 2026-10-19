@@ -22,6 +22,12 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
+            $table->integer('role_id');
+            $table->integer('ward_id')->nullable();
+            $table->timestamp('created_at')->useCurrent();
+
+            $table->foreign('role_id')->references('id')->on('roles')->onDelete('restrict');
+            $table->foreign('ward_id')->references('id')->on('wards')->onDelete('set null');
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
