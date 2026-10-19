@@ -13,10 +13,10 @@
     </div>
     
     <div class="header-metric-box">
-        <div class="header-metric-value" style="color: {{ $metricColor }};">
+        <div class="header-metric-value" style="--metric-color: {{ $metricColor }};">
             {{ $metricValue }}
         </div>
-        <div class="header-metric-label" style="color: {{ $metricColor }};">
+        <div class="header-metric-label" style="--metric-color: {{ $metricColor }};">
             {{ $metricLabel }}
         </div>
     </div>
