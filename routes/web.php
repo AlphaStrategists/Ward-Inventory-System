@@ -45,9 +45,9 @@ Route::middleware(['auth'])->group(function () {
 
     // ---- Medicines Inventory ----------------------------------------------
     Route::prefix('inventory/{category}')->name('inventory.')->group(function () {
-        Route::get('/', [MedicineController::class, 'index'])->name('index');
-        Route::post('/store', [MedicineController::class, 'storeMedicine'])->name('store');
-        Route::get('/{id}/details', [MedicineController::class, 'getDetails'])->name('details');
+        Route::get('/', [MedicineController::class, 'index'])->name('medicine-index');
+        Route::post('/store', [MedicineController::class, 'storeMedicine'])->name('medicine-store');
+        Route::get('/{id}/details', [MedicineController::class, 'getDetails'])->name('medicine-details');
     });
 
     Route::post('/inventory/medicines/administration/{category}/{id}', [MedicineController::class, 'storeAdministration'])->name('medicines.administration.store');
