@@ -7,7 +7,7 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('activity_logs', function (Blueprint $table) {
             $table->integer('id', true);
-            $table->integer('user_id');
+            $table->unsignedBigInteger('user_id');
             $table->text('action_performed');
             $table->string('ip_address', 45)->nullable();
             $table->timestamp('created_at')->useCurrent();

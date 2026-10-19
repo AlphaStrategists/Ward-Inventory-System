@@ -22,7 +22,6 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
-            $table->integer('role_id');
             $table->integer('ward_id')->nullable();
             $table->timestamp('created_at')->useCurrent();
 

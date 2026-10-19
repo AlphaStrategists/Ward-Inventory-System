@@ -10,9 +10,9 @@ return new class extends Migration {
             $table->integer('ward_id');
             $table->string('req_no', 50)->unique();
             $table->timestamp('date')->useCurrent();
-            $table->integer('requested_by');
+            $table->unsignedBigInteger('requested_by');
             $table->enum('ms_approval_status', ['Pending', 'Approved', 'Rejected'])->default('Pending');
-            $table->integer('approved_by')->nullable();
+            $table->unsignedBigInteger('approved_by')->nullable();
             $table->text('remark')->nullable();
             
             $table->foreign('ward_id')->references('id')->on('wards')->onDelete('restrict');

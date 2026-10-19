@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->enum('adjustment_type', ['DAMAGED', 'LOST', 'COUNT_CORRECTION', 'RETURN']);
             $table->integer('quantity');
             $table->text('reason');
-            $table->integer('adjusted_by');
+            $table->unsignedBigInteger('adjusted_by');
             $table->timestamp('created_at')->useCurrent();
             
             $table->foreign('item_id')->references('id')->on('general_items')->onDelete('restrict');

@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->integer('quantity_received')->default(0);
             $table->integer('quantity_issued')->default(0);
             $table->timestamp('date')->useCurrent();
-            $table->integer('recorded_by');
+            $table->unsignedBigInteger('recorded_by');
             
             $table->foreign('item_id')->references('id')->on('general_items')->onDelete('restrict');
             $table->foreign('ward_id')->references('id')->on('wards')->onDelete('restrict');

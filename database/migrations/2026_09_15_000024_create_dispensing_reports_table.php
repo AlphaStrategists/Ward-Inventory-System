@@ -10,7 +10,7 @@ return new class extends Migration {
             $table->string('report_title', 150);
             $table->date('start_date');
             $table->date('end_date');
-            $table->integer('generated_by');
+            $table->unsignedBigInteger('generated_by');
             $table->string('file_path', 255);
             $table->timestamp('created_at')->useCurrent();
             

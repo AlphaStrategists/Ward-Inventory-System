@@ -7,7 +7,7 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('notifications', function (Blueprint $table) {
             $table->integer('id', true);
-            $table->integer('user_id');
+            $table->unsignedBigInteger('user_id');
             $table->text('message');
             $table->boolean('is_read')->default(0);
             $table->timestamp('created_at')->useCurrent();

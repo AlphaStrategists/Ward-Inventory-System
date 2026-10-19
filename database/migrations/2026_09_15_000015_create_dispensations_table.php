@@ -14,8 +14,8 @@ return new class extends Migration {
             $table->integer('qty_given');
             $table->string('dosage', 100);
             $table->string('usage_time', 100)->nullable();
-            $table->integer('issued_by');
-            $table->integer('witnessed_by')->nullable();
+            $table->unsignedBigInteger('issued_by');
+            $table->unsignedBigInteger('witnessed_by')->nullable();
             
             $table->foreign('admission_id')->references('id')->on('admissions')->onDelete('restrict');
             $table->foreign('batch_id')->references('id')->on('medicine_batches')->onDelete('restrict');
