@@ -45,9 +45,9 @@ Route::middleware(['auth'])->group(function () {
 
     // ---- Medicines Inventory ----------------------------------------------
     Route::prefix('inventory/{category}')->name('inventory.')->group(function () {
-        Route::get('/', [MedicineController::class, 'index'])->name('medicine-index');
-        Route::post('/store', [MedicineController::class, 'storeMedicine'])->name('medicine-store');
-        Route::get('/{id}/details', [MedicineController::class, 'getDetails'])->name('medicine-details');
+        Route::get('/', [MedicineController::class, 'index'])->name('index');
+        Route::post('/store', [MedicineController::class, 'storeMedicine'])->name('store');
+        Route::get('/{id}/details', [MedicineController::class, 'getDetails'])->name('details');
     });
 
     Route::post('/inventory/medicines/administration/{category}/{id}', [MedicineController::class, 'storeAdministration'])->name('medicines.administration.store');
@@ -62,13 +62,13 @@ Route::middleware(['auth'])->group(function () {
 
     // ---- Patients & Narcotic Dispensing -----------------------------------
     Route::prefix('patients')->name('patients.')->group(function () {
-        Route::get('/', [PatientController::class, 'index'])->name('patient-index');
-        Route::get('/{patient}', [PatientController::class, 'show'])->name('patient-show');
+        Route::get('/', [PatientController::class, 'index'])->name('index');
+        Route::get('/{patient}', [PatientController::class, 'show'])->name('show');
 
         // Nurse-only write actions (Nurse, Staff Nurse, Ward Sister)
         Route::middleware(['role:Nurse,Staff Nurse,Ward Sister'])->group(function () {
-            Route::post('/', [PatientController::class, 'store'])->name('patient-store');
-            Route::post('/{patient}/admissions', [AdmissionController::class, 'store'])->name('patient-admissions.store');
+            Route::post('/', [PatientController::class, 'store'])->name('store');
+            Route::post('/{patient}/admissions', [AdmissionController::class, 'store'])->name('admissions.store');
         });
     });
 
