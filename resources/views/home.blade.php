@@ -1860,21 +1860,21 @@
                         </div>
 
                         <h3 class="mt-6 text-xl font-bold text-slate-900">
-                            Medicines
+                            General Inventories
                         </h3>
 
                         <p class="mt-3 leading-7 text-slate-500">
 
-                            Manage medicines, quantities, expiry dates,
+                            Manage inventories, quantities,dates,
                             batches and stock movements efficiently.
 
                         </p>
 
                         <a
-                            href="{{ route('medicine-index') }}"
+                            href="{{ route('general-inventory.index') }}"
                             class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
 
-                            Manage Medicines
+                            Manage Inventories
 
                             <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
 
