@@ -27,7 +27,7 @@ class UserController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'password' => 'required|string|confirmed',
-            'role' => 'required|in:Nurse, Staff_Nurse, Ward_Sister',
+            'role' => 'required|in:Nurse, Staff Nurse, Ward Sister',
             'email' => 'required|string|email|max:255|unique:users,email'
         ]);
 
