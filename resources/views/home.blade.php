@@ -1860,7 +1860,7 @@
                         </div>
 
                         <h3 class="mt-6 text-xl font-bold text-slate-900">
-                            Drugs
+                            Medicines
                         </h3>
 
                         <p class="mt-3 leading-7 text-slate-500">
@@ -1870,15 +1870,28 @@
 
                         </p>
 
-                        <a
-                            href="{{ route('inventory.index') }}"
-                            class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
+                        <details class="relative mt-5 [&_summary::-webkit-details-marker]:hidden">
+                            <summary
+                                class="inline-flex cursor-pointer list-none items-center font-semibold text-[#1894f2] transition hover:text-[#003af8]">
+                                Manage Medicines
+                                <i class="fa-solid fa-chevron-down ml-2 text-xs"></i>
+                            </summary>
 
-                            Manage Drugs
+                            <div
+                                class="absolute left-0 z-10 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                <a href="{{ route('inventory.index', ['category' => 'narcotics']) }}"
+                                    class="flex items-center px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                    <i class="fa-solid fa-syringe mr-3 text-slate-400"></i>
+                                    Narcotics
+                                </a>
+                                <a href="{{ route('inventory.index', ['category' => 'bulk']) }}"
+                                    class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                    <i class="fa-solid fa-boxes-stacked mr-3 text-slate-400"></i>
+                                    Bulk
+                                </a>
+                            </div>
+                        </details>
 
-                            <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
-
-                        </a>
 
                     </div>
 
