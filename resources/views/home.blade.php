@@ -1977,26 +1977,26 @@
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
 
-                            <i class="fa-solid fa-truck"></i>
+                            <i class="fa-solid fa-bed"></i>
 
                         </div>
 
                         <h3 class="mt-6 text-xl font-bold text-slate-900">
-                            Suppliers
+                            Patients
                         </h3>
 
                         <p class="mt-3 leading-7 text-slate-500">
 
-                            Manage supplier information and monitor
-                            inventory purchasing activities.
+                            Manage patient information and monitor
+                            their medical records.
 
                         </p>
 
                         <a
-                            href="{{ route('test') }}"
+                            href="{{ route('patients.index') }}"
                             class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
 
-                            View Suppliers
+                            View Patients
 
                             <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
 
