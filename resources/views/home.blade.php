@@ -1848,7 +1848,7 @@
                 <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
 
-                    <!-- Drugs Card -->
+                    <!-- Medicine Card -->
                     <div
                         class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
@@ -1870,27 +1870,32 @@
 
                         </p>
 
-                        <details class="relative mt-5 [&_summary::-webkit-details-marker]:hidden">
-                            <summary
-                                class="inline-flex cursor-pointer list-none items-center font-semibold text-[#1894f2] transition hover:text-[#003af8]">
-                                Manage Medicines
-                                <i class="fa-solid fa-chevron-down ml-2 text-xs"></i>
-                            </summary>
+                        <div class="group/menu relative mt-5 inline-block">
 
+                            <a href="#"
+                                class="inline-flex items-center font-semibold text-[#1894f2] transition group-hover/menu:text-[#003af8]">
+                                Manage Medicines
+                                <i class="fa-solid fa-chevron-down ml-2 text-xs transition group-hover/menu:rotate-180"></i>
+                            </a>
+
+                            {{-- pt-2 keeps the hover area connected so the menu doesn't vanish when the cursor moves down --}}
                             <div
-                                class="absolute left-0 z-10 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-                                <a href="{{ route('inventory.index', ['category' => 'narcotics']) }}"
-                                    class="flex items-center px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
-                                    <i class="fa-solid fa-syringe mr-3 text-slate-400"></i>
-                                    Narcotics
-                                </a>
-                                <a href="{{ route('inventory.index', ['category' => 'bulk']) }}"
-                                    class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
-                                    <i class="fa-solid fa-boxes-stacked mr-3 text-slate-400"></i>
-                                    Bulk
-                                </a>
+                                class="invisible absolute left-0 top-full z-10 w-56 pt-2 opacity-0 transition duration-200 group-hover/menu:visible group-hover/menu:opacity-100">
+                                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                    <a href="{{ route('inventory.index', ['category' => 'narcotics']) }}"
+                                        class="flex items-center px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-syringe mr-3 text-slate-400"></i>
+                                        Narcotics
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'bulk']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-boxes-stacked mr-3 text-slate-400"></i>
+                                        Bulk
+                                    </a>
+                                </div>
                             </div>
-                        </details>
+
+                        </div>
 
 
                     </div>
@@ -1913,8 +1918,7 @@
 
                         <p class="mt-3 leading-7 text-slate-500">
 
-                            Monitor surgical equipment and medical
-                            consumables with an organized inventory system.
+                            Monitor surgical equipment with an organized inventory system.
 
                         </p>
 
