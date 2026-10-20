@@ -1672,24 +1672,40 @@
                         <div
                             class="invisible absolute right-0 top-full mt-2 w-60 translate-y-2 rounded-xl border border-slate-100 bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
 
-                            <a
-                                href="{{ route('inventory.index') }}"
-                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                            <div class="group/item relative">
 
-                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
-                                    <i class="fa-solid fa-pills"></i>
-                                </span>
+                                <a href="{{ route('inventory.index', ['category' => 'narcotics']) }}"
+                                    class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
-                                <span>
-                                    <span class="block font-semibold">
-                                        Medicines
+                                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                        <i class="fa-solid fa-pills"></i>
                                     </span>
-                                    <span class="text-xs text-slate-400">
-                                        Drugs & batches
-                                    </span>
-                                </span>
 
-                            </a>
+                                    <span class="flex-1">
+                                        <span class="block font-semibold">Medicines</span>
+                                        <span class="text-xs text-slate-400">Drugs & batches</span>
+                                    </span>
+
+                                    <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+                                </a>
+
+                                {{-- Category submenu: opens to the right on hover --}}
+                                <div class="invisible absolute left-full top-0 z-20 w-48 pl-2 opacity-0 transition duration-200 group-hover/item:visible group-hover/item:opacity-100">
+                                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                        <a href="{{ route('inventory.index', ['category' => 'narcotics']) }}"
+                                            class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-syringe text-slate-400"></i>
+                                            Narcotics
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'bulk']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-boxes-stacked text-slate-400"></i>
+                                            Bulk
+                                        </a>
+                                    </div>
+                                </div>
+
+                            </div>
 
 
                             <a
@@ -1738,11 +1754,11 @@
 
                     <!-- Suppliers -->
                     <a
-                        href="{{ route('test') }}"
+                        href="{{ route('patients.index') }}"
                         class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
-                        <i class="fa-solid fa-truck mr-1.5"></i>
-                        Suppliers
+                        <i class="fa-solid fa-bed mr-1.5"></i>
+                        Patients
 
                     </a>
 
