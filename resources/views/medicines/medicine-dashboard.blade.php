@@ -9,6 +9,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -174,6 +175,29 @@
     <div class="flex-1 flex flex-col h-full bg-[#F8FAFC]">
         <!-- Top Header / User Profile -->
         <div class="w-full bg-white border-b border-slate-200 px-8 py-3 flex shadow-sm">
+            <div class="ms-auto w-full flex justify-start sm:justify-start items-center gap-6">
+                <a
+                    href="{{ route('home') }}"
+                    class="flex items-center gap-3">
+
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1894f2] text-white shadow-md">
+                        <i class="fa-solid fa-plus text-lg"></i>
+                    </div>
+
+                    <div class="hidden sm:block">
+
+                        <span class="block text-base font-bold text-slate-800">
+                            Hospital Inventory Management System
+                        </span>
+
+                        <span class="block text-[10px] font-medium uppercase tracking-wider text-[#7b838f]">
+                            Hospital Management
+                        </span>
+
+                    </div>
+
+                </a>
+            </div>
             <div class="ms-auto justify-content-end w-full flex justify-end">
                 <div x-data="{ open: false }" class="relative dropdown">
                     <button @click="open = !open" @click.away="open = false" class="dropdown-toggle flex items-center gap-3 focus:outline-none hover:bg-slate-50 p-1.5 pr-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">

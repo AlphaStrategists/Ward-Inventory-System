@@ -1673,7 +1673,7 @@
                             class="invisible absolute right-0 top-full mt-2 w-60 translate-y-2 rounded-xl border border-slate-100 bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
 
                             <a
-                                href="{{ route('test') }}"
+                                href="{{ route('inventory.index') }}"
                                 class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
                                 <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
@@ -1682,10 +1682,10 @@
 
                                 <span>
                                     <span class="block font-semibold">
-                                        Drugs
+                                        Medicines
                                     </span>
                                     <span class="text-xs text-slate-400">
-                                        Medicines & batches
+                                        Drugs & batches
                                     </span>
                                 </span>
 
@@ -1713,7 +1713,7 @@
 
 
                             <a
-                                href="{{ route('test') }}"
+                                href="{{ route('general-inventory.index') }}"
                                 class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
                                 <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
@@ -1970,7 +1970,7 @@
                     </div>
 
 
-                    <!-- Suppliers Card -->
+                    <!-- Patients Card -->
                     <div
                         class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
