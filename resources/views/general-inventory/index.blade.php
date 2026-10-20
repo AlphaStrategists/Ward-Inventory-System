@@ -4,6 +4,8 @@
 
 @section('content')
 
+
+
     <!-- Left Sidebar: General Items List -->
     <x-inventory-sidebar 
         brandTitle="Ward Inventory"
