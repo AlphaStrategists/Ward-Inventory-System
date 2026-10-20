@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Ward Inventory System') - Ward 48</title>
-    
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
     <!-- Bootstrap 5.3 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <!-- Bootstrap Icons -->
@@ -17,7 +18,7 @@
 
     <!-- Font Awesome 6.5 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    
+
     <style>
         :root {
             --bs-font-sans-serif: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -267,7 +268,7 @@
             right: -40px;
             width: 220px;
             height: 220px;
-            background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%);
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 70%);
             border-radius: 50%;
             pointer-events: none;
         }
@@ -533,7 +534,7 @@
         .modal-content {
             border-radius: 18px;
             border: none;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
         }
 
         .modal-header {
@@ -546,14 +547,16 @@
             padding: 1rem 1.5rem;
         }
 
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             border-radius: 10px;
             border: 1px solid #e2e8f0;
             padding: 0.6rem 0.85rem;
             font-size: 0.875rem;
         }
 
-        .form-control:focus, .form-select:focus {
+        .form-control:focus,
+        .form-select:focus {
             border-color: var(--primary-blue);
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
         }
@@ -566,19 +569,25 @@
         }
     </style>
 </head>
+
 <body>
 
     <!-- Top Navigation Bar -->
     <header class="top-navbar d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
-            <a href="{{ route('general-inventory.index') }}" class="d-flex align-items-center gap-2 text-decoration-none text-dark">
-                <!-- Conical Flask / Medicine Icon -->
-                <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                    <i class="bi bi-eyedropper fs-5"></i>
+            <a href="{{ route('home') }}" class="d-flex align-items-center gap-3 text-decoration-none">
+                <div class="d-flex align-items-center justify-content-center text-white rounded-3 shadow-sm"
+                    style="width: 40px; height: 40px; background: #1894f2;">
+                    <i class="fa-solid fa-plus fs-5"></i>
                 </div>
-                <div>
-                    <h6 class="mb-0 fw-bold" style="letter-spacing: -0.01em;">Ward Inventory</h6>
-                    <small class="text-muted text-uppercase fw-semibold" style="font-size: 0.68rem; letter-spacing: 0.05em;">Neuro Surgical Unit</small>
+                <div class="d-none d-sm-block">
+                    <span class="d-block fw-bold" style="font-size: 1rem; color: #1e293b;">
+                        Hospital Inventory Management System
+                    </span>
+                    <span class="d-block text-uppercase fw-medium"
+                        style="font-size: 10px; letter-spacing: .05em; color: #7b838f;">
+                        Hospital Management
+                    </span>
                 </div>
             </a>
 
@@ -602,21 +611,21 @@
                 <i class="bi bi-hospital text-primary me-1"></i> Neuro Surgical Unit
             </span>
             @auth
-                <div class="d-flex align-items-center gap-2">
-                    <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; font-size: 0.8rem;">
-                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                    </div>
-                    <div class="d-none d-lg-block text-start">
-                        <div class="fw-bold" style="font-size: 0.825rem; line-height: 1.1;">{{ auth()->user()->name }}</div>
-                        <small class="text-muted" style="font-size: 0.7rem;">{{ auth()->user()->role?->role_name ?? 'Staff' }}</small>
-                    </div>
-                    <form method="POST" action="{{ route('logout') }}" class="ms-1">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill" title="Logout">
-                            <i class="bi bi-box-arrow-right"></i>
-                        </button>
-                    </form>
+            <div class="d-flex align-items-center gap-2">
+                <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; font-size: 0.8rem;">
+                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                 </div>
+                <div class="d-none d-lg-block text-start">
+                    <div class="fw-bold" style="font-size: 0.825rem; line-height: 1.1;">{{ auth()->user()->name }}</div>
+                    <small class="text-muted" style="font-size: 0.7rem;">{{ auth()->user()->role?->role_name ?? 'Staff' }}</small>
+                </div>
+                <form method="POST" action="{{ route('logout') }}" class="ms-1">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill" title="Logout">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
             @endauth
         </div>
     </header>
@@ -624,31 +633,31 @@
     <!-- Flash Messages -->
     <div class="container-fluid px-4 pt-3">
         @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-2" role="alert">
-                <i class="bi bi-check-circle-fill text-success fs-5"></i>
-                <div class="fw-semibold">{{ session('success') }}</div>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+        <div class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-2" role="alert">
+            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+            <div class="fw-semibold">{{ session('success') }}</div>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
         @endif
 
         @if(session('error'))
-            <div class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-2" role="alert">
-                <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
-                <div class="fw-semibold">{{ session('error') }}</div>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+        <div class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-2" role="alert">
+            <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+            <div class="fw-semibold">{{ session('error') }}</div>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
         @endif
 
         @if($errors->any())
-            <div class="alert alert-warning alert-dismissible fade show rounded-4 border-0 shadow-sm mb-2" role="alert">
-                <div class="fw-bold mb-1"><i class="bi bi-exclamation-circle me-1"></i> Please check the following input errors:</div>
-                <ul class="mb-0 ps-3">
-                    @foreach($errors->all() as $err)
-                        <li>{{ $err }}</li>
-                    @endforeach
-                </ul>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+        <div class="alert alert-warning alert-dismissible fade show rounded-4 border-0 shadow-sm mb-2" role="alert">
+            <div class="fw-bold mb-1"><i class="bi bi-exclamation-circle me-1"></i> Please check the following input errors:</div>
+            <ul class="mb-0 ps-3">
+                @foreach($errors->all() as $err)
+                <li>{{ $err }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
         @endif
     </div>
 
@@ -659,7 +668,8 @@
 
     <!-- Bootstrap 5.3 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    
+
     @stack('scripts')
 </body>
+
 </html>
