@@ -1871,7 +1871,7 @@
                         </p>
 
                         <a
-                            href="{{ route('test') }}"
+                            href="{{ route('inventory.index') }}"
                             class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
 
                             Manage Drugs
