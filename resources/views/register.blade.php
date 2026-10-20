@@ -192,11 +192,11 @@
                                 <option value="Nurse" {{ old('role') === 'Nurse' ? 'selected' : '' }}>
                                     Nurse
                                 </option>
-                                <option value="Staff Nurse" {{ old('role') === 'Staff_Nurse' ? 'selected' : '' }}>
-                                    Staff_Nurse
+                                <option value="Staff Nurse" {{ old('role') === 'Staff Nurse' ? 'selected' : '' }}>
+                                    Staff Nurse
                                 </option>
-                                <option value="Nurse" {{ old('role') === 'Ward_Sister ? 'selected' : '' }}>
-                                    Ward_Sister
+                                <option value="Ward Sister" {{ old('role') === 'Ward Sister' ? 'selected' : '' }}>
+                                    Ward Sister
                                 </option>
                             </select>
                             <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
