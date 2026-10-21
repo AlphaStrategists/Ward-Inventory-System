@@ -197,6 +197,14 @@
                     </div>
 
                 </a>
+
+                <div class="h-6 w-px bg-slate-200 hidden sm:block"></div>
+
+                <a href="{{ route('dashboard') }}"
+                    class="hidden sm:inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#1894f2] bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95">
+                    <i class="fa-solid fa-arrow-left text-[11px]"></i>
+                    Back to Dashboard
+                </a>
             </div>
             <div class="ms-auto justify-content-end w-full flex justify-end">
                 <div x-data="{ open: false }" class="relative dropdown">
@@ -396,7 +404,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
-                    @if(auth()->check() && in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
+                    @if(auth()->check() && (auth()->user()->hasAnyRole(['Nurse', 'Staff Nurse', 'Ward Sister', 'Doctor']) || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor'])))
                     <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -562,7 +570,7 @@
                                     @else
                                     @if($detail->qty_issued == 0)
                                     <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
-                                    @elseif(auth()->check() && in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister']))
+                                    @elseif(auth()->check() && (auth()->user()->hasAnyRole(['Nurse', 'Staff Nurse', 'Ward Sister']) || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister'])))
                                     <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                     @else
                                     <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
@@ -582,7 +590,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
-                    @if(auth()->check() && in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
+                    @if(auth()->check() && (auth()->user()->hasAnyRole(['Nurse', 'Staff Nurse', 'Ward Sister', 'Doctor']) || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor'])))
                     <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -654,7 +662,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
-                    @if(auth()->check() && in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor']))
+                    @if(auth()->check() && (auth()->user()->hasAnyRole(['Nurse', 'Staff Nurse', 'Ward Sister', 'Doctor']) || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor'])))
                     <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>

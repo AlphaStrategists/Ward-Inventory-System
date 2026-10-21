@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -27,6 +28,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'role_id',
     ];
 
     protected $hidden = [
@@ -46,7 +48,21 @@ class User extends Authenticatable
     /** Lets views use $user->name even though the table has first_name and last_name. */
     protected function name(): Attribute
     {
-        return Attribute::get(fn () => trim($this->first_name . ' ' . $this->last_name));
+        return Attribute::get(fn () => trim($this->first_name . ' ' . $this->last_name) ?: ($this->attributes['name'] ?? ''));
+    }
+
+    public function roleRelation(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    public function getRoleAttribute(): ?string
+    {
+        if (isset($this->attributes['role']) && !empty($this->attributes['role'])) {
+            return $this->attributes['role'];
+        }
+
+        return $this->roleRelation?->role_name;
     }
 
     public function generalTransactions(): HasMany
@@ -91,11 +107,12 @@ class User extends Authenticatable
      */
     public function hasAnyRole(array $roleNames): bool
     {
-        if (! $this->role) {
+        $roleName = $this->role ?? $this->roleRelation?->role_name;
+        if (! $roleName) {
             return false;
         }
 
-        $current = self::normalize($this->role);
+        $current = self::normalize($roleName);
         $wanted  = array_map([self::class, 'normalize'], $roleNames);
         $nurse   = array_map([self::class, 'normalize'], self::NURSE_ROLES);
 

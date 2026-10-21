@@ -1702,6 +1702,31 @@
                                             <i class="fa-solid fa-boxes-stacked text-slate-400"></i>
                                             Bulk
                                         </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'syrups']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-bottle-droplet text-slate-400"></i>
+                                            Syrup
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'antibiotics']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-capsules text-slate-400"></i>
+                                            Antibiotics
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'oral-antibiotics']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-tablets text-slate-400"></i>
+                                            Oral Antibiotics
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'OralCountable']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-pills text-slate-400"></i>
+                                            Oral Countable
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'iv-fluids']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-droplet text-slate-400"></i>
+                                            IV Fluids
+                                        </a>
                                     </div>
                                 </div>
 
@@ -1907,6 +1932,31 @@
                                         class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
                                         <i class="fa-solid fa-boxes-stacked mr-3 text-slate-400"></i>
                                         Bulk
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'syrups']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-bottle-droplet mr-3 text-slate-400"></i>
+                                        Syrup
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'antibiotics']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-capsules mr-3 text-slate-400"></i>
+                                        Antibiotics
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'oral-antibiotics']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-tablets mr-3 text-slate-400"></i>
+                                        Oral Antibiotics
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'OralCountable']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-pills mr-3 text-slate-400"></i>
+                                        Oral Countable
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'iv-fluids']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-droplet mr-3 text-slate-400"></i>
+                                        IV Fluids
                                     </a>
                                 </div>
                             </div>

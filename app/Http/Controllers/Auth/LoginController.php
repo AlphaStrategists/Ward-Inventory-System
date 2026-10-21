@@ -10,10 +10,17 @@ use Illuminate\View\View;
 
 class LoginController extends Controller
 {
+    /**
+     * Where to redirect users after login.
+     *
+     * @var string
+     */
+    protected $redirectTo = '/dashboard';
+
     public function showLoginForm(): View|RedirectResponse
     {
         if (Auth::check()) {
-            return redirect()->route('general-inventory.index');
+            return redirect($this->redirectTo);
         }
 
         return view('auth.login');
@@ -29,7 +36,7 @@ class LoginController extends Controller
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            return redirect()->intended(route('general-inventory.index'));
+            return redirect()->intended($this->redirectTo);
         }
 
         return back()
