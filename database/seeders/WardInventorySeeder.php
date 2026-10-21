@@ -91,13 +91,12 @@ class WardInventorySeeder extends Seeder
             );
         }
 
-        // 4. BHT Requisitions (Surgical Consumable 2) Initial Data
+        // 4. Requisitions (Surgical Consumable 2) Initial Data
         $bhtReqsSurgical2 = [
             [
                 'category_type' => 'surgical_consumable_2',
                 'date' => '2026-09-16',
                 'item_name' => 'SURGICAL DRESSING KIT',
-                'bht_no' => 'BHT-88401',
                 'quantity' => '2 Kit',
                 'balance' => '40 Kit',
                 'officer_name' => 'Sr. Fernando (RN-204)',
@@ -108,7 +107,6 @@ class WardInventorySeeder extends Seeder
                 'category_type' => 'surgical_consumable_2',
                 'date' => '2026-09-15',
                 'item_name' => 'FOLEY CATHETER 16FR',
-                'bht_no' => 'BHT-88392',
                 'quantity' => '1 Pcs',
                 'balance' => '25 Pcs',
                 'officer_name' => 'Nurse Ratnayake (RN-512)',
@@ -119,7 +117,6 @@ class WardInventorySeeder extends Seeder
                 'category_type' => 'surgical_consumable_2',
                 'date' => '2026-09-14',
                 'item_name' => 'IV CANNULA 20G',
-                'bht_no' => 'BHT-88375',
                 'quantity' => '5 Pcs',
                 'balance' => '120 Pcs',
                 'officer_name' => 'Sr. Fernando (RN-204)',
@@ -149,13 +146,12 @@ class WardInventorySeeder extends Seeder
             );
         }
 
-        // 6. BHT Requisitions (Local Purchases) Initial Data
+        // 6. Requisitions (Local Purchases) Initial Data
         $bhtReqsLocal = [
             [
                 'category_type' => 'local_purchases',
                 'date' => '2026-09-16',
                 'item_name' => 'PARACETAMOL 500MG (LP)',
-                'bht_no' => 'BHT-88410',
                 'quantity' => '20 Tabs',
                 'balance' => '500 Tabs',
                 'officer_name' => 'Sr. Perera (RN-402)',
@@ -166,7 +162,6 @@ class WardInventorySeeder extends Seeder
                 'category_type' => 'local_purchases',
                 'date' => '2026-09-15',
                 'item_name' => 'SYRUP AMBROXOL 100ML',
-                'bht_no' => 'BHT-88399',
                 'quantity' => '1 Bottle',
                 'balance' => '24 Bottle',
                 'officer_name' => 'Nurse De Silva (RN-118)',
@@ -177,7 +172,6 @@ class WardInventorySeeder extends Seeder
                 'category_type' => 'local_purchases',
                 'date' => '2026-09-14',
                 'item_name' => 'NEBULIZER MASK (ADULT)',
-                'bht_no' => 'BHT-88382',
                 'quantity' => '2 Pcs',
                 'balance' => '35 Pcs',
                 'officer_name' => 'Sr. Perera (RN-402)',

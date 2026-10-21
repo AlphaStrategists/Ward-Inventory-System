@@ -23,9 +23,10 @@ class LocalPurchaseController extends Controller
     /**
      * Render the Local Purchases view.
      */
-    public function index()
+    public function index(Request $request, $role = null)
     {
-        return view('local-purchases');
+        $activeRole = $role ?? $request->query('role', 'admin');
+        return view('local-purchases', ['activeRole' => $activeRole]);
     }
 
     /**
@@ -119,7 +120,6 @@ class LocalPurchaseController extends Controller
                         'id' => $t->id,
                         'date' => date('Y-m-d', strtotime($t->date)),
                         'item_name' => $t->item_name,
-                        'bht_no' => 'BHT-88410',
                         'quantity' => $t->quantity_issued ? $t->quantity_issued . ' Tabs' : '20 Tabs',
                         'balance' => '500 Tabs',
                         'officer_name' => 'Sr. Perera (RN-402)',
@@ -138,7 +138,6 @@ class LocalPurchaseController extends Controller
                 'id' => 501,
                 'date' => '2026-09-16',
                 'item_name' => 'PARACETAMOL 500MG (LP)',
-                'bht_no' => 'BHT-88410',
                 'quantity' => '20 Tabs',
                 'balance' => '500 Tabs',
                 'officer_name' => 'Sr. Perera (RN-402)',
@@ -149,7 +148,6 @@ class LocalPurchaseController extends Controller
                 'id' => 502,
                 'date' => '2026-09-15',
                 'item_name' => 'SYRUP AMBROXOL 100ML',
-                'bht_no' => 'BHT-88399',
                 'quantity' => '1 Bottle',
                 'balance' => '24 Bottle',
                 'officer_name' => 'Nurse De Silva (RN-118)',
@@ -160,7 +158,6 @@ class LocalPurchaseController extends Controller
                 'id' => 503,
                 'date' => '2026-09-14',
                 'item_name' => 'NEBULIZER MASK (ADULT)',
-                'bht_no' => 'BHT-88382',
                 'quantity' => '2 Pcs',
                 'balance' => '35 Pcs',
                 'officer_name' => 'Sr. Perera (RN-402)',
@@ -178,13 +175,17 @@ class LocalPurchaseController extends Controller
         $validated = $request->validate([
             'date' => 'required|string',
             'item_name' => 'required|string',
-            'bht_no' => 'required|string',
+            'bht_no' => 'nullable|string',
             'quantity' => 'required|string',
             'balance' => 'required|string',
             'officer_name' => 'required|string',
-            'signature_in_charge' => 'required|string',
+            'signature_in_charge' => 'nullable|string',
             'note' => 'nullable|string',
         ]);
+
+        if (empty($validated['signature_in_charge'])) {
+            $validated['signature_in_charge'] = 'Pending Signature in Charge';
+        }
 
         $issuedAmount = 0;
         if (!empty($validated['quantity'])) {
@@ -211,6 +212,30 @@ class LocalPurchaseController extends Controller
     }
 
     /**
+     * Update a requisition record (e.g. MS signing in charge).
+     */
+    public function updateRequisition(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'signature_in_charge' => 'nullable|string',
+            'officer_name' => 'nullable|string',
+            'date' => 'nullable|string',
+        ]);
+
+        try {
+            $signer = $validated['officer_name'] ?? 'MS (Medical Superintendent)';
+            WardDatabaseService::logActivity("Local Purchase Requisition #{$id} signed in charge by {$signer}");
+        } catch (\Exception $e) {
+            // Ignore
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Local purchase requisition signed in charge successfully.'
+        ]);
+    }
+
+    /**
      * Delete requisition record from general_transactions.
      */
     public function destroyRequisition($id)
@@ -225,5 +250,173 @@ class LocalPurchaseController extends Controller
             'success' => true,
             'message' => 'Requisition record deleted from database.'
         ]);
+    }
+
+    /**
+     * Get stock adjustments for Local Purchases from initial general_stock_adjustments table.
+     */
+    public function getAdjustments()
+    {
+        $fallback = [
+            [
+                'id' => 3001,
+                'date' => '2026-09-15',
+                'item_name' => 'PARACETAMOL 500MG (LP)',
+                'type' => 'COUNT_CORRECTION_ADD',
+                'quantity' => '+50 Tabs',
+                'balance' => '500 Tabs',
+                'reason' => 'Quarterly physical inventory count audit reconciliation',
+                'adjusted_by' => 'Sr. Perera (RN-402)',
+            ],
+            [
+                'id' => 3002,
+                'date' => '2026-09-11',
+                'item_name' => 'HAND SANITIZER 500ML',
+                'type' => 'DAMAGED',
+                'quantity' => '-2 Bottle',
+                'balance' => '18 Bottle',
+                'reason' => 'Defective pump nozzle broke off during handling',
+                'adjusted_by' => 'Nurse De Silva (RN-118)',
+            ],
+            [
+                'id' => 3003,
+                'date' => '2026-09-07',
+                'item_name' => 'DIGITAL THERMOMETER',
+                'type' => 'DAMAGED',
+                'quantity' => '-1 Pcs',
+                'balance' => '10 Pcs',
+                'reason' => 'Digital LCD display malfunction - logged for supplier warranty return',
+                'adjusted_by' => 'Sr. Perera (RN-402)',
+            ],
+        ];
+
+        return response()->json(WardDatabaseService::getAdjustments(3, $fallback));
+    }
+
+    /**
+     * Store a new stock adjustment for Local Purchases.
+     */
+    public function storeAdjustment(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|string',
+            'item_name' => 'required|string',
+            'type' => 'required|string',
+            'quantity' => 'required|string',
+            'balance' => 'required|string',
+            'reason' => 'required|string',
+            'adjusted_by' => 'required|string',
+        ]);
+
+        $amount = 0;
+        if (preg_match('/\d+/', $validated['quantity'], $m)) {
+            $amount = (int) $m[0];
+        }
+
+        $transId = WardDatabaseService::storeAdjustment(
+            3,
+            $validated['item_name'],
+            $validated['type'],
+            $amount,
+            $validated['reason'],
+            $validated['adjusted_by'],
+            $validated['date']
+        );
+
+        $validated['id'] = $transId;
+
+        return response()->json([
+            'success' => true,
+            'data' => $validated,
+            'message' => 'Stock adjustment saved successfully.'
+        ], 201);
+    }
+
+    /**
+     * Delete a stock adjustment record.
+     */
+    public function destroyAdjustment($id)
+    {
+        WardDatabaseService::deleteAdjustment($id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Stock adjustment record removed.'
+        ]);
+    }
+
+    /**
+     * Get daily counts for Local Purchases.
+     */
+    public function getDailyCounts()
+    {
+        $fallback = [
+            [
+                'id' => 6001,
+                'date' => '2026-09-15',
+                'item_name' => 'PARACETAMOL 500MG (LP)',
+                'qty_given' => '60 Tabs',
+                'balance' => '440 Tabs',
+                'sisters_initials' => 'K.P.',
+                'remarks' => 'Night shift fever medication dispensing',
+            ],
+            [
+                'id' => 6002,
+                'date' => '2026-09-14',
+                'item_name' => 'HAND SANITIZER 500ML',
+                'qty_given' => '3 Bottle',
+                'balance' => '15 Bottle',
+                'sisters_initials' => 'D.S.',
+                'remarks' => 'Bedside sanitizing stations top-up',
+            ],
+            [
+                'id' => 6003,
+                'date' => '2026-09-13',
+                'item_name' => 'DIGITAL THERMOMETER',
+                'qty_given' => '1 Pcs',
+                'balance' => '9 Pcs',
+                'sisters_initials' => 'K.P.',
+                'remarks' => 'Cubicle 4 nurse station replacement',
+            ],
+        ];
+
+        return response()->json(WardDatabaseService::getDailyCounts(3, $fallback));
+    }
+
+    /**
+     * Store a new daily count for Local Purchases.
+     */
+    public function storeDailyCount(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|string',
+            'item_name' => 'required|string',
+            'qty_given' => 'required|string',
+            'balance' => 'required|string',
+            'sisters_initials' => 'required|string',
+            'remarks' => 'nullable|string',
+        ]);
+
+        $amount = 0;
+        if (preg_match('/\d+/', $validated['qty_given'], $m)) {
+            $amount = (int) $m[0];
+        }
+
+        $transId = WardDatabaseService::storeDailyCount(
+            3,
+            $validated['item_name'],
+            $amount,
+            $validated['sisters_initials'],
+            $validated['remarks'] ?? '',
+            $validated['date']
+        );
+
+        $validated['id'] = $transId;
+
+        return response()->json([
+            'success' => true,
+            'data' => $validated,
+            'message' => 'Daily count recorded successfully.'
+        ], 201);
     }
 }

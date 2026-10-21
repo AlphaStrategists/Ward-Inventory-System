@@ -24,9 +24,10 @@ class SurgicalConsumableController extends Controller
     /**
      * Render the Surgical Consumable 1 front-end view.
      */
-    public function index()
+    public function index(Request $request, $role = null)
     {
-        return view('surgical-consumable-1');
+        $activeRole = $role ?? $request->query('role', 'admin');
+        return view('surgical-consumable-1', ['activeRole' => $activeRole]);
     }
 
     /**
@@ -187,11 +188,21 @@ class SurgicalConsumableController extends Controller
             'balance' => 'required|string',
             'requested_qty' => 'required|string',
             'requested_by' => 'required|string',
-            'request_signature' => 'required|string',
+            'request_signature' => 'nullable|string',
             'received_qty' => 'nullable|string',
             'received_by' => 'nullable|string',
             'receive_signature' => 'nullable|string',
         ]);
+
+        if (empty($validated['request_signature'])) {
+            $validated['request_signature'] = 'Pending MS Approval';
+        }
+        if (empty($validated['received_qty'])) {
+            $validated['received_qty'] = '';
+        }
+        if (empty($validated['receive_signature'])) {
+            $validated['receive_signature'] = 'Pending MS Approval';
+        }
 
         $receivedAmount = 0;
         if (!empty($validated['received_qty'])) {
@@ -223,6 +234,41 @@ class SurgicalConsumableController extends Controller
     }
 
     /**
+     * Update a requisition log in general_transactions (e.g. nurse updating received qty or MS signing).
+     */
+    public function updateRequisition(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'received_qty' => 'nullable|string',
+            'received_by' => 'nullable|string',
+            'receive_signature' => 'nullable|string',
+            'requested_by' => 'nullable|string',
+            'request_signature' => 'nullable|string',
+            'date' => 'nullable|string',
+        ]);
+
+        try {
+            if (!empty($validated['received_qty'])) {
+                preg_match('/^\d+/', $validated['received_qty'], $m);
+                $qty = !empty($m[0]) ? (int) $m[0] : 0;
+                DB::table('general_transactions')->where('id', $id)->update([
+                    'quantity_received' => $qty,
+                    'date' => now(),
+                ]);
+            }
+            $signer = $validated['requested_by'] ?? ($validated['received_by'] ?? 'Staff');
+            WardDatabaseService::logActivity("Requisition #{$id} updated ({$signer})");
+        } catch (\Exception $e) {
+            // Ignore
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Requisition updated successfully.'
+        ]);
+    }
+
+    /**
      * Delete a requisition log from general_transactions.
      */
     public function destroyRequisition($id)
@@ -237,5 +283,173 @@ class SurgicalConsumableController extends Controller
             'success' => true,
             'message' => 'Requisition record deleted from database.'
         ]);
+    }
+
+    /**
+     * Get stock adjustments for Surgical Consumable 1 from general_stock_adjustments.
+     */
+    public function getAdjustments()
+    {
+        $fallback = [
+            [
+                'id' => 1001,
+                'date' => '2026-09-14',
+                'item_name' => 'SURGICAL GLOVES 7.5',
+                'type' => 'COUNT_CORRECTION_ADD',
+                'quantity' => '+5 Box',
+                'balance' => '30 Box',
+                'reason' => 'Ward inventory audit recount (surplus found in Emergency Trolley)',
+                'adjusted_by' => 'Sr. Perera (RN-402)',
+            ],
+            [
+                'id' => 1002,
+                'date' => '2026-09-12',
+                'item_name' => 'COTTON WOOL 500G',
+                'type' => 'DAMAGED',
+                'quantity' => '-2 Roll',
+                'balance' => '15 Roll',
+                'reason' => 'Moisture damage on shelf rack during routine ward cleaning',
+                'adjusted_by' => 'Nurse Wickramasinghe (RN-311)',
+            ],
+            [
+                'id' => 1003,
+                'date' => '2026-09-10',
+                'item_name' => 'POVIDONE IODINE 500ML',
+                'type' => 'EXPIRY',
+                'quantity' => '-1 Bottle',
+                'balance' => '12 Bottle',
+                'reason' => 'Batch expiry reached - discarded per hospital waste protocol',
+                'adjusted_by' => 'Sr. Perera (RN-402)',
+            ],
+        ];
+
+        return response()->json(WardDatabaseService::getAdjustments(1, $fallback));
+    }
+
+    /**
+     * Store a new stock adjustment for Surgical Consumable 1.
+     */
+    public function storeAdjustment(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|string',
+            'item_name' => 'required|string',
+            'type' => 'required|string',
+            'quantity' => 'required|string',
+            'balance' => 'required|string',
+            'reason' => 'required|string',
+            'adjusted_by' => 'required|string',
+        ]);
+
+        $amount = 0;
+        if (preg_match('/\d+/', $validated['quantity'], $m)) {
+            $amount = (int) $m[0];
+        }
+
+        $transId = WardDatabaseService::storeAdjustment(
+            1,
+            $validated['item_name'],
+            $validated['type'],
+            $amount,
+            $validated['reason'],
+            $validated['adjusted_by'],
+            $validated['date']
+        );
+
+        $validated['id'] = $transId;
+
+        return response()->json([
+            'success' => true,
+            'data' => $validated,
+            'message' => 'Stock adjustment saved successfully.'
+        ], 201);
+    }
+
+    /**
+     * Delete a stock adjustment record.
+     */
+    public function destroyAdjustment($id)
+    {
+        WardDatabaseService::deleteAdjustment($id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Stock adjustment record removed.'
+        ]);
+    }
+
+    /**
+     * Get daily counts for Surgical Consumable 1.
+     */
+    public function getDailyCounts()
+    {
+        $fallback = [
+            [
+                'id' => 4001,
+                'date' => '2026-09-15',
+                'item_name' => 'SURGICAL GLOVES 7.5',
+                'qty_given' => '3 Box',
+                'balance' => '27 Box',
+                'sisters_initials' => 'K.P.',
+                'remarks' => 'Morning shift routine ward dispensing',
+            ],
+            [
+                'id' => 4002,
+                'date' => '2026-09-14',
+                'item_name' => 'COTTON WOOL 500G',
+                'qty_given' => '2 Roll',
+                'balance' => '13 Roll',
+                'sisters_initials' => 'M.W.',
+                'remarks' => 'Dressing trolley replenishment',
+            ],
+            [
+                'id' => 4003,
+                'date' => '2026-09-13',
+                'item_name' => 'POVIDONE IODINE 500ML',
+                'qty_given' => '1 Bottle',
+                'balance' => '11 Bottle',
+                'sisters_initials' => 'K.P.',
+                'remarks' => 'Minor theatre prep usage',
+            ],
+        ];
+
+        return response()->json(WardDatabaseService::getDailyCounts(1, $fallback));
+    }
+
+    /**
+     * Store a new daily count for Surgical Consumable 1.
+     */
+    public function storeDailyCount(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|string',
+            'item_name' => 'required|string',
+            'qty_given' => 'required|string',
+            'balance' => 'required|string',
+            'sisters_initials' => 'required|string',
+            'remarks' => 'nullable|string',
+        ]);
+
+        $amount = 0;
+        if (preg_match('/\d+/', $validated['qty_given'], $m)) {
+            $amount = (int) $m[0];
+        }
+
+        $transId = WardDatabaseService::storeDailyCount(
+            1,
+            $validated['item_name'],
+            $amount,
+            $validated['sisters_initials'],
+            $validated['remarks'] ?? '',
+            $validated['date']
+        );
+
+        $validated['id'] = $transId;
+
+        return response()->json([
+            'success' => true,
+            'data' => $validated,
+            'message' => 'Daily count recorded successfully.'
+        ], 201);
     }
 }

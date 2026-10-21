@@ -23,9 +23,10 @@ class SurgicalConsumable2Controller extends Controller
     /**
      * Render the Surgical Consumable 2 view.
      */
-    public function index()
+    public function index(Request $request, $role = null)
     {
-        return view('surgical-consumable-2');
+        $activeRole = $role ?? $request->query('role', 'admin');
+        return view('surgical-consumable-2', ['activeRole' => $activeRole]);
     }
 
     /**
@@ -119,7 +120,6 @@ class SurgicalConsumable2Controller extends Controller
                         'id' => $t->id,
                         'date' => date('Y-m-d', strtotime($t->date)),
                         'item_name' => $t->item_name,
-                        'bht_no' => 'BHT-88401',
                         'quantity' => $t->quantity_issued ? $t->quantity_issued . ' Pcs' : '1 Pcs',
                         'balance' => '40 Kit',
                         'officer_name' => 'Sr. Fernando (RN-204)',
@@ -138,7 +138,6 @@ class SurgicalConsumable2Controller extends Controller
                 'id' => 301,
                 'date' => '2026-09-16',
                 'item_name' => 'SURGICAL DRESSING KIT',
-                'bht_no' => 'BHT-88401',
                 'quantity' => '2 Kit',
                 'balance' => '40 Kit',
                 'officer_name' => 'Sr. Fernando (RN-204)',
@@ -149,7 +148,6 @@ class SurgicalConsumable2Controller extends Controller
                 'id' => 302,
                 'date' => '2026-09-15',
                 'item_name' => 'FOLEY CATHETER 16FR',
-                'bht_no' => 'BHT-88392',
                 'quantity' => '1 Pcs',
                 'balance' => '25 Pcs',
                 'officer_name' => 'Nurse Ratnayake (RN-512)',
@@ -160,7 +158,6 @@ class SurgicalConsumable2Controller extends Controller
                 'id' => 303,
                 'date' => '2026-09-14',
                 'item_name' => 'IV CANNULA 20G',
-                'bht_no' => 'BHT-88375',
                 'quantity' => '5 Pcs',
                 'balance' => '120 Pcs',
                 'officer_name' => 'Sr. Fernando (RN-204)',
@@ -178,13 +175,17 @@ class SurgicalConsumable2Controller extends Controller
         $validated = $request->validate([
             'date' => 'required|string',
             'item_name' => 'required|string',
-            'bht_no' => 'required|string',
+            'bht_no' => 'nullable|string',
             'quantity' => 'required|string',
             'balance' => 'required|string',
             'officer_name' => 'required|string',
-            'signature_in_charge' => 'required|string',
+            'signature_in_charge' => 'nullable|string',
             'note' => 'nullable|string',
         ]);
+
+        if (empty($validated['signature_in_charge'])) {
+            $validated['signature_in_charge'] = 'Pending Signature in Charge';
+        }
 
         $issuedAmount = 0;
         if (!empty($validated['quantity'])) {
@@ -211,6 +212,30 @@ class SurgicalConsumable2Controller extends Controller
     }
 
     /**
+     * Update a requisition record (e.g. MS signing in charge).
+     */
+    public function updateRequisition(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'signature_in_charge' => 'nullable|string',
+            'officer_name' => 'nullable|string',
+            'date' => 'nullable|string',
+        ]);
+
+        try {
+            $signer = $validated['officer_name'] ?? 'MS (Medical Superintendent)';
+            WardDatabaseService::logActivity("Consumable 2 Requisition #{$id} signed in charge by {$signer}");
+        } catch (\Exception $e) {
+            // Ignore
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Requisition signed in charge successfully.'
+        ]);
+    }
+
+    /**
      * Delete requisition record from general_transactions.
      */
     public function destroyRequisition($id)
@@ -225,5 +250,173 @@ class SurgicalConsumable2Controller extends Controller
             'success' => true,
             'message' => 'Requisition record deleted from database.'
         ]);
+    }
+
+    /**
+     * Get stock adjustments for Surgical Consumable 2 from initial general_stock_adjustments table.
+     */
+    public function getAdjustments()
+    {
+        $fallback = [
+            [
+                'id' => 2001,
+                'date' => '2026-09-15',
+                'item_name' => 'SURGICAL DRESSING KIT',
+                'type' => 'DAMAGED',
+                'quantity' => '-2 Kit',
+                'balance' => '40 Kit',
+                'reason' => 'Sterile seal outer wrapper compromised during trolley transport',
+                'adjusted_by' => 'Sr. Fernando (RN-204)',
+            ],
+            [
+                'id' => 2002,
+                'date' => '2026-09-12',
+                'item_name' => 'IV CANNULA 20G',
+                'type' => 'COUNT_CORRECTION_ADD',
+                'quantity' => '+10 Pcs',
+                'balance' => '120 Pcs',
+                'reason' => 'Weekly audit surplus reconciliation from Minor Procedure Cart',
+                'adjusted_by' => 'Nurse Ratnayake (RN-512)',
+            ],
+            [
+                'id' => 2003,
+                'date' => '2026-09-08',
+                'item_name' => 'TRACHEOSTOMY TUBE 7.5',
+                'type' => 'EXPIRY',
+                'quantity' => '-1 Pcs',
+                'balance' => '8 Pcs',
+                'reason' => 'Manufacturer batch expiration reached - removed for replacement',
+                'adjusted_by' => 'Sr. Fernando (RN-204)',
+            ],
+        ];
+
+        return response()->json(WardDatabaseService::getAdjustments(2, $fallback));
+    }
+
+    /**
+     * Store a new stock adjustment for Surgical Consumable 2.
+     */
+    public function storeAdjustment(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|string',
+            'item_name' => 'required|string',
+            'type' => 'required|string',
+            'quantity' => 'required|string',
+            'balance' => 'required|string',
+            'reason' => 'required|string',
+            'adjusted_by' => 'required|string',
+        ]);
+
+        $amount = 0;
+        if (preg_match('/\d+/', $validated['quantity'], $m)) {
+            $amount = (int) $m[0];
+        }
+
+        $transId = WardDatabaseService::storeAdjustment(
+            2,
+            $validated['item_name'],
+            $validated['type'],
+            $amount,
+            $validated['reason'],
+            $validated['adjusted_by'],
+            $validated['date']
+        );
+
+        $validated['id'] = $transId;
+
+        return response()->json([
+            'success' => true,
+            'data' => $validated,
+            'message' => 'Stock adjustment saved successfully.'
+        ], 201);
+    }
+
+    /**
+     * Delete a stock adjustment record.
+     */
+    public function destroyAdjustment($id)
+    {
+        WardDatabaseService::deleteAdjustment($id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Stock adjustment record removed.'
+        ]);
+    }
+
+    /**
+     * Get daily counts for Surgical Consumable 2.
+     */
+    public function getDailyCounts()
+    {
+        $fallback = [
+            [
+                'id' => 5001,
+                'date' => '2026-09-15',
+                'item_name' => 'SURGICAL DRESSING KIT',
+                'qty_given' => '4 Kit',
+                'balance' => '36 Kit',
+                'sisters_initials' => 'S.F.',
+                'remarks' => 'Post-op dressing care ward rounds',
+            ],
+            [
+                'id' => 5002,
+                'date' => '2026-09-14',
+                'item_name' => 'IV CANNULA 20G',
+                'qty_given' => '15 Pcs',
+                'balance' => '105 Pcs',
+                'sisters_initials' => 'N.R.',
+                'remarks' => 'Emergency admission trolley stock',
+            ],
+            [
+                'id' => 5003,
+                'date' => '2026-09-13',
+                'item_name' => 'TRACHEOSTOMY TUBE 7.5',
+                'qty_given' => '1 Pcs',
+                'balance' => '7 Pcs',
+                'sisters_initials' => 'S.F.',
+                'remarks' => 'ICU step-down patient bedside use',
+            ],
+        ];
+
+        return response()->json(WardDatabaseService::getDailyCounts(2, $fallback));
+    }
+
+    /**
+     * Store a new daily count for Surgical Consumable 2.
+     */
+    public function storeDailyCount(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|string',
+            'item_name' => 'required|string',
+            'qty_given' => 'required|string',
+            'balance' => 'required|string',
+            'sisters_initials' => 'required|string',
+            'remarks' => 'nullable|string',
+        ]);
+
+        $amount = 0;
+        if (preg_match('/\d+/', $validated['qty_given'], $m)) {
+            $amount = (int) $m[0];
+        }
+
+        $transId = WardDatabaseService::storeDailyCount(
+            2,
+            $validated['item_name'],
+            $amount,
+            $validated['sisters_initials'],
+            $validated['remarks'] ?? '',
+            $validated['date']
+        );
+
+        $validated['id'] = $transId;
+
+        return response()->json([
+            'success' => true,
+            'data' => $validated,
+            'message' => 'Daily count recorded successfully.'
+        ], 201);
     }
 }

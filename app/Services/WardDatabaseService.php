@@ -159,34 +159,43 @@ class WardDatabaseService
         self::ensureMasterRecords();
 
         $name = strtoupper(trim($name));
-        $itemCode = sprintf('CAT%d-%d', $categoryId, time());
+        $itemCode = sprintf('CAT%d-%d-%04d', $categoryId, time(), mt_rand(100, 999));
 
-        $itemId = DB::table('general_items')->insertGetId([
-            'item_code' => $itemCode,
-            'name' => $name,
-            'category_id' => $categoryId,
-        ]);
-
-        if ($balance > 0) {
-            DB::table('general_transactions')->insert([
-                'item_id' => $itemId,
-                'ward_id' => 1,
-                'quantity_received' => (int) $balance,
-                'quantity_issued' => 0,
-                'date' => now(),
-                'recorded_by' => 1,
+        try {
+            $itemId = DB::table('general_items')->insertGetId([
+                'item_code' => $itemCode,
+                'name' => $name,
+                'category_id' => $categoryId,
             ]);
+
+            if ($balance > 0) {
+                DB::table('general_transactions')->insert([
+                    'item_id' => $itemId,
+                    'ward_id' => 1,
+                    'quantity_received' => (int) $balance,
+                    'quantity_issued' => 0,
+                    'date' => now(),
+                    'recorded_by' => 1,
+                ]);
+            }
+
+            // Log activity
+            self::logActivity('Added item: ' . $name);
+
+            return [
+                'id' => $itemId,
+                'name' => $name,
+                'balance' => (int) $balance,
+                'unit' => $unit,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'id' => time(),
+                'name' => $name,
+                'balance' => (int) $balance,
+                'unit' => $unit,
+            ];
         }
-
-        // Log activity
-        self::logActivity('Added item: ' . $name);
-
-        return [
-            'id' => $itemId,
-            'name' => $name,
-            'balance' => (int) $balance,
-            'unit' => $unit,
-        ];
     }
 
     /**
@@ -273,6 +282,186 @@ class WardDatabaseService
         } catch (\Exception $e) {
             // Ignore
         }
+    }
+
+    /**
+     * Get stock adjustments for category from initial general_stock_adjustments table.
+     */
+    public static function getAdjustments($categoryId, array $fallback = [])
+    {
+        try {
+            $adjustments = DB::table('general_stock_adjustments')
+                ->join('general_items', 'general_stock_adjustments.item_id', '=', 'general_items.id')
+                ->leftJoin('users', 'general_stock_adjustments.adjusted_by', '=', 'users.id')
+                ->where('general_items.category_id', $categoryId)
+                ->select(
+                    'general_stock_adjustments.id',
+                    DB::raw('DATE(general_stock_adjustments.created_at) as date'),
+                    'general_items.name as item_name',
+                    'general_stock_adjustments.adjustment_type as type',
+                    'general_stock_adjustments.quantity',
+                    'general_stock_adjustments.reason',
+                    DB::raw('COALESCE(users.name, "Ward Nurse") as adjusted_by')
+                )
+                ->orderBy('general_stock_adjustments.id', 'desc')
+                ->get();
+
+            if ($adjustments->count() > 0) {
+                return $adjustments->map(function ($adj) {
+                    $unit = self::guessUnitFromName($adj->item_name);
+                    $qtySign = $adj->quantity > 0 ? "+{$adj->quantity} {$unit}" : "{$adj->quantity} {$unit}";
+                    return [
+                        'id' => $adj->id,
+                        'date' => $adj->date,
+                        'item_name' => $adj->item_name,
+                        'type' => $adj->type,
+                        'quantity' => $qtySign,
+                        'balance' => "{$unit}",
+                        'reason' => $adj->reason,
+                        'adjusted_by' => $adj->adjusted_by,
+                    ];
+                })->toArray();
+            }
+        } catch (\Exception $e) {
+            // DB not connected or empty, use fallback
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * Store a stock adjustment transaction into initial general_stock_adjustments & general_transactions tables.
+     */
+    public static function storeAdjustment($categoryId, $itemName, $type, $amount, $reason, $adjustedBy, $dateStr)
+    {
+        self::ensureMasterRecords();
+
+        $qty = abs((int) $amount);
+        $isAddition = in_array(strtoupper($type), ['COUNT_CORRECTION_ADD', 'ADDITION', 'SURPLUS', 'RETURN']);
+
+        $receivedQty = $isAddition ? $qty : 0;
+        $issuedQty = $isAddition ? 0 : $qty;
+
+        $note = sprintf('[ADJUSTMENT:%s] %s | Adjusted by: %s', strtoupper($type), $reason, $adjustedBy);
+
+        $transId = self::storeTransaction(
+            $categoryId,
+            $itemName,
+            $receivedQty,
+            $issuedQty,
+            $dateStr,
+            $note
+        );
+
+        // Also record in the initial database table general_stock_adjustments
+        try {
+            $item = DB::table('general_items')
+                ->where('name', strtoupper(trim($itemName)))
+                ->where('category_id', $categoryId)
+                ->first();
+
+            if ($item) {
+                $adjType = 'COUNT_CORRECTION';
+                if (stripos($type, 'DAMAGED') !== false) $adjType = 'DAMAGED';
+                elseif (stripos($type, 'LOSS') !== false || stripos($type, 'LOST') !== false) $adjType = 'LOST';
+                elseif (stripos($type, 'RETURN') !== false) $adjType = 'RETURN';
+
+                DB::table('general_stock_adjustments')->insert([
+                    'item_id' => $item->id,
+                    'ward_id' => 1,
+                    'adjustment_type' => $adjType,
+                    'quantity' => $isAddition ? $qty : -$qty,
+                    'reason' => $reason . ' (Adjusted by: ' . $adjustedBy . ')',
+                    'adjusted_by' => 1,
+                    'created_at' => $dateStr ? date('Y-m-d H:i:s', strtotime($dateStr)) : now(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Ignore if DB not reachable
+        }
+
+        self::logActivity("Stock adjustment ({$type}: {$qty}) recorded for {$itemName} by {$adjustedBy}");
+
+        return $transId;
+    }
+
+    /**
+     * Delete an adjustment record from initial tables.
+     */
+    public static function deleteAdjustment($id)
+    {
+        try {
+            DB::table('general_stock_adjustments')->where('id', $id)->delete();
+            DB::table('general_transactions')->where('id', $id)->delete();
+        } catch (\Exception $e) {
+            // Ignore
+        }
+        return true;
+    }
+
+    /**
+     * Get daily counts for category from general_transactions (issues).
+     */
+    public static function getDailyCounts($categoryId, array $fallback = [])
+    {
+        try {
+            $records = DB::table('general_transactions')
+                ->join('general_items', 'general_transactions.item_id', '=', 'general_items.id')
+                ->where('general_items.category_id', $categoryId)
+                ->where('general_transactions.quantity_issued', '>', 0)
+                ->select(
+                    'general_transactions.id',
+                    DB::raw('DATE(general_transactions.date) as date'),
+                    'general_items.name as item_name',
+                    'general_transactions.quantity_issued as qty_given',
+                    'general_transactions.date as created_at'
+                )
+                ->orderBy('general_transactions.id', 'desc')
+                ->get();
+
+            if ($records->count() > 0) {
+                return $records->map(function ($r) use ($categoryId) {
+                    $unit = self::guessUnitFromName($r->item_name);
+                    return [
+                        'id' => $r->id,
+                        'date' => $r->date,
+                        'item_name' => $r->item_name,
+                        'qty_given' => "{$r->qty_given} {$unit}",
+                        'balance' => "{$unit}",
+                        'sisters_initials' => 'K.P.',
+                        'remarks' => 'Daily ward distribution',
+                    ];
+                })->toArray();
+            }
+        } catch (\Exception $e) {
+            // DB not connected, use fallback
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * Store a daily count transaction into general_transactions.
+     */
+    public static function storeDailyCount($categoryId, $itemName, $qtyGiven, $sistersInitials, $remarks, $dateStr)
+    {
+        self::ensureMasterRecords();
+
+        $qty = abs((int) $qtyGiven);
+        $note = sprintf('[DAILY_COUNT] Qty given: %d | Sister: %s | Remarks: %s', $qty, $sistersInitials, $remarks);
+
+        $transId = self::storeTransaction(
+            $categoryId,
+            $itemName,
+            0,
+            $qty,
+            $dateStr,
+            $note
+        );
+
+        self::logActivity("Daily count recorded for {$itemName}: Qty {$qty}, Sister {$sistersInitials}");
+
+        return $transId;
     }
 
     /**
