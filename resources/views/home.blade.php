@@ -1584,13 +1584,16 @@
                         Go to Dashboard
                     </a>
 
-                    <a
-                        href="{{ route('test') }}"
-                        class="inline-flex items-center gap-2 rounded-xl border border-white/60 bg-white/10 px-6 py-3.5 font-semibold text-white backdrop-blur-sm transition hover:bg-white/20">
-                        <i class="fa-solid fa-boxes-stacked"></i>
-                        View Inventory
-                    </a>
 
+                    <!-- Create a new user -->
+                    @if (auth()->check() && auth()->user()->is_admin)
+                    <a
+                        href="{{ route('createUser') }}"
+                        class="inline-flex items-center gap-2 rounded-xl border border-white/60 bg-white/10 px-6 py-3.5 font-semibold text-white backdrop-blur-sm transition hover:bg-white/20">
+                        <i class="fa-solid fa-user-pen"></i>
+                        Create New User
+                    </a>
+                    @endif
                 </div>
 
             </div>
