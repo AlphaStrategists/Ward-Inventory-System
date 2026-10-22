@@ -14,6 +14,7 @@ use App\Models\MedicineForm;
 use App\Models\Patient;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\StockReceipt;
 use App\Models\Supplier;
 use App\Models\Unit;
 use App\Models\User;
@@ -26,44 +27,11 @@ class WardInventorySeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Roles & Permissions
+        // 1. Roles
         $adminRole = Role::firstOrCreate(['role_name' => 'Admin']);
-        $sisterRole = Role::firstOrCreate(['role_name' => 'Ward Sister']);
-        $nurseRole = Role::firstOrCreate(['role_name' => 'Staff Nurse']);
-        $doctorRole = Role::firstOrCreate(['role_name' => 'Medical Officer']);
-
-        $perms = [
-            'view_inventory',
-            'manage_inventory',
-            'dispense_narcotics',
-            'witness_narcotics',
-            'manage_admissions',
-        ];
-
-        foreach ($perms as $permName) {
-            $perm = Permission::firstOrCreate(['permission_name' => $permName]);
-            if (!DB::table('role_permissions')->where('role_id', $adminRole->id)->where('permission_id', $perm->id)->exists()) {
-                DB::table('role_permissions')->insert([
-                    'role_id' => $adminRole->id,
-                    'permission_id' => $perm->id,
-                    'created_at' => now(),
-                ]);
-            }
-            if (!DB::table('role_permissions')->where('role_id', $sisterRole->id)->where('permission_id', $perm->id)->exists()) {
-                DB::table('role_permissions')->insert([
-                    'role_id' => $sisterRole->id,
-                    'permission_id' => $perm->id,
-                    'created_at' => now(),
-                ]);
-            }
-            if (in_array($permName, ['view_inventory', 'dispense_narcotics']) && !DB::table('role_permissions')->where('role_id', $nurseRole->id)->where('permission_id', $perm->id)->exists()) {
-                DB::table('role_permissions')->insert([
-                    'role_id' => $nurseRole->id,
-                    'permission_id' => $perm->id,
-                    'created_at' => now(),
-                ]);
-            }
-        }
+        $doctorRole = Role::firstOrCreate(['role_name' => 'Doctor']);
+        $nurseRole = Role::firstOrCreate(['role_name' => 'Nurse']);
+        $pharmacistRole = Role::firstOrCreate(['role_name' => 'Pharmacist']);
 
         // 2. Wards
         $ward48 = Ward::firstOrCreate(
@@ -106,7 +74,7 @@ class WardInventorySeeder extends Seeder
         $nurse = User::firstOrCreate(
             ['email' => 'nurse.ward48@hospital.gov.lk'],
             [
-                'name' => 'Staff Nurse H. Perera',
+                'name' => 'Nurse H. Perera',
                 'password' => Hash::make('password123'),
                 'role_id' => $nurseRole->id,
                 'ward_id' => $ward48->id,
@@ -117,9 +85,9 @@ class WardInventorySeeder extends Seeder
         $sister = User::firstOrCreate(
             ['email' => 'sister.ward48@hospital.gov.lk'],
             [
-                'name' => 'Sister M. Fernando (In-Charge)',
+                'name' => 'Nurse M. Fernando (In-Charge)',
                 'password' => Hash::make('password123'),
-                'role_id' => $sisterRole->id,
+                'role_id' => $nurseRole->id,
                 'ward_id' => $ward48->id,
                 'created_at' => now(),
             ]
@@ -128,7 +96,7 @@ class WardInventorySeeder extends Seeder
         $doctor = User::firstOrCreate(
             ['email' => 'doctor.ward48@hospital.gov.lk'],
             [
-                'name' => 'Dr. K. Jayasuriya (MO)',
+                'name' => 'Dr. K. Jayasuriya',
                 'password' => Hash::make('password123'),
                 'role_id' => $doctorRole->id,
                 'ward_id' => $ward48->id,
@@ -315,9 +283,9 @@ class WardInventorySeeder extends Seeder
             ]
         );
 
-        // Receipts for narcotics in stock_receipts (which triggers stock_ledger insertion via DB trigger)
-        if (!DB::table('stock_receipts')->where('batch_id', $batchMorphine->id)->exists()) {
-            DB::table('stock_receipts')->insert([
+        // Receipts for narcotics in stock_receipts (which triggers stock_ledger insertion via Model Observer)
+        if (!StockReceipt::where('batch_id', $batchMorphine->id)->exists()) {
+            StockReceipt::create([
                 'batch_id' => $batchMorphine->id,
                 'ward_id' => $ward48->id,
                 'quantity_received' => 50,
@@ -326,8 +294,8 @@ class WardInventorySeeder extends Seeder
             ]);
         }
 
-        if (!DB::table('stock_receipts')->where('batch_id', $batchFentanyl->id)->exists()) {
-            DB::table('stock_receipts')->insert([
+        if (!StockReceipt::where('batch_id', $batchFentanyl->id)->exists()) {
+            StockReceipt::create([
                 'batch_id' => $batchFentanyl->id,
                 'ward_id' => $ward48->id,
                 'quantity_received' => 30,

@@ -101,7 +101,7 @@ class PatientController extends Controller
             ->get();
 
         $wards = Ward::orderBy('ward_number')->get();
-        $users = User::orderBy('first_name')->get();
+        $users = User::orderBy('name')->get();
 
         return view('patients.index', compact(
             'patients',

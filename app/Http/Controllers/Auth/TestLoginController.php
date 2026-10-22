@@ -13,11 +13,12 @@ class TestLoginController extends Controller
 {
     /**
      * DEV-ONLY: instantly logs in as a user with the given role, creating
-     * both the role and a dummy user on the fly if neither exists yet.
+     * a dummy user on the fly if one does not exist yet.
      *
-     * Usage:  /test-login/Nurse
-     *         /test-login/Admin
-     *         /test-login/MS
+     * Usage:  /test-login/Admin
+     *         /test-login/Doctor
+     *         /test-login/Nurse
+     *         /test-login/Pharmacist
      *
      * Delete this controller and its route before shipping to production.
      */
@@ -27,16 +28,22 @@ class TestLoginController extends Controller
         // someone forgets to remove the route later.
         abort_unless(app()->environment(['local', 'testing']), 404);
 
-        // "nurse" (any case/spacing) maps to the exact role name the rest
-        // of the app checks against: hasRole('Staff Nurse').
-        $roleName = strcasecmp($role, 'nurse') === 0 ? 'Staff Nurse' : $role;
+        $allowedRoles = ['Admin', 'Doctor', 'Nurse', 'Pharmacist'];
+        $roleName = null;
+        foreach ($allowedRoles as $allowed) {
+            if (strcasecmp($role, $allowed) === 0) {
+                $roleName = $allowed;
+                break;
+            }
+        }
 
-        // Look for the role itself first.
+        if (!$roleName) {
+            abort(404, "Invalid role. Only 'Admin', 'Doctor', 'Nurse', and 'Pharmacist' are permitted.");
+        }
+
+        // Look for the role itself.
         $roleModel = Role::where('role_name', $roleName)->first();
-
         if (!$roleModel) {
-            // Role doesn't exist in the DB at all — create it so the
-            // foreign key on users.role_id has something valid to point to.
             $roleModel = Role::create(['role_name' => $roleName]);
         }
 
@@ -47,8 +54,8 @@ class TestLoginController extends Controller
             // None found — create a dummy user on the fly.
             $user = User::create([
                 'name' => $roleName . ' (Test User)',
-                'email' => strtolower(str_replace(' ', '.', $roleName)) . '@test.local',
-                'password' => Hash::make('password'),
+                'email' => strtolower($roleName) . '.test@hospital.gov.lk',
+                'password' => Hash::make('password123'),
                 'role_id' => $roleModel->id,
             ]);
         }
@@ -56,7 +63,7 @@ class TestLoginController extends Controller
         // Log them in.
         Auth::login($user);
 
-        // Redirect to the app's home/dashboard route.
+        // Redirect to the app's general inventory or dashboard route.
         return redirect()->route('general-inventory.index')
             ->with('success', "Test-logged in as: {$roleName}");
     }

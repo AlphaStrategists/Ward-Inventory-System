@@ -33,8 +33,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('general-inventory')->name('general-inventory.')->group(function () {
         Route::get('/', [GeneralItemController::class, 'index'])->name('index');
 
-        // Nurse-only write actions (Nurse, Staff Nurse, Ward Sister)
-        Route::middleware(['role:Nurse,Staff Nurse,Ward Sister'])->group(function () {
+        // Nurse-only write actions (Nurse)
+        Route::middleware(['role:Nurse'])->group(function () {
             Route::post('/', [GeneralItemController::class, 'store'])->name('store');
             Route::put('/{general_item}', [GeneralItemController::class, 'update'])->name('update');
             Route::delete('/{general_item}', [GeneralItemController::class, 'destroy'])->name('destroy');
@@ -56,6 +56,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/inventory/medicines/{category}/orders/{id}/approve', [MedicineController::class, 'approveOrder'])->name('inventory.medicines.orders.approve');
     Route::patch('/inventory/medicines/{category}/orders/{id}/issue', [MedicineController::class, 'issueOrder'])->name('inventory.medicines.orders.issue');
     Route::post('/inventory/medicines/{category}/orders/{id}/receive', [MedicineController::class, 'receiveOrder'])->name('inventory.medicines.orders.receive');
+    Route::match(['patch', 'post'], '/inventory/medicines/{category}/orders/{id}/cancel', [MedicineController::class, 'cancelOrder'])->name('inventory.medicines.orders.cancel');
     Route::put('/inventory/medicines/{id}', [MedicineController::class, 'update']);
     Route::delete('/inventory/medicines/{id}', [MedicineController::class, 'destroy']);
     Route::post('/inventory/medicines/expire-batches', [MedicineController::class, 'expireBatches'])->name('inventory.medicines.expire-batches');
@@ -65,15 +66,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [PatientController::class, 'index'])->name('index');
         Route::get('/{patient}', [PatientController::class, 'show'])->name('show');
 
-        // Nurse-only write actions (Nurse, Staff Nurse, Ward Sister)
-        Route::middleware(['role:Nurse,Staff Nurse,Ward Sister'])->group(function () {
+        // Nurse-only write actions (Nurse)
+        Route::middleware(['role:Nurse'])->group(function () {
             Route::post('/', [PatientController::class, 'store'])->name('store');
             Route::post('/{patient}/admissions', [AdmissionController::class, 'store'])->name('admissions.store');
         });
     });
 
-    // Nurse-only: admission status updates & narcotic dispensations (Nurse, Staff Nurse, Ward Sister)
-    Route::middleware(['role:Nurse,Staff Nurse,Ward Sister'])->group(function () {
+    // Nurse-only: admission status updates & narcotic dispensations (Nurse)
+    Route::middleware(['role:Nurse'])->group(function () {
         Route::put('/admissions/{admission}', [AdmissionController::class, 'update'])->name('admissions.update');
         Route::post('/admissions/{admission}/dispensations', [DispensationController::class, 'store'])->name('admissions.dispensations.store');
     });

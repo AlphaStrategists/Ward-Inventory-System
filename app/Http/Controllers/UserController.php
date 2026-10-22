@@ -27,9 +27,11 @@ class UserController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'password' => 'required|string|confirmed',
-            'role' => 'required|in:Nurse, Staff Nurse, Ward Sister',
+            'role' => 'required|in:Admin,Doctor,Nurse,Pharmacist',
             'email' => 'required|string|email|max:255|unique:users,email'
         ]);
+
+        $roleModel = \App\Models\Role::where('role_name', $validated['role'])->first();
 
         $user = User::create([
             'first_name' => $validated['first_name'],
@@ -37,10 +39,10 @@ class UserController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
-            'is_admin' => false,
+            'role_id' => $roleModel?->id,
+            'is_admin' => $validated['role'] === 'Admin',
         ]);
 
-        dump($user->getAttributes());
         return redirect()->route('login')
             ->with('success', 'User created successfully.');
         

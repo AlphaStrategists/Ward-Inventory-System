@@ -617,7 +617,7 @@
                 </div>
                 <div class="d-none d-lg-block text-start">
                     <div class="fw-bold" style="font-size: 0.825rem; line-height: 1.1;">{{ auth()->user()->name }}</div>
-                    <small class="text-muted" style="font-size: 0.7rem;">{{ auth()->user()->role?->role_name ?? 'Staff' }}</small>
+                    <small class="text-muted" style="font-size: 0.7rem;">{{ auth()->user()->role ?? 'Staff' }}</small>
                 </div>
                 <form method="POST" action="{{ route('logout') }}" class="ms-1">
                     @csrf

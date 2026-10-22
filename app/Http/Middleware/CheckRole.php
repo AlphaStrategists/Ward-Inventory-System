@@ -8,22 +8,19 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
-    public const NURSE_ROLES = ['Nurse', 'Staff Nurse', 'Ward Sister'];
+    public const VALID_ROLES = ['Admin', 'Doctor', 'Nurse', 'Pharmacist'];
 
     /**
-     * Allow the request through only if the logged-in user's role_name
-     * matches one of the roles passed to the middleware, e.g.:
-     *   Route::middleware(['role:Staff Nurse'])->group(...)
-     *   Route::middleware(['role:Nurse,Staff Nurse,Ward Sister'])->group(...)
-     *
-     * Note: If any nursing role ('Nurse', 'Staff Nurse', 'Ward Sister') is checked,
-     * all equivalent nursing roles are automatically permitted.
+     * Allow the request through only if the logged-in user's role matches
+     * one of the roles passed to the middleware, e.g.:
+     *   Route::middleware(['role:Nurse'])->group(...)
+     *   Route::middleware(['role:Nurse,Doctor'])->group(...)
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
 
-        // Flatten any comma-separated role arguments, e.g. "Nurse,Staff Nurse"
+        // Flatten any comma-separated role arguments, e.g. "Nurse,Doctor"
         $parsedRoles = [];
         foreach ($roles as $role) {
             foreach (explode(',', $role) as $r) {
@@ -34,12 +31,14 @@ class CheckRole
             }
         }
 
-        // If any nurse role is requested, expand to allow all equivalent nurse roles
-        if (array_intersect($parsedRoles, self::NURSE_ROLES)) {
-            $parsedRoles = array_unique(array_merge($parsedRoles, self::NURSE_ROLES));
+        if (!$user || !$user->role) {
+            abort(403, 'Your role does not have permission to perform this action.');
         }
 
-        if (!$user || !$user->role || !in_array($user->role, $parsedRoles, true)) {
+        $userRole = strtolower($user->role);
+        $allowedRoles = array_map('strtolower', $parsedRoles);
+
+        if (!in_array($userRole, $allowedRoles, true)) {
             abort(403, 'Your role does not have permission to perform this action.');
         }
 

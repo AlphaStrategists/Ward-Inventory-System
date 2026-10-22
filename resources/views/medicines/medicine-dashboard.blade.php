@@ -82,7 +82,7 @@
             </div>
 
             <!-- Add Button -->
-            @if(auth()->check() && auth()->user()->role_id == 1)
+            @if(auth()->check() && (auth()->user()->hasRole('Admin') || auth()->user()->role_id == 1))
             <button @click="openAddModal = true" class="w-full bg-[#3B82F6] hover:bg-blue-700 text-white font-semibold rounded-xl text-sm px-5 py-3 transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_10px_rgba(59,130,246,0.3)] hover:shadow-[0_4px_15px_rgba(59,130,246,0.4)] active:scale-[0.98] mb-5">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -126,7 +126,7 @@
                     <div class="medicine-name font-semibold text-[14.5px] text-slate-800 mb-2.5 {{ $isActive ? 'text-[#1E3A8A]' : 'group-hover:text-blue-700 transition-colors' }}">{{ $medicine->name }}</div>
                     <div class="flex items-center justify-between">
                         <div class="flex gap-2.5 text-slate-400 relative z-10">
-                            @if(auth()->check() && auth()->user()->role_id == 1)
+                            @if(auth()->check() && (auth()->user()->hasRole('Admin') || auth()->user()->role_id == 1))
                             <!-- Edit Button -->
                             <button type="button" class="hover:text-blue-500 transition-colors p-1 -m-1"
                                 title="Edit"
@@ -404,7 +404,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
-                    @if(auth()->check() && (auth()->user()->hasAnyRole(['Nurse', 'Staff Nurse', 'Ward Sister', 'Doctor']) || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor'])))
+                    @if(auth()->check() && auth()->user()->hasAnyRole(['Nurse', 'Doctor']))
                     <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -427,6 +427,7 @@
                                 <th scope="col" class="px-6 py-4">Qty Received</th>
                                 <th scope="col" class="px-6 py-4">Issuing Officer</th>
                                 <th scope="col" class="px-6 py-4">Receiving Officer</th>
+                                <th scope="col" class="px-6 py-4 text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50">
@@ -441,32 +442,41 @@
                                     <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $order->req_no ?? 'N/A' }}</span>
                                 </td>
                                 <td class="px-6 py-4 font-bold text-slate-800">
+                                    @php
+                                    $med = $detail->medicine ?? $selectedMedicine;
+                                    $unitsPerPack = (int) ($med->units_per_pack ?? ($selectedMedicine->units_per_pack ?? 1));
+                                    $isPackOrdering = $unitsPerPack > 1;
+
+                                    $formNameStr = strtolower($med->form->form_name ?? ($selectedMedicine->form->form_name ?? ''));
+                                    if (in_array($formNameStr, ['syrup', 'drops', 'suspension', 'solution', 'iv-fluid'])) {
+                                        $itemUnit = 'Bottle(s)';
+                                    } elseif (in_array($formNameStr, ['injection'])) {
+                                        $itemUnit = 'Vial(s)';
+                                    } elseif (in_array($formNameStr, ['capsule', 'tablet', 'pill'])) {
+                                        $itemUnit = ucfirst($formNameStr) . '(s)';
+                                    } else {
+                                        $itemUnit = !empty($med->unit->unit_name) ? ucfirst($med->unit->unit_name) . '(s)' : 'Unit(s)';
+                                    }
+
+                                    $actualRequested = (int) $detail->qty_requested;
+                                    if ($isPackOrdering && $unitsPerPack > 0) {
+                                        $reqPacks = round($actualRequested / $unitsPerPack, 2);
+                                        $displayReqPacks = (float)$reqPacks == (int)$reqPacks ? (int)$reqPacks : $reqPacks;
+                                    }
+                                    @endphp
                                     @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'doctor' && $order->ms_approval_status === 'Pending')
                                     <form id="approve-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.approve', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
                                         @csrf @method('PATCH')
                                     </form>
                                     <div class="flex items-center gap-1">
-                                        @php
-                                        $isLiquid = stripos($selectedMedicine->strength ?? '', 'ml') !== false;
-                                        $baseVol = 1;
-                                        if ($isLiquid) {
-                                        preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
-                                        $baseVol = (int) ($matches[1] ?? 1);
-                                        }
-                                        $displayValue = $isLiquid && $baseVol > 0 ? floor($detail->qty_requested / $baseVol) : $detail->qty_requested;
-                                        $unitDisplay = $isLiquid ? 'Bottle(s)' : ($selectedMedicine->unit->unit_name ?? '');
-                                        @endphp
-                                        <input type="number" form="approve-form-{{$detail->id}}" name="qty_requested" value="{{ $displayValue }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
-                                        <span class="text-[11px] font-normal text-slate-500">{{ $unitDisplay }}</span>
-                                        @if($isLiquid)
-                                        <input type="hidden" form="approve-form-{{$detail->id}}" name="order_unit" value="bottle">
-                                        @endif
+                                        <input type="number" form="approve-form-{{$detail->id}}" name="qty_requested" value="{{ $actualRequested }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
+                                        <span class="text-[11px] font-normal text-slate-500">{{ $itemUnit }}</span>
                                     </div>
                                     @else
-                                    @if($detail->remark)
-                                    {{ trim(preg_replace('/\[.*?\]\s*/', '', $detail->remark)) }} <span class="text-[11px] font-normal text-slate-500">(Total: {{ $detail->qty_requested }} {{ $selectedMedicine->form->form_name ?? '' }})</span>
+                                    @if($isPackOrdering && $unitsPerPack > 0)
+                                    {{ $displayReqPacks }} Pack(s) <span class="text-[11px] font-normal text-slate-500">(Total: {{ $actualRequested }} {{ $itemUnit }})</span>
                                     @else
-                                    {{ $detail->qty_requested }} <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->form->form_name ?? '' }}</span>
+                                    {{ $actualRequested }} <span class="text-[11px] font-normal text-slate-500">{{ $itemUnit }}</span>
                                     @endif
                                     @endif
                                 </td>
@@ -474,7 +484,7 @@
                                 <td class="px-6 py-4">
                                     <div class="flex flex-col items-start gap-2">
                                         <div class="flex flex-col items-start gap-1">
-                                            <span class="{{ $order->ms_approval_status === 'Approved' ? 'bg-[#DCFCE7] text-[#16A34A]' : ($order->ms_approval_status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700') }} font-bold px-3 py-1 rounded-full text-[11px]">
+                                            <span class="{{ $order->ms_approval_status === 'Approved' ? 'bg-[#DCFCE7] text-[#16A34A]' : ($order->ms_approval_status === 'Rejected' ? 'bg-red-100 text-red-700' : ($order->ms_approval_status === 'Cancelled' ? 'bg-slate-100 text-slate-500' : 'bg-yellow-100 text-yellow-700')) }} font-bold px-3 py-1 rounded-full text-[11px]">
                                                 {{ $order->ms_approval_status ?? 'Pending' }}
                                             </span>
                                             @if($order->approver)
@@ -495,47 +505,22 @@
                                         @csrf @method('PATCH')
                                     </form>
                                     <div class="flex items-center gap-1">
-                                        @php
-                                        $isLiquid = stripos($selectedMedicine->strength ?? '', 'ml') !== false;
-                                        $baseVol = 1;
-                                        if ($isLiquid) {
-                                        preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
-                                        $baseVol = (int) ($matches[1] ?? 1);
-                                        }
-                                        $displayValue = $isLiquid && $baseVol > 0 ? floor($detail->qty_requested / $baseVol) : $detail->qty_requested;
-                                        $unitDisplay = $isLiquid ? 'Bottle(s)' : ($selectedMedicine->unit->unit_name ?? '');
-                                        @endphp
-                                        <input type="number" form="issue-form-{{$detail->id}}" name="qty_issued" value="{{ $displayValue }}" max="{{ $displayValue }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
-                                        <span class="text-[11px] font-normal text-slate-500">{{ $unitDisplay }}</span>
-                                        @if($isLiquid)
-                                        <input type="hidden" form="issue-form-{{$detail->id}}" name="order_unit" value="bottle">
-                                        @endif
+                                        <input type="number" form="issue-form-{{$detail->id}}" name="qty_issued" value="{{ $detail->qty_requested }}" max="{{ $detail->qty_requested }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
+                                        <span class="text-[11px] font-normal text-slate-500">{{ $itemUnit }}</span>
                                     </div>
                                     @else
                                     @if($detail->qty_issued > 0)
-                                    @if($detail->remark)
                                     @php
-                                    $cleanRemark = trim(preg_replace('/\[.*?\]\s*/', '', $detail->remark));
-                                    $packQtyStr = preg_replace('/[^0-9]/', '', $cleanRemark);
-                                    $packQty = $packQtyStr !== '' ? (int)$packQtyStr : 0;
-
-                                    $issuedPackStr = '';
-                                    if ($packQty > 0 && $detail->qty_requested > 0) {
-                                    $unitsPerPack = $detail->qty_requested / $packQty;
-                                    if ($unitsPerPack > 0) {
-                                    $issuedPacks = round($detail->qty_issued / $unitsPerPack, 2);
-                                    $issuedPackStr = preg_replace('/^\d+/', $issuedPacks, $cleanRemark);
-                                    }
-                                    }
-
-                                    // Fallback if parsing fails or division by zero is imminent
-                                    if (!$issuedPackStr) {
-                                    $issuedPackStr = $detail->qty_issued . ' Unit(s)';
+                                    $actualIssued = (int) $detail->qty_issued;
+                                    if ($isPackOrdering && $unitsPerPack > 0) {
+                                        $issuedPacks = round($actualIssued / $unitsPerPack, 2);
+                                        $displayIssuedPacks = (float)$issuedPacks == (int)$issuedPacks ? (int)$issuedPacks : $issuedPacks;
                                     }
                                     @endphp
-                                    {{ $issuedPackStr }} <span class="text-[11px] font-normal text-slate-500">(Total: {{ $detail->qty_issued }} {{ $selectedMedicine->form->form_name ?? '' }})</span>
+                                    @if($isPackOrdering && $unitsPerPack > 0)
+                                    {{ $displayIssuedPacks }} Pack(s) <span class="text-[11px] font-normal text-slate-500">(Total: {{ $actualIssued }} {{ $itemUnit }})</span>
                                     @else
-                                    {{ $detail->qty_issued }} <span class="text-[11px] font-normal text-slate-500">{{ $selectedMedicine->form->form_name ?? '' }}</span>
+                                    {{ $actualIssued }} <span class="text-[11px] font-normal text-slate-500">{{ $itemUnit }}</span>
                                     @endif
                                     @else
                                     0
@@ -552,6 +537,8 @@
                                     @else
                                     @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
                                     <button type="submit" form="issue-form-{{$detail->id}}" class="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Issue Batch</button>
+                                    @elseif($order->ms_approval_status === 'Cancelled')
+                                    <span class="text-slate-400 font-medium text-xs">Cancelled</span>
                                     @else
                                     <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
                                     @endif
@@ -568,13 +555,38 @@
                                         @if($rxName) <span class="text-[10px] text-slate-500 font-medium">{{ $rxName }}</span> @endif
                                     </div>
                                     @else
-                                    @if($detail->qty_issued == 0)
+                                    @if($order->ms_approval_status === 'Cancelled')
+                                    <span class="text-slate-400 font-medium text-xs">Cancelled</span>
+                                    @elseif($detail->qty_issued == 0)
                                     <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
-                                    @elseif(auth()->check() && (auth()->user()->hasAnyRole(['Nurse', 'Staff Nurse', 'Ward Sister']) || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister'])))
+                                    @elseif(auth()->check() && auth()->user()->hasRole('Nurse'))
                                     <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                     @else
                                     <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
                                     @endif
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    @php
+                                        $isCreatorNurse = auth()->check() 
+                                            && (auth()->user()->hasRole('Nurse') || strtolower(auth()->user()->role ?? '') === 'nurse')
+                                            && (int)($order->requested_by ?? 0) === (int)auth()->id();
+                                        $isPending = strtolower($order->ms_approval_status ?? '') === 'pending';
+                                    @endphp
+
+                                    @if($isCreatorNurse && $isPending)
+                                    <form action="{{ route('inventory.medicines.orders.cancel', ['category' => $category, 'id' => $detail->id]) }}" method="POST" onsubmit="return confirm('Are you sure you want to cancel this order?');" class="inline-block">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="inline-flex items-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs px-2.5 py-1.5 rounded-lg font-semibold transition-colors shadow-xs active:scale-95 hover:text-red-700 cursor-pointer">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                            Cancel
+                                        </button>
+                                    </form>
+                                    @else
+                                    <span class="text-slate-300 font-medium text-xs">&mdash;</span>
                                     @endif
                                 </td>
                             </tr>
@@ -590,7 +602,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
-                    @if(auth()->check() && (auth()->user()->hasAnyRole(['Nurse', 'Staff Nurse', 'Ward Sister', 'Doctor']) || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor'])))
+                    @if(auth()->check() && auth()->user()->hasAnyRole(['Nurse', 'Doctor']))
                     <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -662,7 +674,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
-                    @if(auth()->check() && (auth()->user()->hasAnyRole(['Nurse', 'Staff Nurse', 'Ward Sister', 'Doctor']) || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'staff nurse', 'ward sister', 'doctor'])))
+                    @if(auth()->check() && auth()->user()->hasAnyRole(['Nurse', 'Doctor']))
                     <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -1249,7 +1261,7 @@
                         x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                         @click.away="openOrderModal = false"
                         class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
-                        <form action="{{ $selectedMedicine ? route('inventory.medicines.orders.store', ['category' => $category, 'id' => $selectedMedicine->id]) : '#' }}" method="POST">
+                        <form action="{{ $selectedMedicine ? route('inventory.medicines.orders.store', ['category' => $category, 'id' => $selectedMedicine->id]) : '#' }}" method="POST" x-data="{ orderQty: 1, unitsPerPack: {{ (int)($selectedMedicine->units_per_pack ?? 1) }} }">
                             @csrf
                             <div class="bg-white px-6 pb-4 pt-6 sm:p-8 sm:pb-6 border-b border-slate-100">
                                 <h3 class="text-xl font-bold leading-6 text-slate-900 mb-6">Add Pharmacy Order</h3>
@@ -1270,40 +1282,43 @@
                                     <div>
                                         @php
                                         $formNameStr = strtolower($selectedMedicine->form->form_name ?? '');
-                                        $packLabel = 'Pack(s)';
+                                        $unitsPerPack = (int) ($selectedMedicine->units_per_pack ?? 1);
+                                        $isPackOrdering = $unitsPerPack > 1;
+
                                         if (in_array($formNameStr, ['syrup', 'drops', 'suspension', 'solution', 'iv-fluid'])) {
-                                        $packLabel = 'Bottle(s)';
+                                            $singleUnitName = 'Bottle(s)';
                                         } elseif (in_array($formNameStr, ['injection'])) {
-                                        $packLabel = 'Box(es) / Vial(s)';
+                                            $singleUnitName = 'Vial(s)';
+                                        } elseif (in_array($formNameStr, ['capsule', 'tablet', 'pill'])) {
+                                            $singleUnitName = ucfirst($formNameStr) . '(s)';
+                                        } else {
+                                            $singleUnitName = !empty($selectedMedicine->unit->unit_name) ? ucfirst($selectedMedicine->unit->unit_name) . '(s)' : 'Unit(s)';
                                         }
 
-                                        $baseUnitLabel = 'Unit(s)';
-                                        if (in_array($formNameStr, ['syrup', 'drops', 'suspension', 'solution', 'iv-fluid'])) {
-                                        $baseUnitLabel = 'ml';
-                                        } elseif (in_array($formNameStr, ['capsule', 'tablet', 'pill'])) {
-                                        $baseUnitLabel = ucfirst($formNameStr) . '(s)';
-                                        } else {
-                                        $baseUnitLabel = ucfirst($formNameStr) . '(s)';
-                                        }
+                                        $qtyRequestedSuffix = $isPackOrdering ? 'Pack(s)' : $singleUnitName;
                                         @endphp
                                         <label class="block text-sm font-semibold text-slate-700 mb-1.5">Qty Requested <span class="text-red-500">*</span></label>
                                         <div class="relative flex items-center">
-                                            <input type="number" name="qty_requested" required min="1" class="w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
-                                            <div class="rounded-r-lg border-y border-r border-l-0 border-slate-200 bg-slate-100 text-slate-500 px-4 py-2.5 text-sm flex items-center justify-center whitespace-nowrap">
-                                                {{ $packLabel }}
+                                            <input type="number" name="qty_requested" x-model.number="orderQty" required min="1" value="1" class="w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                            <div class="rounded-r-lg border-y border-r border-l-0 border-slate-200 bg-slate-100 text-slate-500 px-4 py-2.5 text-sm flex items-center justify-center whitespace-nowrap font-medium">
+                                                {{ $qtyRequestedSuffix }}
                                             </div>
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Units per {{ rtrim($packLabel, '(s)') }} <span class="text-red-500">*</span></label>
-                                        <div class="relative flex items-center">
-                                            <input type="number" name="units_per_pack" value="{{ $selectedMedicine->units_per_pack ?? 1 }}" readonly required min="1" class="w-full rounded-l-lg border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-500 font-semibold cursor-not-allowed">
-                                            <div class="rounded-r-lg border-y border-r border-l-0 border-slate-200 bg-slate-100 text-slate-500 px-4 py-2.5 text-sm flex items-center justify-center whitespace-nowrap">
-                                                {{ $baseUnitLabel }}
-                                            </div>
-                                        </div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Units per Pack <span class="text-red-500">*</span></label>
+                                        <input type="number" name="units_per_pack" value="{{ $unitsPerPack }}" readonly required min="1" class="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-600 font-semibold cursor-not-allowed">
                                     </div>
                                 </div>
+                                @if($isPackOrdering)
+                                <div class="rounded-lg bg-blue-50/70 border border-blue-100 px-3.5 py-2 text-xs text-blue-700 flex items-center justify-between">
+                                    <span>Total individual items:</span>
+                                    <span class="font-bold text-blue-900">
+                                        <span x-text="(orderQty || 0) * unitsPerPack"></span> {{ $singleUnitName }}
+                                        <span class="font-normal text-blue-600 text-[11px]">(<span x-text="orderQty || 0"></span> pack(s) &times; {{ $unitsPerPack }} {{ $singleUnitName }})</span>
+                                    </span>
+                                </div>
+                                @endif
                             </div>
                             <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
                                 <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Submit Order</button>

@@ -25,7 +25,7 @@ class BatchExpiryTest extends TestCase
             ['ward_name' => 'Expiry Test Ward']
         );
 
-        $role = Role::firstOrCreate(['role_name' => 'Staff Nurse']);
+        $role = Role::firstOrCreate(['role_name' => 'Nurse']);
 
         $user = User::firstOrCreate(
             ['email' => 'nurse.expire@hospital.gov.lk'],
@@ -143,7 +143,7 @@ class BatchExpiryTest extends TestCase
 
     public function test_controller_expire_batches_endpoint(): void
     {
-        $role = Role::firstOrCreate(['role_name' => 'Staff Nurse']);
+        $role = Role::firstOrCreate(['role_name' => 'Nurse']);
         $ward = Ward::firstOrCreate(['ward_number' => 'W-CTRL-01'], ['ward_name' => 'Controller Ward']);
 
         $user = User::firstOrCreate(

@@ -39,5 +39,11 @@ class AppServiceProvider extends ServiceProvider
 
             return $hasPermission;
         });
+
+        // Inventory ledger synchronization observers (safely replaces MariaDB crash-prone triggers)
+        \App\Models\StockReceipt::observe(\App\Observers\StockReceiptObserver::class);
+        \App\Models\Dispensation::observe(\App\Observers\DispensationObserver::class);
+        \App\Models\MedicineStockAdjustment::observe(\App\Observers\MedicineStockAdjustmentObserver::class);
+        \App\Models\StockAdjustment::observe(\App\Observers\MedicineStockAdjustmentObserver::class);
     }
 }

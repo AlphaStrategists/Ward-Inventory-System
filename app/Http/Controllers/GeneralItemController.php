@@ -109,7 +109,7 @@ class GeneralItemController extends Controller
 
         $categories = Category::orderBy('name')->get();
         $wards = Ward::orderBy('ward_number')->get();
-        $users = User::orderBy('first_name')->get();
+        $users = User::orderBy('name')->get();
 
         return view('general-inventory.index', compact(
             'items',

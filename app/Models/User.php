@@ -18,8 +18,8 @@ class User extends Authenticatable
     protected $table = 'users';
     const UPDATED_AT = null;
 
-    public const ROLES = ['Nurse', 'Staff Nurse', 'Ward Sister'];   // add your other roles here
-    public const NURSE_ROLES = ['Nurse', 'Staff Nurse', 'Ward Sister'];
+    public const ROLES = ['Admin', 'Doctor', 'Nurse', 'Pharmacist'];
+    public const NURSE_ROLES = ['Nurse'];
 
     protected $fillable = [
         'first_name',
@@ -103,7 +103,6 @@ class User extends Authenticatable
 
     /**
      * True if the user's role matches any name in the list.
-     * If the list contains a nursing role, any nursing role matches.
      */
     public function hasAnyRole(array $roleNames): bool
     {
@@ -114,17 +113,12 @@ class User extends Authenticatable
 
         $current = self::normalize($roleName);
         $wanted  = array_map([self::class, 'normalize'], $roleNames);
-        $nurse   = array_map([self::class, 'normalize'], self::NURSE_ROLES);
 
-        if (in_array($current, $wanted, true)) {
-            return true;
-        }
-
-        return ! empty(array_intersect($wanted, $nurse)) && in_array($current, $nurse, true);
+        return in_array($current, $wanted, true);
     }
 
     public function isNurse(): bool
     {
-        return $this->hasAnyRole(self::NURSE_ROLES);
+        return $this->hasRole('Nurse');
     }
 }

@@ -189,14 +189,17 @@
                                 <option value="" disabled {{ old('role') ? '' : 'selected' }}>
                                     Select a role
                                 </option>
+                                <option value="Admin" {{ old('role') === 'Admin' ? 'selected' : '' }}>
+                                    Admin
+                                </option>
+                                <option value="Doctor" {{ old('role') === 'Doctor' ? 'selected' : '' }}>
+                                    Doctor
+                                </option>
                                 <option value="Nurse" {{ old('role') === 'Nurse' ? 'selected' : '' }}>
                                     Nurse
                                 </option>
-                                <option value="Staff Nurse" {{ old('role') === 'Staff Nurse' ? 'selected' : '' }}>
-                                    Staff Nurse
-                                </option>
-                                <option value="Ward Sister" {{ old('role') === 'Ward Sister' ? 'selected' : '' }}>
-                                    Ward Sister
+                                <option value="Pharmacist" {{ old('role') === 'Pharmacist' ? 'selected' : '' }}>
+                                    Pharmacist
                                 </option>
                             </select>
                             <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
