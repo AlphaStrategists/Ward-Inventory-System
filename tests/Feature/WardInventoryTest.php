@@ -9,6 +9,8 @@ use App\Models\GeneralItem;
 use App\Models\Medicine;
 use App\Models\MedicineBatch;
 use App\Models\MedicineForm;
+use App\Models\Order;
+use App\Models\OrderDetail;
 use App\Models\Patient;
 use App\Models\Role;
 use App\Models\StockLedger;
@@ -316,26 +318,32 @@ class WardInventoryTest extends TestCase
         $unit = \App\Models\Unit::first();
         $form = \App\Models\MedicineForm::first();
 
-        $itemCode = 'MED-ZERO-' . rand(1000, 9999);
-        $response = $this->actingAs($user)->post(route('inventory.store', ['category' => 'syrups']), [
-            'item_code' => $itemCode,
-            'name' => 'ZERO STOCK MEDICINE',
-            'category_id' => $category->id,
-            'unit_id' => $unit->id,
-            'form_id' => $form->id,
-            'strength' => '500mg',
-            'min_level' => 5,
-            'warning_limit' => 10,
-            'units_per_pack' => 1,
-            'initial_stock' => 0,
-        ]);
+        $itemCode = 'MED-ZERO-' . uniqid();
+        try {
+            $response = $this->actingAs($user)->post(route('inventory.store', ['category' => 'syrups']), [
+                'item_code' => $itemCode,
+                'name' => 'ZERO STOCK MEDICINE',
+                'category_id' => $category->id,
+                'unit_id' => $unit->id,
+                'form_id' => $form->id,
+                'strength' => '500mg',
+                'min_level' => 5,
+                'warning_limit' => 10,
+                'units_per_pack' => 1,
+                'initial_stock' => 0,
+            ]);
 
-        $response->assertRedirect();
-        $response->assertSessionHas('success');
+            $response->assertRedirect();
+            $response->assertSessionHas('success');
 
-        $medicine = Medicine::where('item_code', $itemCode)->first();
-        $this->assertNotNull($medicine);
-        $this->assertEquals(0, (int) $medicine->stock);
+            $medicine = Medicine::where('item_code', $itemCode)->first();
+            $this->assertNotNull($medicine);
+            $this->assertEquals(0, (int) $medicine->stock);
+        } finally {
+            if (isset($medicine) && $medicine) {
+                $medicine->delete();
+            }
+        }
     }
 
     public function test_pharmacy_order_modal_renders_units_per_pack_and_pack_suffix(): void
@@ -734,6 +742,345 @@ class WardInventoryTest extends TestCase
             $medicine->batches()->delete();
             $medicine->delete();
         }
+    }
+
+    public function test_login_page_renders_with_csrf_token(): void
+    {
+        $response = $this->get('/login');
+        $response->assertStatus(200);
+        $response->assertSee('name="_token"', false);
+
+        // Also assert auth.login view renders with CSRF token
+        $authLoginView = view('auth.login')->render();
+        $this->assertStringContainsString('name="_token"', $authLoginView);
+
+        // Attempt login with credentials and token
+        $postResponse = $this->post('/login', [
+            '_token' => csrf_token(),
+            'email' => 'admin@test.com',
+            'password' => 'password',
+        ]);
+        $postResponse->assertRedirect('/home');
+
+        // Ensure /home loads successfully (not 404)
+        $homeResponse = $this->get('/home');
+        $homeResponse->assertStatus(200);
+        $homeResponse->assertSee('Hospital Inventory Management System');
+    }
+
+    public function test_orders_navigation_link_and_columns_exist(): void
+    {
+        $nurse = $this->getNurseUser();
+        $response = $this->actingAs($nurse)->get('/orders');
+        $response->assertStatus(200);
+        $response->assertSee('Pharmacy Orders & Requisitions');
+        $response->assertSee('Medicine Name');
+        $response->assertSee('Orders');
+        $response->assertDontSee('<span>Inventory</span>', false);
+        $response->assertDontSee('<span>Patients</span>', false);
+
+        // On inventory* route, Orders and Patients are hidden
+        $inventoryResponse = $this->actingAs($nurse)->get('/general-inventory');
+        $inventoryResponse->assertStatus(200);
+        $inventoryResponse->assertSee('<span>Inventory</span>', false);
+        $inventoryResponse->assertDontSee('<span>Orders</span>', false);
+        $inventoryResponse->assertDontSee('<span>Patients</span>', false);
+
+        // On patients* route, Inventory and Orders are hidden
+        $patientsResponse = $this->actingAs($nurse)->get('/patients');
+        $patientsResponse->assertStatus(200);
+        $patientsResponse->assertSee('<span>Patients</span>', false);
+        $patientsResponse->assertDontSee('<span>Inventory</span>', false);
+        $patientsResponse->assertDontSee('<span>Orders</span>', false);
+
+        // When on /home or /dashboard, all tabs are shown normally
+        $homeRequest = \Illuminate\Http\Request::create('/home', 'GET');
+        app()->instance('request', $homeRequest);
+        $homeHtml = view('layouts.app')->render();
+        $this->assertStringContainsString('<span>Inventory</span>', $homeHtml);
+        $this->assertStringContainsString('<span>Orders</span>', $homeHtml);
+        $this->assertStringContainsString('<span>Patients</span>', $homeHtml);
+
+        $dashRequest = \Illuminate\Http\Request::create('/dashboard', 'GET');
+        app()->instance('request', $dashRequest);
+        $dashHtml = view('layouts.app')->render();
+        $this->assertStringContainsString('<span>Inventory</span>', $dashHtml);
+        $this->assertStringContainsString('<span>Orders</span>', $dashHtml);
+        $this->assertStringContainsString('<span>Patients</span>', $dashHtml);
+    }
+
+    public function test_centralized_orders_dashboard_requires_authentication(): void
+    {
+        $response = $this->get('/orders');
+        $response->assertRedirect('/login');
+    }
+
+    public function test_centralized_orders_dashboard_role_filtering_and_actions(): void
+    {
+        $nurse = $this->getNurseUser();
+        $doctor = $this->getDoctorUser();
+        $pharmacist = $this->getPharmacistUser();
+
+        // 1. Create a medicine
+        $category = Category::where('name', 'narcotics')->first() ?? Category::firstOrCreate(['name' => 'narcotics']);
+        $unit = Unit::first();
+        $form = MedicineForm::first();
+
+        $medicine = Medicine::create([
+            'item_code' => 'MED-ORD-TEST-' . rand(1000, 9999),
+            'name' => 'PARACETAMOL 500MG TAB ' . rand(1000, 9999),
+            'category_id' => $category->id,
+            'unit_id' => $unit->id,
+            'form_id' => $form->id,
+            'strength' => '500mg',
+            'is_controlled' => false,
+            'min_level' => 10,
+            'warning_limit' => 20,
+            'units_per_pack' => 10,
+        ]);
+
+        $wardId = $nurse->ward_id ?? DB::table('wards')->value('id');
+
+        // 2. Create Order requested by Nurse
+        $reqNo = 'REQ-CENTRAL-' . rand(10000, 99999);
+        $order = Order::create([
+            'ward_id' => $wardId,
+            'req_no' => $reqNo,
+            'date' => now(),
+            'requested_by' => $nurse->id,
+            'ms_approval_status' => 'Pending',
+        ]);
+
+        $detail = OrderDetail::create([
+            'order_id' => $order->id,
+            'medicine_id' => $medicine->id,
+            'qty_requested' => 30, // 3 packs
+            'qty_issued' => 0,
+            'remark' => '3 Pack(s)',
+        ]);
+
+        try {
+            // 3. Doctor checks /orders: Default view shows Pending orders
+            $docView = $this->actingAs($doctor)->get('/orders');
+            $docView->assertStatus(200);
+            $docView->assertSee($reqNo);
+            $docView->assertSee($medicine->name);
+            $docView->assertSee('Approve');
+            $docView->assertSee('Reject');
+
+            // 4. Doctor approves with edited quantity 20
+            $approveResp = $this->actingAs($doctor)->patch(route('orders.approve', $detail->id), [
+                'action' => 'Approve',
+                'qty_requested' => 20,
+            ]);
+            $approveResp->assertRedirect();
+            $order->refresh();
+            $detail->refresh();
+            $this->assertEquals('Approved', $order->ms_approval_status);
+            $this->assertEquals(20, $detail->qty_requested);
+
+            // 5. Pharmacist checks /orders: Default view shows Approved orders pending issue
+            $pharmView = $this->actingAs($pharmacist)->get('/orders');
+            $pharmView->assertStatus(200);
+            $pharmView->assertSee($reqNo);
+            $pharmView->assertSee('Issue Batch');
+
+            // 6. Pharmacist issues 20 units
+            $issueResp = $this->actingAs($pharmacist)->patch(route('orders.issue', $detail->id), [
+                'qty_issued' => 20,
+            ]);
+            $issueResp->assertRedirect();
+            $detail->refresh();
+            $this->assertEquals(20, $detail->qty_issued);
+            $this->assertStringContainsString('[ISSUED_BY:', $detail->remark);
+
+            // Test pending_receipt filter explicitly to ensure no ambiguous column SQL error
+            $pendingReceiptView = $this->actingAs($nurse)->get('/orders?status=pending_receipt');
+            $pendingReceiptView->assertStatus(200);
+            $pendingReceiptView->assertSee($reqNo);
+
+            // 7. Nurse checks /orders: Default view shows their requests with Confirm Receipt button
+            $nurseView = $this->actingAs($nurse)->get('/orders');
+            $nurseView->assertStatus(200);
+            $nurseView->assertSee($reqNo);
+            $nurseView->assertSee('Confirm Receipt');
+
+            // 8. Nurse confirms receipt
+            $receiveResp = $this->actingAs($nurse)->post(route('orders.receive', $detail->id), [
+                'batch_type' => 'new',
+                'new_batch_no' => 'BATCH-TEST-REC-' . rand(100, 999),
+                'new_expiry_date' => now()->addYear()->toDateString(),
+            ]);
+            $receiveResp->assertRedirect();
+            $detail->refresh();
+            $this->assertStringContainsString('[RECEIVED_BY:', $detail->remark);
+
+            // Test received filter explicitly
+            $receivedView = $this->actingAs($nurse)->get('/orders?status=received');
+            $receivedView->assertStatus(200);
+            $receivedView->assertSee($reqNo);
+
+            // 9. Test Cancel feature on a second pending order
+            $order2 = Order::create([
+                'ward_id' => $wardId,
+                'req_no' => 'REQ-CANCEL-' . rand(10000, 99999),
+                'date' => now(),
+                'requested_by' => $nurse->id,
+                'ms_approval_status' => 'Pending',
+            ]);
+            $detail2 = OrderDetail::create([
+                'order_id' => $order2->id,
+                'medicine_id' => $medicine->id,
+                'qty_requested' => 10,
+                'qty_issued' => 0,
+            ]);
+
+            // Assert nurse sees SweetAlert2-bound cancel form and no inline browser confirm dialog
+            $nursePendingView = $this->actingAs($nurse)->get('/orders');
+            $nursePendingView->assertStatus(200);
+            $nursePendingView->assertSee('cancel-order-form');
+            $nursePendingView->assertSee('sweetalert2@11');
+            $nursePendingView->assertSee('Are you sure?');
+            $nursePendingView->assertDontSee("confirm('Are you sure you want to cancel this order requisition?')");
+
+            $cancelResp = $this->actingAs($nurse)->patch(route('orders.cancel', $detail2->id));
+            $cancelResp->assertRedirect();
+            $order2->refresh();
+            $this->assertEquals('Cancelled', $order2->ms_approval_status);
+
+        } finally {
+            if (isset($order2)) {
+                $order2->details()->delete();
+                $order2->delete();
+            }
+            if (isset($order)) {
+                $order->details()->delete();
+                $order->delete();
+            }
+            $batchIds = $medicine->batches()->pluck('id');
+            \App\Models\StockLedger::whereIn('batch_id', $batchIds)->delete();
+            \App\Models\StockReceipt::whereIn('batch_id', $batchIds)->delete();
+            $medicine->batches()->delete();
+            $medicine->delete();
+        }
+    }
+
+    public function test_doctor_can_bulk_approve_all_pending_orders_and_button_visibility(): void
+    {
+        $nurse = $this->getNurseUser();
+        $doctor = $this->getDoctorUser();
+        $pharmacist = $this->getPharmacistUser();
+
+        $category = Category::where('name', 'tablets')->first() ?? Category::firstOrCreate(['name' => 'tablets']);
+        $unit = Unit::first();
+        $form = MedicineForm::first();
+
+        $med1 = Medicine::create([
+            'item_code' => 'BULK-TEST-1-' . rand(1000, 9999),
+            'name' => 'BULK TEST MED 1',
+            'category_id' => $category->id,
+            'unit_id' => $unit->id,
+            'form_id' => $form->id,
+            'strength' => '100mg',
+            'min_level' => 10,
+            'warning_limit' => 20,
+            'units_per_pack' => 10,
+        ]);
+
+        $wardId = $nurse->ward_id ?? DB::table('wards')->value('id');
+
+        // Create 2 pending orders
+        $orderA = Order::create([
+            'ward_id' => $wardId,
+            'req_no' => 'REQ-BULK-A-' . rand(1000, 9999),
+            'date' => now(),
+            'requested_by' => $nurse->id,
+            'ms_approval_status' => 'Pending',
+        ]);
+        $detailA = OrderDetail::create([
+            'order_id' => $orderA->id,
+            'medicine_id' => $med1->id,
+            'qty_requested' => 10,
+            'qty_issued' => 0,
+        ]);
+
+        $orderB = Order::create([
+            'ward_id' => $wardId,
+            'req_no' => 'REQ-BULK-B-' . rand(1000, 9999),
+            'date' => now(),
+            'requested_by' => $nurse->id,
+            'ms_approval_status' => 'Pending',
+        ]);
+        $detailB = OrderDetail::create([
+            'order_id' => $orderB->id,
+            'medicine_id' => $med1->id,
+            'qty_requested' => 20,
+            'qty_issued' => 0,
+        ]);
+
+        try {
+            // 1. Nurse view: should NOT see the Approve All button
+            $nurseView = $this->actingAs($nurse)->get('/orders');
+            $nurseView->assertStatus(200);
+            $nurseView->assertDontSee('id="approve-all-form"', false);
+            $nurseView->assertDontSee('Approve All Pending');
+
+            // 2. Pharmacist view: should NOT see the Approve All button
+            $pharmView = $this->actingAs($pharmacist)->get('/orders');
+            $pharmView->assertStatus(200);
+            $pharmView->assertDontSee('id="approve-all-form"', false);
+            $pharmView->assertDontSee('Approve All Pending');
+
+            // 3. Doctor view: SHOULD see Approve All button and SweetAlert popup script
+            $docView = $this->actingAs($doctor)->get('/orders');
+            $docView->assertStatus(200);
+            $docView->assertSee('id="approve-all-form"', false);
+            $docView->assertSee('Approve All');
+            $docView->assertSee('Are you sure you want to approve all pending orders');
+
+            // 4. Non-doctor tries to access approveAll route: should fail
+            $unauthResp = $this->actingAs($nurse)->patch(route('orders.approveAll'));
+            $unauthResp->assertRedirect();
+            $unauthResp->assertSessionHas('error');
+            $orderA->refresh();
+            $this->assertEquals('Pending', $orderA->ms_approval_status);
+
+            // 5. Doctor submits approveAll
+            $approveAllResp = $this->actingAs($doctor)->patch(route('orders.approveAll'));
+            $approveAllResp->assertRedirect();
+            $approveAllResp->assertSessionHas('success');
+
+            // 6. Both pending orders should now be Approved and approved_by set to doctor
+            $orderA->refresh();
+            $orderB->refresh();
+            $this->assertEquals('Approved', $orderA->ms_approval_status);
+            $this->assertEquals($doctor->id, $orderA->approved_by);
+            $this->assertEquals('Approved', $orderB->ms_approval_status);
+            $this->assertEquals($doctor->id, $orderB->approved_by);
+
+        } finally {
+            if (isset($orderA)) {
+                $orderA->details()->delete();
+                $orderA->delete();
+            }
+            if (isset($orderB)) {
+                $orderB->details()->delete();
+                $orderB->delete();
+            }
+            if (isset($med1)) {
+                $med1->delete();
+            }
+        }
+    }
+
+    public function test_success_alert_auto_dismiss_snippet_is_rendered(): void
+    {
+        $nurse = $this->getNurseUser();
+        $response = $this->actingAs($nurse)->get('/orders');
+        $response->assertStatus(200);
+        $response->assertSee('.alert-success', false);
+        $response->assertSee('setTimeout', false);
+        $response->assertSee('3000', false);
     }
 }
 

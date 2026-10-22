@@ -1780,7 +1780,17 @@
                     </div>
 
 
-                    <!-- Suppliers -->
+                    <!-- Orders -->
+                    <a
+                        href="{{ route('orders.index') }}"
+                        class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                        <i class="fa-solid fa-cart-shopping mr-1.5"></i>
+                        Orders
+
+                    </a>
+
+                    <!-- Patients -->
                     <a
                         href="{{ route('patients.index') }}"
                         class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">

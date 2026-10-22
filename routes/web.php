@@ -18,6 +18,7 @@ use App\Http\Controllers\DispensationController;
 use App\Http\Controllers\GeneralItemController;
 use App\Http\Controllers\GeneralStockAdjustmentController;
 use App\Http\Controllers\GeneralTransactionController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PatientController;
 
 
@@ -78,10 +79,24 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/admissions/{admission}', [AdmissionController::class, 'update'])->name('admissions.update');
         Route::post('/admissions/{admission}/dispensations', [DispensationController::class, 'store'])->name('admissions.dispensations.store');
     });
+
+    // ---- Centralized Orders Dashboard -------------------------------------
+    Route::prefix('orders')->name('orders.')->group(function () {
+        Route::get('/', [OrderController::class, 'index'])->name('index');
+        Route::patch('/approve-all', [OrderController::class, 'approveAll'])->name('approveAll');
+        Route::patch('/{id}/approve', [OrderController::class, 'approve'])->name('approve');
+        Route::patch('/{id}/issue', [OrderController::class, 'issue'])->name('issue');
+        Route::post('/{id}/receive', [OrderController::class, 'receive'])->name('receive');
+        Route::match(['patch', 'post'], '/{id}/cancel', [OrderController::class, 'cancel'])->name('cancel');
+    });
 });
 
 // Home page router
 Route::get('/', function () {
+    return view('home');
+});
+
+Route::get('/home', function () {
     return view('home');
 })->name('home');
 

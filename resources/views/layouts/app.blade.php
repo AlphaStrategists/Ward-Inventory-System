@@ -20,6 +20,9 @@
     <!-- Font Awesome 6.5 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         :root {
             --bs-font-sans-serif: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -633,6 +636,54 @@
                 <i class="fa-solid fa-arrow-left text-[11px]"></i>
                 Back to Home
             </a>
+
+            <div class="vr mx-2 text-muted opacity-25 d-none d-md-block" style="height: 28px;"></div>
+
+            @php
+                $isHomeOrDashboard = request()->is('home*') || request()->is('dashboard*') || request()->is('/') || request()->routeIs('home', 'dashboard');
+                $isInventoryRoute = request()->is('inventory*') || request()->is('general-inventory*') || request()->routeIs('inventory.*', 'general-inventory.*');
+                $isOrdersRoute = request()->is('orders*') || request()->routeIs('orders.*');
+                $isPatientsRoute = request()->is('patients*') || request()->routeIs('patients.*');
+
+                $showInventory = true;
+                $showOrders = true;
+                $showPatients = true;
+
+                if (!$isHomeOrDashboard) {
+                    if ($isInventoryRoute) {
+                        $showOrders = false;
+                        $showPatients = false;
+                    } elseif ($isOrdersRoute) {
+                        $showInventory = false;
+                        $showPatients = false;
+                    } elseif ($isPatientsRoute) {
+                        $showInventory = false;
+                        $showOrders = false;
+                    }
+                }
+            @endphp
+
+            <!-- Main Navigation Links -->
+            <nav class="d-none d-md-flex align-items-center gap-1">
+                @if($showInventory)
+                <a href="{{ route('general-inventory.index') }}" class="nav-pill-link {{ request()->is('general-inventory*') || request()->is('inventory*') ? 'active' : '' }}">
+                    <i class="bi bi-boxes"></i>
+                    <span>Inventory</span>
+                </a>
+                @endif
+                @if($showOrders)
+                <a href="{{ route('orders.index') }}" class="nav-pill-link {{ request()->is('orders*') ? 'active' : '' }}">
+                    <i class="bi bi-cart-check"></i>
+                    <span>Orders</span>
+                </a>
+                @endif
+                @if($showPatients)
+                <a href="{{ route('patients.index') }}" class="nav-pill-link {{ request()->is('patients*') ? 'active' : '' }}">
+                    <i class="bi bi-people"></i>
+                    <span>Patients</span>
+                </a>
+                @endif
+            </nav>
         </div>
 
         <div class="d-flex align-items-center gap-3">
@@ -697,6 +748,28 @@
 
     <!-- Bootstrap 5.3 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <!-- Auto-dismiss success alert messages after 3 seconds -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const successAlerts = document.querySelectorAll('.alert-success');
+            successAlerts.forEach(function (alert) {
+                if (!alert.dataset.dismissScheduled) {
+                    alert.dataset.dismissScheduled = 'true';
+                    setTimeout(function () {
+                        alert.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                        alert.style.opacity = '0';
+                        alert.style.transform = 'translateY(-10px)';
+                        setTimeout(function () {
+                            if (alert.parentNode) {
+                                alert.remove();
+                            }
+                        }, 500);
+                    }, 3000);
+                }
+            });
+        });
+    </script>
 
     @stack('scripts')
 </body>
