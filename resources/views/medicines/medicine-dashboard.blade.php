@@ -200,10 +200,10 @@
 
                 <div class="h-6 w-px bg-slate-200 hidden sm:block"></div>
 
-                <a href="{{ route('dashboard') }}"
+                <a href="{{ route('home') }}"
                     class="hidden sm:inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#1894f2] bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95">
                     <i class="fa-solid fa-arrow-left text-[11px]"></i>
-                    Back to Dashboard
+                    Back to Home
                 </a>
             </div>
             <div class="ms-auto justify-content-end w-full flex justify-end">
