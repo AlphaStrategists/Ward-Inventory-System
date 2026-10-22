@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Ward Inventory System') - Ward 48</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,13 +40,21 @@
             --danger-red-bg: #fef2f2;
         }
 
+        html,
+        body {
+            height: 100%;
+        }
+
         body {
             font-family: var(--bs-font-sans-serif);
             background-color: var(--content-bg);
             color: var(--text-dark);
             min-height: 100vh;
             margin: 0;
-            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
         }
 
         /* Top System Navigation Bar */
@@ -53,10 +62,19 @@
             background: #ffffff;
             border-bottom: 1px solid var(--sidebar-border);
             padding: 0.75rem 1.5rem;
-            position: sticky;
+            position: relative;
+            flex: 0 0 auto;
             top: 0;
             z-index: 1030;
             backdrop-filter: blur(8px);
+        }
+
+        .app-body {
+            flex: 1;
+            min-height: 0;
+            /* required so children can scroll */
+            display: flex;
+            width: 100%;
         }
 
         .nav-pill-link {
@@ -90,8 +108,9 @@
             max-width: 330px;
             background: var(--sidebar-bg);
             border-right: 1px solid var(--sidebar-border);
-            height: calc(100vh - 65px);
-            position: sticky;
+            height: 100%;
+            /* was calc(100vh - 65px) */
+            position: static;
             top: 65px;
             display: flex;
             flex-direction: column;
@@ -273,6 +292,15 @@
             pointer-events: none;
         }
 
+        .main-content-panel {
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+            overflow-y: auto;
+            /* only this area scrolls */
+            padding: 1.75rem 2rem 3rem;
+        }
+
         .header-card-title {
             font-size: 1.85rem;
             font-weight: 800;
@@ -355,6 +383,14 @@
             color: var(--primary-blue);
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
             border: 1px solid #e2e8f0;
+        }
+
+        .flash-stack {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1060;
+            width: min(420px, calc(100% - 2rem));
         }
 
         /* Filter Controls */
@@ -592,18 +628,11 @@
             </a>
 
             <div class="vr mx-2 text-muted opacity-25 d-none d-md-block" style="height: 28px;"></div>
-
-            <!-- Page Switcher Tabs -->
-            <nav class="d-flex gap-2">
-                <a href="{{ route('general-inventory.index') }}" class="nav-pill-link {{ request()->is('general-inventory*') ? 'active' : '' }}">
-                    <i class="bi bi-box-seam"></i>
-                    <span>General Inventory</span>
-                </a>
-                <a href="{{ route('patients.index') }}" class="nav-pill-link {{ request()->is('patients*') ? 'active' : '' }}">
-                    <i class="bi bi-shield-exclamation text-danger-emphasis"></i>
-                    <span>Patients</span>
-                </a>
-            </nav>
+            <a href="{{ route('home') }}"
+                class="hidden sm:inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#1894f2] bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95">
+                <i class="fa-solid fa-arrow-left text-[11px]"></i>
+                Back to Home
+            </a>
         </div>
 
         <div class="d-flex align-items-center gap-3">
@@ -631,7 +660,7 @@
     </header>
 
     <!-- Flash Messages -->
-    <div class="container-fluid px-4 pt-3">
+    <div class="flash-stack">
         @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-2" role="alert">
             <i class="bi bi-check-circle-fill text-success fs-5"></i>
@@ -662,7 +691,7 @@
     </div>
 
     <!-- Main Layout Frame -->
-    <div class="d-flex w-100">
+    <div class="app-body">
         @yield('content')
     </div>
 

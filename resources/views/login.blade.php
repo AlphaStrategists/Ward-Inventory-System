@@ -192,22 +192,7 @@
                         Sign In
                     </button>
                 </form>
-
-                <!-- Create a new user -->
-                @if (auth()->check() && auth()->user()->is_admin)
-                <div class="mt-8 border-t border-slate-100 pt-6 text-center">
-                    <p class="text-sm" style="color: var(--color-secondary);">
-                        Don't have an account?
-                        <a
-                            href="{{ route('createUser') }}"
-                            class="font-semibold hover:underline"
-                            style="color: var(--color-accent);">
-                            Create a new account
-                        </a>
-                    </p>
-                </div>
-                @endif
-
+                
                 <div class="mt-4 text-center">
                     <a href="{{ route('home') }}" class="text-xs hover:underline" style="color: var(--color-secondary)">
                         <i class="fa-solid fa-arrow-left mr-1"></i>
