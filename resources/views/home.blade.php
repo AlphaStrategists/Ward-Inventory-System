@@ -1578,10 +1578,10 @@
                 <div class="mt-8 flex flex-wrap gap-4">
 
                     <a
-                        href="{{ route('test') }}"
+                        href="{{ route('login') }}"
                         class="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 font-semibold text-[#003af8] shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50">
                         <i class="fa-solid fa-gauge-high"></i>
-                        Go to Dashboard
+                        User login
                     </a>
 
 
@@ -1591,7 +1591,7 @@
                         href="{{ route('createUser') }}"
                         class="inline-flex items-center gap-2 rounded-xl border border-white/60 bg-white/10 px-6 py-3.5 font-semibold text-white backdrop-blur-sm transition hover:bg-white/20">
                         <i class="fa-solid fa-user-pen"></i>
-                        Create New User
+                        Create new User
                     </a>
                     @endif
                 </div>
@@ -1646,16 +1646,6 @@
                         <i class="fa-solid fa-house mr-1.5"></i>
                         Home
                     </a>
-
-
-                    <!-- Dashboard -->
-                    <a
-                        href="{{ route('home') }}"
-                        class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
-                        <i class="fa-solid fa-gauge mr-1.5"></i>
-                        Dashboard
-                    </a>
-
 
                     <!-- Inventory -->
                     <div class="group relative">
@@ -1790,6 +1780,13 @@
 
                     </a>
 
+                    <!-- Stock -->
+                    <a
+                        href="{{ route('test') }}"
+                        class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                        <i class="fa-solid fa-gauge mr-1.5"></i>
+                        Stock
+                    </a>
 
                     <!-- Reports -->
                     <a
