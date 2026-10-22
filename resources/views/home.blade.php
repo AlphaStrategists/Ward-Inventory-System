@@ -1578,7 +1578,7 @@
                 <div class="mt-8 flex flex-wrap gap-4">
 
                     <a
-                        href="{{ route('dashboard') }}"
+                        href="{{ route('test') }}"
                         class="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 font-semibold text-[#003af8] shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50">
                         <i class="fa-solid fa-gauge-high"></i>
                         Go to Dashboard
@@ -1650,7 +1650,7 @@
 
                     <!-- Dashboard -->
                     <a
-                        href="{{ route('dashboard') }}"
+                        href="{{ route('home') }}"
                         class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
                         <i class="fa-solid fa-gauge mr-1.5"></i>
                         Dashboard
