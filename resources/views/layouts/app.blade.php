@@ -660,7 +660,7 @@
     </header>
 
     <!-- Flash Messages -->
-    <div class="container-fluid px-4 pt-3">
+    <div class="flash-stack">
         @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-2" role="alert">
             <i class="bi bi-check-circle-fill text-success fs-5"></i>
@@ -691,7 +691,7 @@
     </div>
 
     <!-- Main Layout Frame -->
-    <div class="d-flex w-100">
+    <div class="app-body">
         @yield('content')
     </div>
 
