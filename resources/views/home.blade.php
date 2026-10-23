@@ -1790,14 +1790,7 @@
 
                     </a>
 
-                    <!-- Stock -->
-                    <a
-                        href="{{ route('test') }}"
-                        class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
-                        <i class="fa-solid fa-gauge mr-1.5"></i>
-                        Stock
-                    </a>
-
+                    
                     <!-- Reports -->
                     <a
                         href="{{ route('test'   ) }}"
