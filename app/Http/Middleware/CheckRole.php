@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
-    public const VALID_ROLES = ['Admin', 'Doctor', 'Nurse', 'Pharmacist'];
+    public const VALID_ROLES = ['Doctor', 'Nurse', 'Pharmacist'];
 
     /**
      * Allow the request through only if the logged-in user's role matches

@@ -18,7 +18,7 @@ class User extends Authenticatable
     protected $table = 'users';
     const UPDATED_AT = null;
 
-    public const ROLES = ['Admin', 'Doctor', 'Nurse', 'Pharmacist'];
+    public const ROLES = ['Doctor', 'Nurse', 'Pharmacist'];
     public const NURSE_ROLES = ['Nurse'];
 
     protected $fillable = [
