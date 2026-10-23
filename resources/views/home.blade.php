@@ -1580,7 +1580,7 @@
                     <a
                         href="{{ route('login') }}"
                         class="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 font-semibold text-[#003af8] shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50">
-                        <i class="fa-solid fa-gauge-high"></i>
+                        <i class="fa-solid fa-right-to-bracket"></i>
                         User login
                     </a>
 
@@ -1589,7 +1589,7 @@
                     @if (auth()->check() && auth()->user()->is_admin)
                     <a
                         href="{{ route('createUser') }}"
-                        class="inline-flex items-center gap-2 rounded-xl border border-white/60 bg-white/10 px-6 py-3.5 font-semibold text-white backdrop-blur-sm transition hover:bg-white/20">
+                        class="inline-flex items-center gap-2 rounded-xl border border-white/60 bg-white/10 px-6 py-3.5 font-semibold text-white backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white/20">
                         <i class="fa-solid fa-user-pen"></i>
                         Create new User
                     </a>
@@ -1790,14 +1790,7 @@
 
                     </a>
 
-                    <!-- Stock -->
-                    <a
-                        href="{{ route('test') }}"
-                        class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
-                        <i class="fa-solid fa-gauge mr-1.5"></i>
-                        Stock
-                    </a>
-
+                    
                     <!-- Reports -->
                     <a
                         href="{{ route('test'   ) }}"
@@ -2080,34 +2073,33 @@
 
                     </div>
 
-
-                    <!-- Stock Card -->
+                    <!-- Orders Card -->
                     <div
                         class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
 
-                            <i class="fa-solid fa-warehouse"></i>
+                            <i class="fa-solid fa-cart-shopping"></i>
 
                         </div>
 
                         <h3 class="mt-6 text-xl font-bold text-slate-900">
-                            Stock Management
+                            Order Management
                         </h3>
 
                         <p class="mt-3 leading-7 text-slate-500">
 
-                            Monitor available stock and quickly identify
-                            low-stock inventory items.
+                            Track outgoing orders and quickly review pending,
+                            processing, and completed requests.
 
                         </p>
 
                         <a
-                            href="{{ route('test') }}"
+                            href="{{ route('orders.index') }}"
                             class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
 
-                            Check Stock
+                            View Orders
 
                             <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
 
