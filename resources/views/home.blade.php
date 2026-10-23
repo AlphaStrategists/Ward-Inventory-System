@@ -2080,34 +2080,33 @@
 
                     </div>
 
-
-                    <!-- Stock Card -->
+                    <!-- Orders Card -->
                     <div
                         class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
 
-                            <i class="fa-solid fa-warehouse"></i>
+                            <i class="fa-solid fa-cart-shopping"></i>
 
                         </div>
 
                         <h3 class="mt-6 text-xl font-bold text-slate-900">
-                            Stock Management
+                            Order Management
                         </h3>
 
                         <p class="mt-3 leading-7 text-slate-500">
 
-                            Monitor available stock and quickly identify
-                            low-stock inventory items.
+                            Track outgoing orders and quickly review pending,
+                            processing, and completed requests.
 
                         </p>
 
                         <a
-                            href="{{ route('test') }}"
+                            href="{{ route('orders.index') }}"
                             class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
 
-                            Check Stock
+                            View Orders
 
                             <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
 
