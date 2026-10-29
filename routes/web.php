@@ -23,6 +23,7 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\Auth\TestLoginController;
+use App\Http\Controllers\UserController;
 
 
 /*
@@ -63,7 +64,16 @@ Route::post('/logout', function (Request $request) {
 
 })->middleware('auth')->name('logout');
 
+/*
+|--------------------------------------------------------------------------
+| USER MANAGEMENT
+|--------------------------------------------------------------------------
+*/
 
+Route::get('/users', [UserController::class, 'index'])->name('getAllUsers');
+Route::get('/users/create', [UserController::class, 'create'])->name('createUser');
+Route::post('/users', [UserController::class, 'store'])->name('storeUser');
+Route::get('/users/{id}', [UserController::class, 'show'])->name('getUser');
 /*
 |--------------------------------------------------------------------------
 | DEV TEST LOGIN

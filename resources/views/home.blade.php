@@ -1587,13 +1587,14 @@
 
                     <!-- Create a new user -->
                     @if (auth()->check() && auth()->user()->is_admin)
-                    <a
-                        href="{{ route('createUser') }}"
-                        class="inline-flex items-center gap-2 rounded-xl border border-white/60 bg-white/10 px-6 py-3.5 font-semibold text-white backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white/20">
-                        <i class="fa-solid fa-user-pen"></i>
-                        Create new User
-                    </a>
+                        <a
+                            href="{{ route('createUser') }}"
+                            class="inline-flex items-center gap-2 rounded-xl border border-white/60 bg-white/10 px-6 py-3.5 font-semibold text-white backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white/20">
+                            <i class="fa-solid fa-user-pen"></i>
+                            Create new User
+                        </a>
                     @endif
+                    
                 </div>
 
             </div>
@@ -1726,44 +1727,76 @@
                             </div>
 
 
-                            <a
-                                href="{{ route('test') }}"
-                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                           {{-- Surgical Items --}}
+                        <div class="group/item relative">
 
-                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
-                                    <i class="fa-solid fa-kit-medical"></i>
-                                </span>
-
-                                <span>
-                                    <span class="block font-semibold">
-                                        Surgical Items
-                                    </span>
-                                    <span class="text-xs text-slate-400">
-                                        Surgical inventory
-                                    </span>
-                                </span>
-
-                            </a>
-
-
-                            <a
-                                href="{{ route('general-inventory.index') }}"
-                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                            <a href="#"
+                            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
                                 <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
                                     <i class="fa-solid fa-box"></i>
                                 </span>
 
-                                <span>
+                                <span class="flex-1">
                                     <span class="block font-semibold">
-                                        General Items
+                                        Surgical Items
                                     </span>
+
                                     <span class="text-xs text-slate-400">
-                                        General inventory
+                                        Surgical inventory
                                     </span>
                                 </span>
 
+                                <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
                             </a>
+
+                            {{-- Surgical submenu --}}
+                            <div class="invisible absolute left-full top-0 z-20 w-56 pl-2 opacity-0 transition duration-200 group-hover/item:visible group-hover/item:opacity-100">
+
+                                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+
+                                    <a href="/nurse/surgical-consumable-1"
+                                    class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-box-open w-5 text-slate-400"></i>
+                                        Surgical Consumables 1
+                                    </a>
+
+                                    <a href="/nurse/surgical-consumable-2"
+                                    class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-boxes-stacked w-5 text-slate-400"></i>
+                                        Surgical Consumables 2
+                                    </a>
+
+                                    <a href="/nurse/local-purchases"
+                                    class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-cart-shopping w-5 text-slate-400"></i>
+                                        Local Purchases
+                                    </a>
+
+                                </div>
+                            </div>
+
+                        </div>
+
+                        {{-- General Items --}}
+
+                        <a
+                            href="{{ route('general-inventory.index') }}"
+                            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                <i class="fa-solid fa-box"></i>
+                            </span>
+
+                            <span>
+                                <span class="block font-semibold">
+                                    General Items
+                                </span>
+                                <span class="text-xs text-slate-400">
+                                    General inventory
+                                </span>
+                            </span>
+                        </a>
 
                         </div>
 
