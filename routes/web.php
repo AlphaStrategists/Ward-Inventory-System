@@ -32,7 +32,7 @@ use App\Http\Controllers\UserController;
 |--------------------------------------------------------------------------
 */
 
-Route::redirect('/', '/login');
+Route::redirect('/', '/home');
 
 Route::get('/home', function () {
     return view('home');
