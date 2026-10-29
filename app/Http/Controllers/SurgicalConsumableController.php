@@ -1165,20 +1165,17 @@ class SurgicalConsumableController extends Controller
         $actor = $this->currentUser($request);
 
         $validated = $request->validate([
-            'date' => 'required|string',
-            'item_name' => 'required|string',
-            'type' => 'required|string',
-            'quantity' => 'required|string',
-            'balance' => 'required|string',
-            'reason' => 'required|string',
+            'date' => 'required|date',
+            'item_name' => 'required|string|max:150',
+            'type' => 'required|in:increase,decrease',
+            'quantity' => 'required|integer|min:1',
+            'reason' => 'required|string|max:500',
         ]);
 
-        $amount = 0;
-        if (preg_match('/\d+/', $validated['quantity'], $m)) {
-            $amount = (int) $m[0];
-        }
+        $amount = (int) $validated['quantity'];
 
-        $transId = WardDatabaseService::storeAdjustment(
+        try {
+            $transId = WardDatabaseService::storeAdjustment(
             $this->categoryId,
             $validated['item_name'],
             $validated['type'],
@@ -1186,7 +1183,13 @@ class SurgicalConsumableController extends Controller
             $validated['reason'],
             $actor['id'],
             $validated['date']
-        );
+            );
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
 
         $validated['id'] = $transId;
         $validated['adjusted_by'] = $actor['name'];

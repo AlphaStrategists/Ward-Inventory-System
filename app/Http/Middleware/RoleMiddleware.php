@@ -9,19 +9,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
-    /**
-     * Handle an incoming request.
-     */
     public function handle(
         Request $request,
         Closure $next,
         ...$roles
     ): Response {
-        /*
-        |--------------------------------------------------------------------------
-        | 1. Check authentication
-        |--------------------------------------------------------------------------
-        */
 
         $user = $request->user();
 
@@ -32,120 +24,77 @@ class RoleMiddleware
             ], 401);
         }
 
-
         /*
         |--------------------------------------------------------------------------
-        | 2. Normalize allowed roles from the route
+        | Get the actual role from the database
         |--------------------------------------------------------------------------
-        |
-        | Example:
-        | role:nurse,admin
-        |
         */
 
-        $allowedRoles = array_map(
-            fn ($role) => strtolower(trim((string) $role)),
-            $roles
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | 3. Get the authenticated user's role from the database
-        |--------------------------------------------------------------------------
-        |
-        | We do NOT trust:
-        | - URL role
-        | - X-Role header
-        | - request input
-        |
-        | The role comes from:
-        |
-        | users.role_id
-        |        ↓
-        | roles.id
-        |        ↓
-        | roles.role_name
-        |
-        */
-
-        $userRole = DB::table('roles')
+        $databaseRole = DB::table('roles')
             ->where('id', $user->role_id)
             ->value('role_name');
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | 4. Make sure the user's role exists
-        |--------------------------------------------------------------------------
-        */
-
-        if (!$userRole) {
+        if (!$databaseRole) {
             return response()->json([
                 'success' => false,
                 'message' => 'User role could not be determined.',
             ], 403);
         }
 
-
         /*
         |--------------------------------------------------------------------------
-        | 5. Normalize the user's role
+        | Database role -> Application role
         |--------------------------------------------------------------------------
         */
 
-        $userRole = strtolower(
-            trim((string) $userRole)
-        );
+        $roleMap = [
+            'Admin'       => 'admin',
+            'Doctor'      => 'ms',
+            'Nurse'       => 'nurse',
+            'Pharmacist'  => 'pharmacist',
+        ];
 
+        $activeRole = $roleMap[$databaseRole] ?? null;
 
-        /*
-        |--------------------------------------------------------------------------
-        | 6. Store the authenticated user's real role
-        |--------------------------------------------------------------------------
-        |
-        | Controllers can retrieve it using:
-        |
-        | $request->attributes->get('active_role');
-        |
-        */
-
-        $request->attributes->set(
-            'active_role',
-            $userRole
-        );
-
+        if (!$activeRole) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid user role.',
+            ], 403);
+        }
 
         /*
         |--------------------------------------------------------------------------
-        | 7. Admin has access
+        | Save the application role for the current request
         |--------------------------------------------------------------------------
-        |
-        | Admin can access all role-protected areas.
-        |
         */
 
-        if ($userRole === 'admin') {
+        $request->attributes->set('active_role', $activeRole);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Admin can access all protected areas
+        |--------------------------------------------------------------------------
+        */
+
+        if ($activeRole === 'admin') {
             return $next($request);
         }
 
-
         /*
         |--------------------------------------------------------------------------
-        | 8. Check whether the authenticated user's role is allowed
+        | Check requested role
         |--------------------------------------------------------------------------
         */
 
-        if (in_array($userRole, $allowedRoles, true)) {
+        $allowedRoles = array_map(
+            fn ($role) => strtolower(trim($role)),
+            $roles
+        );
+
+        if (in_array($activeRole, $allowedRoles, true)) {
             return $next($request);
         }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | 9. User does not have permission
-        |--------------------------------------------------------------------------
-        */
 
         return response()->json([
             'success' => false,

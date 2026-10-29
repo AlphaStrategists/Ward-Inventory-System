@@ -1170,7 +1170,7 @@ function localPurchaseApp() {
             this.fetchDailyCounts();
 
             // Keep the requisition list fresh for nurse/MS screens.
-            if (this.currentRole === 'nurse' || this.currentRole === 'ms' || this.currentRole === 'admin') {
+            if (this.currentRole === 'nurse' || this.currentRole === 'ms' || this.currentRole === 'admin' || this.currentRole === 'pharmacist') {
                 setInterval(() => {
                     if (!this.isAnyModalOpen()) {
                         this.fetchRequisitions();
@@ -1676,6 +1676,16 @@ function localPurchaseApp() {
                 return;
             }
 
+            if (!['increase', 'decrease'].includes(this.newAdjustment.type)) {
+                this.showToast('Select Increase or Decrease.', 'error');
+                return;
+            }
+
+            if (this.newAdjustment.type === 'decrease' && quantity > Number(this.selectedConsumable?.balance ?? 0)) {
+                this.showToast('The decrease quantity cannot be greater than the available balance.', 'error');
+                return;
+            }
+
             if (!this.newAdjustment.reason || !this.newAdjustment.reason.trim()) {
                 this.showToast('Please enter a reason for the adjustment.', 'error');
                 return;
@@ -1702,7 +1712,10 @@ function localPurchaseApp() {
                 const data = await res.json().catch(() => ({}));
 
                 if (!res.ok) {
-                    throw new Error(data.message || 'Unable to save stock adjustment.');
+                    const validation = data.errors
+                        ? Object.values(data.errors).flat().join(' ')
+                        : '';
+                    throw new Error(validation || data.message || 'Unable to save stock adjustment.');
                 }
 
                 this.showAdjustmentModal = false;

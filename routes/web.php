@@ -94,6 +94,16 @@ Route::get(
     ->middleware(['auth', 'role:admin'])
     ->name('admin.surgical-consumable-2');
 
+/*
+|--------------------------------------------------------------------------
+| PHARMACIST SC2 VIEW
+|--------------------------------------------------------------------------
+|
+| Pharmacist can view Surgical Consumables 2.
+| Pharmacist does not approve, reject, receive, or dispense.
+|
+*/
+
 Route::get(
     '/pharmacist/surgical-consumable-2',
     [SurgicalConsumable2Controller::class, 'index']
@@ -147,9 +157,9 @@ Route::get(
 | ROLE ROOT REDIRECT
 |--------------------------------------------------------------------------
 |
-| /nurse  -> /nurse/surgical-consumable-1
-| /ms     -> /ms/surgical-consumable-1
-| /admin  -> /admin/surgical-consumable-1
+| /nurse      -> /nurse/surgical-consumable-1
+| /ms         -> /ms/surgical-consumable-1
+| /admin      -> /admin/surgical-consumable-1
 | /pharmacist -> /pharmacist/surgical-consumable-1
 |
 | Authentication is required.
@@ -419,12 +429,18 @@ Route::put(
     ->middleware(['auth', 'role:ms,admin'])
     ->name('api.sc2.requisitions.reject');
 
-Route::put(
-    '/api/surgical-consumable-2/requisitions/{id}/dispense',
-    [SurgicalConsumable2Controller::class, 'dispenseRequisition']
-)
-    ->middleware(['auth', 'role:pharmacist,admin'])
-    ->name('api.sc2.requisitions.dispense');
+/*
+|--------------------------------------------------------------------------
+| IMPORTANT:
+| No pharmacist dispense route here.
+|
+| SC2 follows the same procedure as SC1:
+|
+| Nurse -> MS approval/rejection -> Nurse receives
+|
+| Pharmacist has a view only.
+|--------------------------------------------------------------------------
+*/
 
 Route::put(
     '/api/surgical-consumable-2/requisitions/{id}/receive',
@@ -444,7 +460,7 @@ Route::delete(
     '/api/surgical-consumable-2/requisitions/{id}',
     [SurgicalConsumable2Controller::class, 'destroyRequisition']
 )
-    ->middleware(['auth', 'role:admin'])
+    ->middleware(['auth', 'role:nurse,admin'])
     ->name('api.sc2.requisitions.destroy');
 
 

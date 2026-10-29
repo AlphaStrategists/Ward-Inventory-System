@@ -964,6 +964,80 @@
 </div>
 
 <!-- ================================================================ -->
+<!-- NEW STOCK ADJUSTMENT MODAL -->
+<!-- ================================================================ -->
+<div x-show="showAdjustmentModal" x-cloak class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div @click.outside="showAdjustmentModal = false" class="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div class="p-6 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
+            <div>
+                <div class="text-[10px] font-extrabold text-amber-600 uppercase tracking-wider">Stock Control</div>
+                <h3 class="text-lg font-extrabold text-slate-900 mt-1">New Adjustment</h3>
+                <p class="text-xs text-slate-500 mt-1" x-text="selectedConsumable.name || 'Selected medicine'"></p>
+            </div>
+            <button type="button" @click="showAdjustmentModal = false" class="w-9 h-9 rounded-xl hover:bg-amber-100 text-slate-500">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form @submit.prevent="submitAdjustment()" class="p-6 space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">Date &amp; Time *</label>
+                        <span class="text-[9px] font-extrabold text-emerald-600 uppercase">● Live</span>
+                    </div>
+                    <input type="datetime-local" x-model="newAdjustment.date" required class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-amber-500">
+                    <p class="text-[10px] text-slate-400 mt-1">Filled automatically. You can change it manually.</p>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1.5">Medicine</label>
+                    <div class="w-full px-3.5 py-3 bg-slate-100 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-700" x-text="selectedConsumable.name || 'No medicine selected'"></div>
+                    <p class="text-[10px] text-slate-400 mt-1">Adjustment applies to the selected medicine.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1.5">Adjustment Type *</label>
+                    <select x-model="newAdjustment.type" required class="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-amber-500">
+                        <option value="increase">Increase</option>
+                        <option value="decrease">Decrease</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1.5">Quantity *</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" min="1" step="1" x-model.number="newAdjustment.quantity" required class="flex-1 px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-xs font-extrabold outline-none focus:border-amber-500">
+                        <span class="text-xs font-bold text-slate-400" x-text="selectedConsumable.unit || 'Unit'"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1.5">Reason *</label>
+                <textarea x-model="newAdjustment.reason" required rows="4" class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-amber-500" placeholder="Enter the reason for this stock adjustment..."></textarea>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                <div class="font-extrabold">Stock balance will be updated immediately.</div>
+                <div class="text-[11px] mt-1">The selected medicine and adjustment quantity will be recorded in the stock adjustment log.</div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex justify-end gap-3">
+                <button type="button" @click="showAdjustmentModal = false" class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">Cancel</button>
+                <button type="submit" class="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold">
+                    <i class="fa-solid fa-floppy-disk mr-1"></i>
+                    Save Adjustment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- ================================================================ -->
 <!-- ADD CONSUMABLE MODAL -->
 <!-- ================================================================ -->
 <div x-show="showAddConsumableModal" x-cloak class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1032,6 +1106,7 @@ function surgicalConsumableApp() {
         showNurseReceiveModal: false,
         showRejectModal: false,
         showDailyCountModal: false,
+        showAdjustmentModal: false,
 
         consumables: [],
         requisitions: [],
@@ -1078,6 +1153,13 @@ function surgicalConsumableApp() {
             remarks: ''
         },
 
+        newAdjustment: {
+            date: '',
+            type: 'increase',
+            quantity: 1,
+            reason: ''
+        },
+
         init() {
             this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -1089,7 +1171,7 @@ function surgicalConsumableApp() {
             this.fetchDailyCounts();
 
             // Keep the requisition list fresh for nurse/MS screens.
-            if (this.currentRole === 'nurse' || this.currentRole === 'ms' || this.currentRole === 'admin') {
+            if (this.currentRole === 'nurse' || this.currentRole === 'ms' || this.currentRole === 'admin' || this.currentRole === 'pharmacist') {
                 setInterval(() => {
                     if (!this.isAnyModalOpen()) {
                         this.fetchRequisitions();
@@ -1566,7 +1648,84 @@ function surgicalConsumableApp() {
         },
 
         openAdjustmentModal() {
-            this.showToast('The existing stock-adjustment form can remain in your previous interface. This new screen focuses the main workflow on requisitions.', 'error');
+            if (!this.selectedConsumable?.name) {
+                this.showToast('Please select a surgical consumable first.', 'error');
+                return;
+            }
+
+            if (!this.currentUserId || !this.currentUserName) {
+                this.showToast('No authenticated user was found.', 'error');
+                return;
+            }
+
+            this.newAdjustment = {
+                date: this.getLiveDateTime(),
+                type: 'increase',
+                quantity: 1,
+                reason: ''
+            };
+
+            this.showAdjustmentModal = true;
+        },
+
+        async submitAdjustment() {
+            const quantity = Number(this.newAdjustment.quantity);
+
+            if (!Number.isInteger(quantity) || quantity < 1) {
+                this.showToast('Enter a valid adjustment quantity.', 'error');
+                return;
+            }
+
+            if (!['increase', 'decrease'].includes(this.newAdjustment.type)) {
+                this.showToast('Select Increase or Decrease.', 'error');
+                return;
+            }
+
+            if (this.newAdjustment.type === 'decrease' && quantity > Number(this.selectedConsumable?.balance ?? 0)) {
+                this.showToast('The decrease quantity cannot be greater than the available balance.', 'error');
+                return;
+            }
+
+            if (!this.newAdjustment.reason || !this.newAdjustment.reason.trim()) {
+                this.showToast('Please enter a reason for the adjustment.', 'error');
+                return;
+            }
+
+            if (!this.selectedConsumable?.name) {
+                this.showToast('Please select a surgical consumable first.', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/adjustments', {
+                    method: 'POST',
+                    headers: this.jsonHeaders(),
+                    body: JSON.stringify({
+                        date: this.newAdjustment.date,
+                        item_name: this.selectedConsumable.name,
+                        type: this.newAdjustment.type,
+                        quantity: quantity,
+                        reason: this.newAdjustment.reason.trim()
+                    })
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    const validation = data.errors
+                        ? Object.values(data.errors).flat().join(' ')
+                        : '';
+                    throw new Error(validation || data.message || 'Unable to save stock adjustment.');
+                }
+
+                this.showAdjustmentModal = false;
+                this.showToast('Stock adjustment recorded successfully.');
+                await this.fetchConsumables();
+                await this.fetchAdjustments();
+            } catch (error) {
+                console.error('submitAdjustment', error);
+                this.showToast(error.message || 'Unable to save stock adjustment.', 'error');
+            }
         },
 
         async fetchConsumables() {

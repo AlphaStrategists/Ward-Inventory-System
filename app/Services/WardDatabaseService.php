@@ -8,61 +8,63 @@ use Illuminate\Support\Facades\Schema;
 class WardDatabaseService
 {
     /**
-     * Ensure required master records exist.
+     * Verify that the required master records already exist.
+     *
+     * IMPORTANT:
+     * This method is READ-ONLY.
+     * It never inserts, updates, or deletes anything.
      */
-    public static function ensureMasterRecords()
+    public static function ensureMasterRecords(): void
     {
-        try {
-            // 1. Role
-            $roleExists = DB::table('roles')
-                ->where('id', 1)
-                ->exists();
+        $roleExists = DB::table('roles')
+            ->where('id', 1)
+            ->exists();
 
-            if (!$roleExists) {
-                DB::table('roles')->insertOrIgnore([
-                    'id' => 1,
-                    'role_name' => 'Ward In-Charge',
-                    'created_at' => now(),
-                ]);
-            }
+        $wardExists = DB::table('wards')
+            ->where('id', 1)
+            ->exists();
 
-            // 2. Ward
-            $wardExists = DB::table('wards')
-                ->where('id', 1)
-                ->exists();
+        $categoriesExist = DB::table('categories')
+            ->whereIn('id', [1, 2, 3])
+            ->count() === 3;
 
-            if (!$wardExists) {
-                DB::table('wards')->insertOrIgnore([
-                    'id' => 1,
-                    'ward_number' => 'W-48',
-                    'ward_name' => 'Ward 48 - General',
-                ]);
-            }
-
-            // 3. Categories
-            $categories = [
-                1 => 'Surgical Consumables 1',
-                2 => 'Surgical Consumables 2',
-                3 => 'Local Purchases',
-            ];
-
-            foreach ($categories as $id => $name) {
-                $catExists = DB::table('categories')
-                    ->where('id', $id)
-                    ->exists();
-
-                if (!$catExists) {
-                    DB::table('categories')->insertOrIgnore([
-                        'id' => $id,
-                        'name' => $name,
-                        'description' => $name . ' Category',
-                        'created_at' => now(),
-                    ]);
-                }
-            }
-        } catch (\Exception $e) {
-            // Do not stop application if master tables are unavailable.
+        if (!$roleExists) {
+            throw new \RuntimeException(
+                'Required role record with ID 1 does not exist.'
+            );
         }
+
+        if (!$wardExists) {
+            throw new \RuntimeException(
+                'Required ward record with ID 1 does not exist.'
+            );
+        }
+
+        if (!$categoriesExist) {
+            throw new \RuntimeException(
+                'Required inventory category records do not exist.'
+            );
+        }
+    }
+
+    /**
+     * Get the existing Ward 48 ID.
+     *
+     * READ-ONLY: this method never creates or changes anything.
+     */
+    public static function getWardId(): int
+    {
+        $ward = DB::table('wards')
+            ->where('ward_number', 'W-48')
+            ->first();
+
+        if (!$ward) {
+            throw new \RuntimeException(
+                'Ward W-48 was not found in the database.'
+            );
+        }
+
+        return (int) $ward->id;
     }
 
     /**
@@ -104,66 +106,15 @@ class WardDatabaseService
     }
 
     /**
-     * Seed initial items for a category if none exist.
-     */
-    public static function seedCategoryItemsIfEmpty(
-        $categoryId,
-        array $initialItems
-    ) {
-        self::ensureMasterRecords();
-
-        try {
-            $count = DB::table('general_items')
-                ->where('category_id', $categoryId)
-                ->count();
-
-            if ($count === 0) {
-                foreach ($initialItems as $index => $item) {
-                    $itemCode = sprintf(
-                        'CAT%d-%03d',
-                        $categoryId,
-                        $index + 1
-                    );
-
-                    $itemId = DB::table('general_items')
-                        ->insertGetId([
-                            'item_code' => $itemCode,
-                            'name' => strtoupper(
-                                trim($item['name'])
-                            ),
-                            'category_id' => $categoryId,
-                        ]);
-
-                    /*
-                     * Initial stock is a RECEIPT.
-                     * Therefore it goes into quantity_received.
-                     */
-                    $initialBalance = isset($item['balance'])
-                        ? (int) $item['balance']
-                        : 0;
-
-                    if ($initialBalance > 0) {
-                        DB::table('general_transactions')
-                            ->insert([
-                                'item_id' => $itemId,
-                                'ward_id' => 1,
-                                'quantity_received' =>
-                                    $initialBalance,
-                                'quantity_issued' => 0,
-                                'date' => now(),
-                                'recorded_by' =>
-                                    self::currentUserId(),
-                            ]);
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            // Ignore seeding failures.
-        }
-    }
-
-    /**
      * Get all items for a category with calculated balances.
+     *
+     * IMPORTANT:
+     * This method is READ-ONLY.
+     *
+     * It only returns items that already exist in
+     * the general_items table.
+     *
+     * It never creates sample/fallback inventory items.
      *
      * Balance:
      *
@@ -218,26 +169,23 @@ class WardDatabaseService
                 return $result;
             }
         } catch (\Exception $e) {
-            // Continue to fallback.
+            /*
+             * Do not create fallback records.
+             */
+            return [];
         }
 
-        if (!empty($defaultFallback)) {
-            self::seedCategoryItemsIfEmpty(
-                $categoryId,
-                $defaultFallback
-            );
-
-            return self::getCategoryItems(
-                $categoryId,
-                []
-            );
-        }
-
+        /*
+         * No database records means an empty list.
+         */
         return [];
     }
 
     /**
      * Add a new item.
+     *
+     * This method is intentionally available only when
+     * the application explicitly creates an item.
      */
     public static function storeItem(
         $categoryId,
@@ -273,7 +221,7 @@ class WardDatabaseService
                 DB::table('general_transactions')
                     ->insert([
                         'item_id' => $itemId,
-                        'ward_id' => 1,
+                        'ward_id' => WardDatabaseService::getWardId(),
                         'quantity_received' =>
                             (int) $balance,
                         'quantity_issued' => 0,
@@ -353,6 +301,10 @@ class WardDatabaseService
      *
      * $receivedQty = stock coming IN.
      * $issuedQty   = stock going OUT.
+     *
+     * IMPORTANT:
+     * The item MUST already exist in general_items.
+     * This method never creates an inventory item automatically.
      */
     public static function storeTransaction(
         $categoryId,
@@ -372,7 +324,7 @@ class WardDatabaseService
         $itemName = strtoupper(trim($itemName));
 
         /*
-         * Find the item in the selected category.
+         * Find the existing item in the selected category.
          */
         $item = DB::table('general_items')
             ->where('name', $itemName)
@@ -380,26 +332,19 @@ class WardDatabaseService
             ->first();
 
         /*
-         * Create the item if it does not exist.
+         * Never create an item automatically.
          */
         if (!$item) {
-            $itemId = DB::table('general_items')
-                ->insertGetId([
-                    'item_code' => sprintf(
-                        'CAT%d-%d',
-                        $categoryId,
-                        time()
-                    ),
-                    'name' => $itemName,
-                    'category_id' => $categoryId,
-                ]);
-        } else {
-            $itemId = $item->id;
+            throw new \RuntimeException(
+                'The inventory item could not be found in the database.'
+            );
         }
+
+        $itemId = $item->id;
 
         $transactionData = [
             'item_id' => $itemId,
-            'ward_id' => 1,
+            'ward_id' => WardDatabaseService::getWardId(),
 
             /*
              * Received quantity INCREASES stock.
@@ -495,10 +440,14 @@ class WardDatabaseService
 
     /**
      * Get stock adjustments for a category.
+     *
+     * READ-ONLY.
+     *
+     * Only records already stored in
+     * general_stock_adjustments are returned.
      */
     public static function getAdjustments(
-        $categoryId,
-        array $fallback = []
+        $categoryId
     ) {
         try {
             $adjustments = DB::table(
@@ -596,11 +545,11 @@ class WardDatabaseService
                     })
                     ->toArray();
             }
-        } catch (\Exception $e) {
-            // Use fallback.
-        }
 
-        return $fallback;
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     /**
@@ -663,6 +612,9 @@ class WardDatabaseService
 
         /*
          * Store the corresponding inventory transaction.
+         *
+         * storeTransaction() will verify that the item
+         * already exists in the database.
          */
         $transId = self::storeTransaction(
             $categoryId,
@@ -719,7 +671,7 @@ class WardDatabaseService
 
                 $adjustmentData = [
                     'item_id' => $item->id,
-                    'ward_id' => 1,
+                    'ward_id' => WardDatabaseService::getWardId(),
                     'adjustment_type' => $adjType,
                     'quantity' => $isAddition
                         ? $qty
@@ -892,10 +844,14 @@ class WardDatabaseService
 
     /**
      * Get Daily Count records.
+     *
+     * READ-ONLY.
+     *
+     * Only records already stored in
+     * general_transactions are returned.
      */
     public static function getDailyCounts(
-        $categoryId,
-        array $fallback = []
+        $categoryId
     ) {
         try {
             $records = DB::table(
@@ -1018,11 +974,11 @@ class WardDatabaseService
                     })
                     ->toArray();
             }
-        } catch (\Exception $e) {
-            // Use fallback.
-        }
 
-        return $fallback;
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     /**
@@ -1119,7 +1075,7 @@ class WardDatabaseService
          */
         $transactionData = [
             'item_id' => $item->id,
-            'ward_id' => 1,
+            'ward_id' => WardDatabaseService::getWardId(),
             'quantity_received' => 0,
             'quantity_issued' => $qty,
             'date' => self::normalizeDate($dateStr),

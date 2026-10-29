@@ -1378,42 +1378,36 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
         $validated = $request->validate([
             'date' =>
-                'required|string',
+                'required|date',
             'item_name' =>
-                'required|string',
+                'required|string|max:150',
             'type' =>
-                'required|string',
+                'required|in:increase,decrease',
             'quantity' =>
-                'required|string',
-            'balance' =>
-                'required|string',
+                'required|integer|min:1',
             'reason' =>
-                'required|string',
+                'required|string|max:500',
         ]);
 
-        $amount = 0;
+        $amount = (int) $validated['quantity'];
 
-        if (
-            preg_match(
-                '/\d+/',
-                $validated['quantity'],
-                $matches
-            )
-        ) {
-            $amount =
-                (int) $matches[0];
+        try {
+            $transId =
+                WardDatabaseService::storeAdjustment(
+                    self::CATEGORY_ID,
+                    $validated['item_name'],
+                    $validated['type'],
+                    $amount,
+                    $validated['reason'],
+                    $actor['id'],
+                    $validated['date']
+                );
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
         }
-
-        $transId =
-            WardDatabaseService::storeAdjustment(
-                self::CATEGORY_ID,
-                $validated['item_name'],
-                $validated['type'],
-                $amount,
-                $validated['reason'],
-                $actor['id'],
-                $validated['date']
-            );
 
         $validated['id'] = $transId;
         $validated['adjusted_by'] = $actor['name'];
