@@ -665,11 +665,6 @@ Route::put(
 )->middleware(['auth', 'role:ms,admin'])->name('api.sc2.requisitions.reject');
 
 Route::put(
-    '/api/surgical-consumable-2/requisitions/{id}/dispense',
-    [SurgicalConsumable2Controller::class, 'dispenseRequisition']
-)->middleware(['auth', 'role:pharmacist,admin'])->name('api.sc2.requisitions.dispense');
-
-Route::put(
     '/api/surgical-consumable-2/requisitions/{id}/receive',
     [SurgicalConsumable2Controller::class, 'receiveRequisition']
 )->middleware(['auth', 'role:nurse,admin'])->name('api.sc2.requisitions.receive');
