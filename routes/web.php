@@ -18,8 +18,11 @@ use App\Http\Controllers\DispensationController;
 use App\Http\Controllers\GeneralItemController;
 use App\Http\Controllers\GeneralStockAdjustmentController;
 use App\Http\Controllers\GeneralTransactionController;
+use App\Http\Controllers\FormTypeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\UnitController;
 
 
 // DEV-ONLY — remove before final submission.
@@ -88,6 +91,19 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{id}/issue', [OrderController::class, 'issue'])->name('issue');
         Route::post('/{id}/receive', [OrderController::class, 'receive'])->name('receive');
         Route::match(['patch', 'post'], '/{id}/cancel', [OrderController::class, 'cancel'])->name('cancel');
+    });
+
+    // ---- Master Data (Form Types, Units & Suppliers) ----------------------
+    Route::middleware(['role:Admin,Head Nurse,Nurse,Pharmacist,Doctor'])->group(function () {
+        Route::get('/form-types', [FormTypeController::class, 'index'])->name('form-types.index');
+        Route::get('/units', [UnitController::class, 'index'])->name('units.index');
+        Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+    });
+
+    Route::middleware(['role:Admin,Head Nurse,Nurse,Pharmacist'])->group(function () {
+        Route::resource('form-types', FormTypeController::class)->except(['index']);
+        Route::resource('units', UnitController::class)->except(['index']);
+        Route::resource('suppliers', SupplierController::class)->except(['index']);
     });
 });
 

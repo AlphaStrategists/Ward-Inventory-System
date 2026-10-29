@@ -126,7 +126,7 @@
                     <div class="medicine-name font-semibold text-[14.5px] text-slate-800 mb-2.5 {{ $isActive ? 'text-[#1E3A8A]' : 'group-hover:text-blue-700 transition-colors' }}">{{ $medicine->name }}</div>
                     <div class="flex items-center justify-between">
                         <div class="flex gap-2.5 text-slate-400 relative z-10">
-                            @if(auth()->check() && (auth()->user()->hasRole('Admin') || auth()->user()->role_id == 1))
+                            @if(auth()->check() && (auth()->user()->is_admin || auth()->user()->role === 'Head Nurse'))
                             <!-- Edit Button -->
                             <button type="button" class="hover:text-blue-500 transition-colors p-1 -m-1"
                                 title="Edit"
@@ -205,6 +205,55 @@
                     <i class="fa-solid fa-arrow-left text-[11px]"></i>
                     Back to Home
                 </a>
+
+                <div class="h-6 w-px bg-slate-200 hidden sm:block"></div>
+
+                <!-- Master Data Dropdown -->
+                <div x-data="{ openMasterData: false }" class="relative hidden sm:block">
+                    <button @click="openMasterData = !openMasterData" @click.away="openMasterData = false"
+                        class="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#1894f2] bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 px-3.5 py-2 rounded-xl transition-all shadow-sm">
+                        <i class="fa-solid fa-database text-[11px] text-[#1894f2]"></i>
+                        <span>Master Data</span>
+                        <i class="fa-solid fa-chevron-down text-[9px] ml-0.5"></i>
+                    </button>
+
+                    <div x-show="openMasterData" x-cloak
+                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter-start="transform opacity-0 scale-95"
+                        x-transition:enter-end="transform opacity-100 scale-100"
+                        x-transition:leave="transition ease-in duration-75"
+                        x-transition:leave-start="transform opacity-100 scale-100"
+                        x-transition:leave-end="transform opacity-0 scale-95"
+                        class="absolute left-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-slate-100 p-1.5 z-50">
+                        <a href="{{ route('form-types.index') }}" class="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-[#1894f2] rounded-lg transition-colors">
+                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                <i class="fa-solid fa-capsules"></i>
+                            </span>
+                            <div>
+                                <div class="leading-tight">Form Types</div>
+                                <div class="text-[10px] font-normal text-slate-400">Medicine dosage forms</div>
+                            </div>
+                        </a>
+                        <a href="{{ route('units.index') }}" class="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-[#1894f2] rounded-lg transition-colors mt-0.5">
+                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                <i class="fa-solid fa-scale-balanced"></i>
+                            </span>
+                            <div>
+                                <div class="leading-tight">Units</div>
+                                <div class="text-[10px] font-normal text-slate-400">Measurement units</div>
+                            </div>
+                        </a>
+                        <a href="{{ route('suppliers.index') }}" class="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-[#1894f2] rounded-lg transition-colors mt-0.5">
+                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                <i class="fa-solid fa-truck-medical"></i>
+                            </span>
+                            <div>
+                                <div class="leading-tight">Suppliers</div>
+                                <div class="text-[10px] font-normal text-slate-400">Pharmaceutical vendors</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
             </div>
             <div class="ms-auto justify-content-end w-full flex justify-end">
                 <div x-data="{ open: false }" class="relative dropdown">
@@ -421,6 +470,7 @@
                             <tr>
                                 <th scope="col" class="px-6 py-4">Date</th>
                                 <th scope="col" class="px-6 py-4">Req. No.</th>
+                                <th scope="col" class="px-6 py-4">Supplier</th>
                                 <th scope="col" class="px-6 py-4">Qty Requested</th>
                                 <th scope="col" class="px-6 py-4">Requested By</th>
                                 <th scope="col" class="px-6 py-4">MS Approval</th>
@@ -440,6 +490,26 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $order->req_no ?? 'N/A' }}</span>
+                                </td>
+                                <td class="px-6 py-4 font-medium text-slate-700">
+                                    @php
+                                        $medForSup = $detail->medicine ?? $selectedMedicine;
+                                        $rowSupplierName = null;
+                                        if (preg_match('/\[SUPPLIER:(.*?)\]/', $detail->remark ?? '', $supMatches)) {
+                                            $rowSupplierName = $supMatches[1];
+                                        } elseif ($medForSup && $medForSup->batches) {
+                                            $batchWithSupplier = $medForSup->batches->whereNotNull('supplier_id')->last();
+                                            $rowSupplierName = $batchWithSupplier?->supplier?->supplier_name;
+                                        }
+                                    @endphp
+                                    @if($rowSupplierName)
+                                        <span class="inline-flex items-center gap-1.5 text-slate-700 font-semibold text-xs">
+                                            <i class="fa-solid fa-truck-medical text-[#3B82F6]"></i>
+                                            {{ $rowSupplierName }}
+                                        </span>
+                                    @else
+                                        <span class="text-slate-400 text-xs">&mdash;</span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 font-bold text-slate-800">
                                     @php
@@ -1311,7 +1381,7 @@
                                     </div>
                                 </div>
                                 @if($isPackOrdering)
-                                <div class="rounded-lg bg-blue-50/70 border border-blue-100 px-3.5 py-2 text-xs text-blue-700 flex items-center justify-between">
+                                <div class="rounded-lg bg-blue-50/70 border border-blue-100 px-3.5 py-2 text-xs text-blue-700 flex items-center justify-between mb-5">
                                     <span>Total individual items:</span>
                                     <span class="font-bold text-blue-900">
                                         <span x-text="(orderQty || 0) * unitsPerPack"></span> {{ $singleUnitName }}
@@ -1319,6 +1389,15 @@
                                     </span>
                                 </div>
                                 @endif
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Supplier</label>
+                                    <select name="supplier_id" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                        <option value="">Select Supplier...</option>
+                                        @foreach($suppliers ?? [] as $supplier)
+                                        <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
                             <div class="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 gap-3">
                                 <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 sm:w-auto transition-colors active:scale-95">Submit Order</button>
@@ -1382,6 +1461,16 @@
                                         <label class="block text-sm font-semibold text-slate-700 mb-1.5">Expiry Date <span class="text-red-500">*</span></label>
                                         <input type="date" name="new_expiry_date" :required="isNewBatch" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
                                     </div>
+                                </div>
+
+                                <div class="mb-5">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Supplier</label>
+                                    <select name="supplier_id" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
+                                        <option value="">Select Supplier...</option>
+                                        @foreach($suppliers ?? [] as $supplier)
+                                        <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
 
                                 <p class="mt-2 text-xs text-slate-500">Note: Receipt will update stock automatically.</p>

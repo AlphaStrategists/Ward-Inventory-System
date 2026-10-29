@@ -31,16 +31,13 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email'
         ]);
 
-        $roleModel = \App\Models\Role::where('role_name', $validated['role'])->first();
-
         $user = User::create([
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
-            'role_id' => $roleModel?->id,
-            'is_admin' => $validated['role'] === 'Admin',
+            'is_admin' => 0,
         ]);
 
         return redirect()->route('login')

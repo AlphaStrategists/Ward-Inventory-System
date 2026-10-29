@@ -31,15 +31,19 @@ class CheckRole
             }
         }
 
-        if (!$user || !$user->role) {
+        if (!$user || (!$user->role && !$user->is_admin)) {
             abort(403, 'Your role does not have permission to perform this action.');
         }
 
-        $userRole = strtolower($user->role);
+        $userRole = strtolower($user->role ?? '');
         $allowedRoles = array_map('strtolower', $parsedRoles);
 
         if (in_array('nurse', $allowedRoles, true) && !in_array('head nurse', $allowedRoles, true)) {
             $allowedRoles[] = 'head nurse';
+        }
+
+        if (in_array('admin', $allowedRoles, true) && $user->is_admin) {
+            return $next($request);
         }
 
         if (!in_array($userRole, $allowedRoles, true)) {

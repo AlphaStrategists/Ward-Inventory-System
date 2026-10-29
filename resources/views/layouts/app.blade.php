@@ -644,6 +644,7 @@
                 $isInventoryRoute = request()->is('inventory*') || request()->is('general-inventory*') || request()->routeIs('inventory.*', 'general-inventory.*');
                 $isOrdersRoute = request()->is('orders*') || request()->routeIs('orders.*');
                 $isPatientsRoute = request()->is('patients*') || request()->routeIs('patients.*');
+                $isMasterDataRoute = request()->is('form-types*') || request()->is('units*') || request()->is('suppliers*') || request()->routeIs('form-types.*', 'units.*', 'suppliers.*');
 
                 $showInventory = true;
                 $showOrders = true;
@@ -659,6 +660,10 @@
                     } elseif ($isPatientsRoute) {
                         $showInventory = false;
                         $showOrders = false;
+                    } elseif ($isMasterDataRoute) {
+                        $showInventory = false;
+                        $showOrders = false;
+                        $showPatients = false;
                     }
                 }
             @endphp
@@ -683,13 +688,49 @@
                     <span>Patients</span>
                 </a>
                 @endif
+
+                <!-- Master Data Dropdown -->
+                <div class="dropdown">
+                    <a href="#" class="nav-pill-link dropdown-toggle {{ $isMasterDataRoute ? 'active' : '' }}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-database-gear"></i>
+                        <span>Master Data</span>
+                    </a>
+                    <ul class="dropdown-menu border-0 shadow-lg rounded-4 p-2 mt-2" style="min-width: 220px;">
+                        <li>
+                            <a class="dropdown-item rounded-3 py-2 px-3 d-flex align-items-center gap-2 fw-semibold {{ request()->is('form-types*') || request()->routeIs('form-types.*') ? 'active bg-primary text-white' : 'text-slate-700' }}" href="{{ route('form-types.index') }}">
+                                <i class="fa-solid fa-capsules {{ request()->is('form-types*') || request()->routeIs('form-types.*') ? 'text-white' : 'text-primary' }}"></i>
+                                <div>
+                                    <div style="font-size: 0.85rem; line-height: 1.2;">Form Types</div>
+                                    <small class="{{ request()->is('form-types*') || request()->routeIs('form-types.*') ? 'text-white-50' : 'text-muted' }}" style="font-size: 0.7rem;">Medicine dosage forms</small>
+                                </div>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1 opacity-25"></li>
+                        <li>
+                            <a class="dropdown-item rounded-3 py-2 px-3 d-flex align-items-center gap-2 fw-semibold {{ request()->is('units*') || request()->routeIs('units.*') ? 'active bg-primary text-white' : 'text-slate-700' }}" href="{{ route('units.index') }}">
+                                <i class="fa-solid fa-scale-balanced {{ request()->is('units*') || request()->routeIs('units.*') ? 'text-white' : 'text-primary' }}"></i>
+                                <div>
+                                    <div style="font-size: 0.85rem; line-height: 1.2;">Units</div>
+                                    <small class="{{ request()->is('units*') || request()->routeIs('units.*') ? 'text-white-50' : 'text-muted' }}" style="font-size: 0.7rem;">Measurement units</small>
+                                </div>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1 opacity-25"></li>
+                        <li>
+                            <a class="dropdown-item rounded-3 py-2 px-3 d-flex align-items-center gap-2 fw-semibold {{ request()->is('suppliers*') || request()->routeIs('suppliers.*') ? 'active bg-primary text-white' : 'text-slate-700' }}" href="{{ route('suppliers.index') }}">
+                                <i class="fa-solid fa-truck-medical {{ request()->is('suppliers*') || request()->routeIs('suppliers.*') ? 'text-white' : 'text-primary' }}"></i>
+                                <div>
+                                    <div style="font-size: 0.85rem; line-height: 1.2;">Suppliers</div>
+                                    <small class="{{ request()->is('suppliers*') || request()->routeIs('suppliers.*') ? 'text-white-50' : 'text-muted' }}" style="font-size: 0.7rem;">Pharmaceutical vendors</small>
+                                </div>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </nav>
         </div>
 
         <div class="d-flex align-items-center gap-3">
-            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-semibold" style="font-size: 0.78rem;">
-                <i class="bi bi-hospital text-primary me-1"></i> Neuro Surgical Unit
-            </span>
             @auth
             <div class="d-flex align-items-center gap-2">
                 <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; font-size: 0.8rem;">

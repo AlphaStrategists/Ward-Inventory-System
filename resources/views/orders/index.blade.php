@@ -170,6 +170,7 @@
                             <th scope="col" style="min-width: 130px;">Date & Time</th>
                             <th scope="col" style="min-width: 120px;">Req. No.</th>
                             <th scope="col" style="min-width: 220px;">Medicine Name</th>
+                            <th scope="col" style="min-width: 150px;">Supplier</th>
                             <th scope="col" style="min-width: 140px;">Qty Requested</th>
                             <th scope="col" style="min-width: 140px;">Requested By</th>
                             <th scope="col" style="min-width: 130px;">MS Approval</th>
@@ -265,6 +266,27 @@
                                         @endif
                                     </div>
                                 </div>
+                            </td>
+
+                            <!-- Supplier -->
+                            <td>
+                                @php
+                                    $supplierName = null;
+                                    if (preg_match('/\[SUPPLIER:(.*?)\]/', $detail->remark ?? '', $supMatches)) {
+                                        $supplierName = $supMatches[1];
+                                    } elseif ($med && $med->batches) {
+                                        $batchWithSupplier = $med->batches->whereNotNull('supplier_id')->last();
+                                        $supplierName = $batchWithSupplier?->supplier?->supplier_name;
+                                    }
+                                @endphp
+                                @if($supplierName)
+                                    <div class="d-flex align-items-center gap-1.5">
+                                        <i class="fa-solid fa-truck-medical text-primary" style="font-size: 0.75rem;"></i>
+                                        <span class="fw-semibold text-slate-700" style="font-size: 0.8rem;">{{ $supplierName }}</span>
+                                    </div>
+                                @else
+                                    <span class="text-muted text-xs">&mdash;</span>
+                                @endif
                             </td>
 
                             <!-- Qty Requested -->
@@ -446,7 +468,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="10" class="text-center py-5">
+                            <td colspan="11" class="text-center py-5">
                                 <div class="text-muted d-flex flex-column align-items-center">
                                     <div class="rounded-circle bg-slate-100 p-3 mb-2">
                                         <i class="fa-solid fa-box-open fs-2 text-slate-400"></i>
@@ -532,6 +554,18 @@
                             <label for="newExpiryDate" class="form-label">Expiry Date <span class="text-danger">*</span></label>
                             <input type="date" name="new_expiry_date" id="newExpiryDate" class="form-control text-sm">
                         </div>
+                    </div>
+
+                    <!-- Supplier Selection -->
+                    <div class="mb-3">
+                        <label for="supplierSelect" class="form-label">Supplier</label>
+                        <select name="supplier_id" id="supplierSelect" class="form-select text-sm">
+                            <option value="">Select Supplier...</option>
+                            @foreach($suppliers ?? [] as $supplier)
+                                <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted" style="font-size: 0.725rem;">Assign or update the pharmaceutical supplier for this received batch.</small>
                     </div>
 
                     <div class="alert alert-light border rounded-xl py-2 px-3 text-xs text-muted mb-0">

@@ -6,6 +6,7 @@ use App\Models\MedicineBatch;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\StockReceipt;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -44,7 +45,7 @@ class OrderController extends Controller
             'medicine.unit',
             'medicine.form',
             'medicine.category',
-            'medicine.batches'
+            'medicine.batches.supplier'
         ]);
 
         // Apply tab / status filter
@@ -106,7 +107,9 @@ class OrderController extends Controller
             'cancelled' => OrderDetail::whereHas('order', fn($q) => $q->where('ms_approval_status', 'Cancelled'))->count(),
         ];
 
-        return view('orders.index', compact('orderDetails', 'statusFilter', 'counts'));
+        $suppliers = \App\Models\Supplier::orderBy('supplier_name')->get();
+
+        return view('orders.index', compact('orderDetails', 'statusFilter', 'counts', 'suppliers'));
     }
 
     /**
@@ -220,10 +223,12 @@ class OrderController extends Controller
             $validated = $request->validate([
                 'new_batch_no' => 'required|string|max:100',
                 'new_expiry_date' => 'required|date',
+                'supplier_id' => 'nullable|integer|exists:suppliers,id',
             ]);
 
             $batch = MedicineBatch::create([
                 'medicine_id' => $detail->medicine_id,
+                'supplier_id' => $validated['supplier_id'] ?? null,
                 'batch_no' => strtoupper(trim($validated['new_batch_no'])),
                 'expiry_date' => $validated['new_expiry_date'],
                 'created_at' => now(),
@@ -232,8 +237,15 @@ class OrderController extends Controller
         } else {
             $validated = $request->validate([
                 'batch_id' => 'required|integer|exists:medicine_batches,id',
+                'supplier_id' => 'nullable|integer|exists:suppliers,id',
             ]);
             $batchId = $validated['batch_id'];
+
+            if (!empty($validated['supplier_id'])) {
+                MedicineBatch::where('id', $batchId)->update([
+                    'supplier_id' => $validated['supplier_id'],
+                ]);
+            }
         }
 
         $wardId = Auth::user()->ward_id ?? DB::table('wards')->value('id');
@@ -249,8 +261,17 @@ class OrderController extends Controller
             ]);
         }
 
+        $remarkStr = $detail->remark ?? '';
+        if (!empty($validated['supplier_id'])) {
+            $supplierModel = Supplier::find($validated['supplier_id']);
+            if ($supplierModel) {
+                $remarkStr = preg_replace('/\[SUPPLIER:.*?\]\s*/', '', $remarkStr);
+                $remarkStr = '[SUPPLIER:' . $supplierModel->supplier_name . '] ' . trim($remarkStr);
+            }
+        }
+
         $detail->update([
-            'remark' => trim('[RECEIVED_BY:' . (Auth::user()->name ?? 'Nurse') . '] ' . ($detail->remark ?? ''))
+            'remark' => trim('[RECEIVED_BY:' . (Auth::user()->name ?? 'Nurse') . '] ' . $remarkStr)
         ]);
 
         return redirect()->back()->with('success', "Order requisition {$order->req_no} received successfully. Stock has been incremented.");

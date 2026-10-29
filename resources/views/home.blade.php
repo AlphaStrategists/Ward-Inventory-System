@@ -1790,6 +1790,84 @@
 
                     </a>
 
+                    <!-- Master Data -->
+                    <div class="group relative">
+
+                        <button
+                            class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                            <i class="fa-solid fa-database mr-1.5"></i>
+                            Master Data
+
+                            <i class="fa-solid fa-chevron-down ml-2 text-[10px]"></i>
+
+                        </button>
+
+                        <!-- Dropdown -->
+                        <div
+                            class="invisible absolute right-0 top-full mt-2 w-60 translate-y-2 rounded-xl border border-slate-100 bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+
+                            <a
+                                href="{{ route('form-types.index') }}"
+                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                    <i class="fa-solid fa-capsules"></i>
+                                </span>
+
+                                <span>
+                                    <span class="block font-semibold">
+                                        Form Types
+                                    </span>
+                                    <span class="text-xs text-slate-400">
+                                        Medicine dosage forms
+                                    </span>
+                                </span>
+
+                            </a>
+
+                            <a
+                                href="{{ route('units.index') }}"
+                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                    <i class="fa-solid fa-scale-balanced"></i>
+                                </span>
+
+                                <span>
+                                    <span class="block font-semibold">
+                                        Units
+                                    </span>
+                                    <span class="text-xs text-slate-400">
+                                        Measurement units
+                                    </span>
+                                </span>
+
+                            </a>
+
+                            <a
+                                href="{{ route('suppliers.index') }}"
+                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                    <i class="fa-solid fa-truck-medical"></i>
+                                </span>
+
+                                <span>
+                                    <span class="block font-semibold">
+                                        Suppliers
+                                    </span>
+                                    <span class="text-xs text-slate-400">
+                                        Pharmaceutical vendors
+                                    </span>
+                                </span>
+
+                            </a>
+
+                        </div>
+
+                    </div>
+
                     
                     <!-- Reports -->
                     <a
