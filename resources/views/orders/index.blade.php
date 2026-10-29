@@ -94,32 +94,9 @@
 
         <!-- Search & Filter Controls Bar -->
         <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-between gap-3 mt-3 pt-2 border-top">
-            <!-- Filter Pills -->
-            <div class="d-flex flex-wrap gap-1">
-                @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse') || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'head nurse'], true))
-                <a href="{{ route('orders.index', ['status' => 'my_orders']) }}"
-                    class="btn btn-sm {{ $statusFilter === 'my_orders' ? 'btn-primary' : 'btn-light border text-slate-600' }} rounded-pill px-3 py-1 font-semibold text-xs">
-                    My Requests ({{ $counts['my_orders'] ?? 0 }})
-                </a>
-                @endif
-
-                <a href="{{ route('orders.index', ['status' => 'pending']) }}"
-                    class="btn btn-sm {{ $statusFilter === 'pending' ? 'btn-primary' : 'btn-light border text-slate-600' }} rounded-pill px-3 py-1 font-semibold text-xs">
-                    Pending Approval ({{ $counts['pending'] ?? 0 }})
-                </a>
-
-                <a href="{{ route('orders.index', ['status' => 'pending_issue']) }}"
-                    class="btn btn-sm {{ $statusFilter === 'pending_issue' ? 'btn-primary' : 'btn-light border text-slate-600' }} rounded-pill px-3 py-1 font-semibold text-xs">
-                    Pending Issue ({{ $counts['pending_issue'] ?? 0 }})
-                </a>
-
-                <a href="{{ route('orders.index', ['status' => 'all']) }}"
-                    class="btn btn-sm {{ $statusFilter === 'all' ? 'btn-primary' : 'btn-light border text-slate-600' }} rounded-pill px-3 py-1 font-semibold text-xs">
-                    All Orders ({{ $counts['all'] ?? 0 }})
-                </a>
-
+            <div>
                 @if(auth()->check() && (auth()->user()->hasRole('Doctor') || strtolower(auth()->user()->role ?? '') === 'doctor'))
-                <form id="approve-all-form" action="{{ route('orders.approveAll') }}" method="POST" class="d-inline-block ms-md-2">
+                <form id="approve-all-form" action="{{ route('orders.approveAll') }}" method="POST" class="d-inline-block">
                     @csrf
                     @method('PATCH')
                     <button type="submit" id="btnApproveAll" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-semibold text-xs shadow-xs d-inline-flex align-items-center gap-1.5" data-pending-count="{{ $counts['pending'] ?? 0 }}">
@@ -134,7 +111,7 @@
             </div>
 
             <!-- Search Form -->
-            <form method="GET" action="{{ route('orders.index') }}" class="d-flex align-items-center gap-2">
+            <form method="GET" action="{{ route('orders.index') }}" class="d-flex align-items-center gap-2 ms-md-auto">
                 @if(request('status'))
                 <input type="hidden" name="status" value="{{ request('status') }}">
                 @endif
@@ -272,11 +249,20 @@
                             <td>
                                 @php
                                     $supplierName = null;
+                                    $rowSupplierId = null;
                                     if (preg_match('/\[SUPPLIER:(.*?)\]/', $detail->remark ?? '', $supMatches)) {
-                                        $supplierName = $supMatches[1];
-                                    } elseif ($med && $med->batches) {
-                                        $batchWithSupplier = $med->batches->whereNotNull('supplier_id')->last();
-                                        $supplierName = $batchWithSupplier?->supplier?->supplier_name;
+                                        $supplierName = trim($supMatches[1]);
+                                        if (isset($suppliers)) {
+                                            $matchedSupplier = $suppliers->first(fn($s) => strcasecmp(trim($s->supplier_name), $supplierName) === 0);
+                                            $rowSupplierId = $matchedSupplier?->id;
+                                        }
+                                    }
+                                    if (!$rowSupplierId && $med && $med->batches) {
+                                        $batchWithSupplier = $med->batches->whereNotNull('supplier_id')->sortByDesc('id')->first();
+                                        $rowSupplierId = $batchWithSupplier?->supplier_id;
+                                        if (!$supplierName) {
+                                            $supplierName = $batchWithSupplier?->supplier?->supplier_name;
+                                        }
                                     }
                                 @endphp
                                 @if($supplierName)
@@ -297,7 +283,7 @@
                                     @method('PATCH')
                                 </form>
                                 <div class="d-flex align-items-center gap-1">
-                                    <input type="number" form="doctor-approve-form-{{ $detail->id }}" name="qty_requested" value="{{ $actualRequested }}" min="1" class="form-control form-control-sm text-center fw-bold text-xs" style="width: 70px;" required>
+                                    <input type="number" form="doctor-approve-form-{{ $detail->id }}" name="qty_requested" value="{{ $actualRequested }}" min="1" class="form-control form-control-sm text-center fw-bold text-xs" style="width: 95px; min-width: 85px;" required>
                                     <span class="text-muted text-xs">{{ $itemUnit }}</span>
                                 </div>
                                 @else
@@ -359,7 +345,7 @@
                                     @method('PATCH')
                                 </form>
                                 <div class="d-flex align-items-center gap-1">
-                                    <input type="number" form="pharmacist-issue-form-{{ $detail->id }}" name="qty_issued" value="{{ $actualRequested }}" max="{{ $actualRequested }}" min="1" class="form-control form-control-sm text-center fw-bold text-xs" style="width: 70px;" required>
+                                    <input type="number" form="pharmacist-issue-form-{{ $detail->id }}" name="qty_issued" value="{{ $actualRequested }}" max="{{ $actualRequested }}" min="1" class="form-control form-control-sm text-center fw-bold text-xs" style="width: 95px; min-width: 85px;" required>
                                     <span class="text-muted text-xs">{{ $itemUnit }}</span>
                                 </div>
                                 @else
@@ -427,6 +413,8 @@
                                             data-med="{{ $med->name ?? 'Medicine' }}"
                                             data-qty="{{ $detail->qty_issued }}"
                                             data-unit="{{ $itemUnit }}"
+                                            data-supplier-id="{{ $rowSupplierId ?? '' }}"
+                                            data-supplier-name="{{ $supplierName ?? '' }}"
                                             data-batches='@json($med->batches ?? [])'>
                                         <i class="fa-solid fa-box-archive me-1"></i>Confirm Receipt
                                     </button>
@@ -556,16 +544,17 @@
                         </div>
                     </div>
 
-                    <!-- Supplier Selection -->
+                    <!-- Supplier (Read-only / Locked) -->
                     <div class="mb-3">
-                        <label for="supplierSelect" class="form-label">Supplier</label>
-                        <select name="supplier_id" id="supplierSelect" class="form-select text-sm">
-                            <option value="">Select Supplier...</option>
-                            @foreach($suppliers ?? [] as $supplier)
-                                <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
-                            @endforeach
-                        </select>
-                        <small class="text-muted" style="font-size: 0.725rem;">Assign or update the pharmaceutical supplier for this received batch.</small>
+                        <label for="supplierNameDisplay" class="form-label">Supplier</label>
+                        <input type="hidden" name="supplier_id" id="supplierIdInput" value="">
+                        <div class="input-group">
+                            <span class="input-group-text bg-slate-100 text-slate-500 border-end-0">
+                                <i class="fa-solid fa-lock text-xs"></i>
+                            </span>
+                            <input type="text" id="supplierNameDisplay" class="form-control text-sm bg-slate-100 text-slate-700 fw-semibold border-start-0" value="Not Specified" readonly tabindex="-1" style="cursor: not-allowed;">
+                        </div>
+                        <small class="text-muted" style="font-size: 0.725rem;">Locked to the supplier selected when this order was placed.</small>
                     </div>
 
                     <div class="alert alert-light border rounded-xl py-2 px-3 text-xs text-muted mb-0">
@@ -617,12 +606,24 @@ document.addEventListener('DOMContentLoaded', function () {
             const medName = button.getAttribute('data-med');
             const qtyIssued = button.getAttribute('data-qty');
             const unit = button.getAttribute('data-unit');
+            const supplierId = button.getAttribute('data-supplier-id') || '';
+            const supplierName = button.getAttribute('data-supplier-name') || '';
             const batches = JSON.parse(button.getAttribute('data-batches') || '[]');
 
             // Set form action
             document.getElementById('receiptForm').action = "{{ url('orders') }}/" + detailId + "/receive";
             document.getElementById('modalMedicineName').textContent = medName;
             document.getElementById('modalQtyIssued').textContent = qtyIssued + ' ' + unit;
+
+            // Populate read-only supplier field locked to the order's supplier
+            const supplierIdInput = document.getElementById('supplierIdInput');
+            const supplierNameDisplay = document.getElementById('supplierNameDisplay');
+            if (supplierIdInput) {
+                supplierIdInput.value = supplierId;
+            }
+            if (supplierNameDisplay) {
+                supplierNameDisplay.value = supplierName || 'Not Specified';
+            }
 
             // Reset radio to existing
             document.getElementById('batchTypeExisting').checked = true;

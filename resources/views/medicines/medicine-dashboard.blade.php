@@ -205,55 +205,6 @@
                     <i class="fa-solid fa-arrow-left text-[11px]"></i>
                     Back to Home
                 </a>
-
-                <div class="h-6 w-px bg-slate-200 hidden sm:block"></div>
-
-                <!-- Master Data Dropdown -->
-                <div x-data="{ openMasterData: false }" class="relative hidden sm:block">
-                    <button @click="openMasterData = !openMasterData" @click.away="openMasterData = false"
-                        class="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#1894f2] bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 px-3.5 py-2 rounded-xl transition-all shadow-sm">
-                        <i class="fa-solid fa-database text-[11px] text-[#1894f2]"></i>
-                        <span>Master Data</span>
-                        <i class="fa-solid fa-chevron-down text-[9px] ml-0.5"></i>
-                    </button>
-
-                    <div x-show="openMasterData" x-cloak
-                        x-transition:enter="transition ease-out duration-100"
-                        x-transition:enter-start="transform opacity-0 scale-95"
-                        x-transition:enter-end="transform opacity-100 scale-100"
-                        x-transition:leave="transition ease-in duration-75"
-                        x-transition:leave-start="transform opacity-100 scale-100"
-                        x-transition:leave-end="transform opacity-0 scale-95"
-                        class="absolute left-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-slate-100 p-1.5 z-50">
-                        <a href="{{ route('form-types.index') }}" class="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-[#1894f2] rounded-lg transition-colors">
-                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
-                                <i class="fa-solid fa-capsules"></i>
-                            </span>
-                            <div>
-                                <div class="leading-tight">Form Types</div>
-                                <div class="text-[10px] font-normal text-slate-400">Medicine dosage forms</div>
-                            </div>
-                        </a>
-                        <a href="{{ route('units.index') }}" class="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-[#1894f2] rounded-lg transition-colors mt-0.5">
-                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
-                                <i class="fa-solid fa-scale-balanced"></i>
-                            </span>
-                            <div>
-                                <div class="leading-tight">Units</div>
-                                <div class="text-[10px] font-normal text-slate-400">Measurement units</div>
-                            </div>
-                        </a>
-                        <a href="{{ route('suppliers.index') }}" class="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-[#1894f2] rounded-lg transition-colors mt-0.5">
-                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
-                                <i class="fa-solid fa-truck-medical"></i>
-                            </span>
-                            <div>
-                                <div class="leading-tight">Suppliers</div>
-                                <div class="text-[10px] font-normal text-slate-400">Pharmaceutical vendors</div>
-                            </div>
-                        </a>
-                    </div>
-                </div>
             </div>
             <div class="ms-auto justify-content-end w-full flex justify-end">
                 <div x-data="{ open: false }" class="relative dropdown">
@@ -1390,11 +1341,18 @@
                                 </div>
                                 @endif
                                 <div>
+                                    @php
+                                    $latestBatchSupplierId = null;
+                                    if (isset($selectedMedicine) && $selectedMedicine->batches && $selectedMedicine->batches->isNotEmpty()) {
+                                        $latestBatch = $selectedMedicine->batches->sortByDesc('id')->first();
+                                        $latestBatchSupplierId = $latestBatch->supplier_id ?? $selectedMedicine->batches->whereNotNull('supplier_id')->sortByDesc('id')->first()?->supplier_id;
+                                    }
+                                    @endphp
                                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">Supplier</label>
                                     <select name="supplier_id" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
-                                        <option value="">Select Supplier...</option>
+                                        <option value="" {{ !$latestBatchSupplierId ? 'selected' : '' }}>Select Supplier...</option>
                                         @foreach($suppliers ?? [] as $supplier)
-                                        <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
+                                        <option value="{{ $supplier->id }}" {{ (string) old('supplier_id', $latestBatchSupplierId) === (string) $supplier->id ? 'selected' : '' }}>{{ $supplier->supplier_name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
