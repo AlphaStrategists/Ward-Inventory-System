@@ -31,7 +31,7 @@ use App\Http\Controllers\Auth\TestLoginController;
 |--------------------------------------------------------------------------
 */
 
-Route::view('/', 'portal')->name('portal');
+Route::redirect('/', '/login');
 
 Route::get('/home', function () {
     return view('home');
