@@ -15,7 +15,7 @@ use App\Http\Controllers\LocalPurchaseController;
 |--------------------------------------------------------------------------
 */
 
-Route::view('/', 'portal')->name('portal');
+Route::redirect('/', '/login');
 
 
 /*
