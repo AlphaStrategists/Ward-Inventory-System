@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
-    public const VALID_ROLES = ['Doctor', 'Nurse', 'Pharmacist'];
+    public const VALID_ROLES = ['Doctor', 'Nurse', 'Pharmacist', 'Head Nurse'];
 
     /**
      * Allow the request through only if the logged-in user's role matches
@@ -37,6 +37,10 @@ class CheckRole
 
         $userRole = strtolower($user->role);
         $allowedRoles = array_map('strtolower', $parsedRoles);
+
+        if (in_array('nurse', $allowedRoles, true) && !in_array('head nurse', $allowedRoles, true)) {
+            $allowedRoles[] = 'head nurse';
+        }
 
         if (!in_array($userRole, $allowedRoles, true)) {
             abort(403, 'Your role does not have permission to perform this action.');

@@ -198,6 +198,7 @@
                                 <option value="Pharmacist" {{ old('role') === 'Pharmacist' ? 'selected' : '' }}>
                                     Pharmacist
                                 </option>
+                                <option value="Head Nurse" {{ old('role') === 'Head Nurse' ? 'selected' : '' }}>Head Nurse</option>
                             </select>
                             <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
                                 <i class="fa-solid fa-chevron-down text-xs"></i>

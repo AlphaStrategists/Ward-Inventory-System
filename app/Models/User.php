@@ -18,8 +18,8 @@ class User extends Authenticatable
     protected $table = 'users';
     const UPDATED_AT = null;
 
-    public const ROLES = ['Doctor', 'Nurse', 'Pharmacist'];
-    public const NURSE_ROLES = ['Nurse'];
+    public const ROLES = ['Doctor', 'Nurse', 'Pharmacist', 'Head Nurse'];
+    public const NURSE_ROLES = ['Nurse', 'Head Nurse'];
 
     protected $fillable = [
         'first_name',
@@ -114,11 +114,15 @@ class User extends Authenticatable
         $current = self::normalize($roleName);
         $wanted  = array_map([self::class, 'normalize'], $roleNames);
 
+        if (in_array('nurse', $wanted, true) && $current === 'head nurse') {
+            return true;
+        }
+
         return in_array($current, $wanted, true);
     }
 
     public function isNurse(): bool
     {
-        return $this->hasRole('Nurse');
+        return in_array($this->role, ['Nurse', 'Head Nurse']) || $this->hasRole(['Nurse', 'Head Nurse']);
     }
 }

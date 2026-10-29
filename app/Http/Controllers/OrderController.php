@@ -26,7 +26,7 @@ class OrderController extends Controller
         // Doctors: Show all orders across all medicines where ms_approval is 'Pending'.
         // Pharmacists: Show all orders where ms_approval is 'Approved' but pending issue.
         if (!$statusFilter) {
-            if ($user->hasRole('Nurse') || $userRole === 'nurse') {
+            if (in_array($user->role, ['Nurse', 'Head Nurse']) || $user->hasRole(['Nurse', 'Head Nurse']) || in_array($userRole, ['nurse', 'head nurse'], true)) {
                 $statusFilter = 'my_orders';
             } elseif ($user->hasRole('Doctor') || $userRole === 'doctor') {
                 $statusFilter = 'pending';
@@ -269,7 +269,7 @@ class OrderController extends Controller
             abort(401);
         }
 
-        $isNurse = $currentUser->hasRole('Nurse') || strtolower($currentUser->role ?? '') === 'nurse';
+        $isNurse = in_array($currentUser->role, ['Nurse', 'Head Nurse']) || $currentUser->hasRole(['Nurse', 'Head Nurse']) || in_array(strtolower($currentUser->role ?? ''), ['nurse', 'head nurse'], true);
         if (!$isNurse || (int) $order->requested_by !== (int) $currentUser->id) {
             return redirect()->back()->with('error', 'Only the nurse who created this order can cancel it.');
         }

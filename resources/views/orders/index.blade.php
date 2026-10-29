@@ -35,7 +35,7 @@
                 </a>
             </div>
 
-            @if(auth()->user()->hasRole('Nurse') || strtolower(auth()->user()->role ?? '') === 'nurse')
+            @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse') || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'head nurse'], true))
             <div class="col-6 col-md-auto">
                 <a href="{{ route('orders.index', ['status' => 'my_orders']) }}" class="text-decoration-none">
                     <div class="border rounded-xl px-3 py-2 bg-white d-flex align-items-center gap-2 transition hover:bg-slate-50 {{ $statusFilter === 'my_orders' ? 'border-primary ring-1 ring-primary' : '' }}">
@@ -96,7 +96,7 @@
         <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-between gap-3 mt-3 pt-2 border-top">
             <!-- Filter Pills -->
             <div class="d-flex flex-wrap gap-1">
-                @if(auth()->user()->hasRole('Nurse') || strtolower(auth()->user()->role ?? '') === 'nurse')
+                @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse') || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'head nurse'], true))
                 <a href="{{ route('orders.index', ['status' => 'my_orders']) }}"
                     class="btn btn-sm {{ $statusFilter === 'my_orders' ? 'btn-primary' : 'btn-light border text-slate-600' }} rounded-pill px-3 py-1 font-semibold text-xs">
                     My Requests ({{ $counts['my_orders'] ?? 0 }})
@@ -208,7 +208,7 @@
 
                             $isDoctor = auth()->check() && (auth()->user()->hasRole('Doctor') || strtolower(auth()->user()->role ?? '') === 'doctor');
                             $isPharmacist = auth()->check() && (auth()->user()->hasRole('Pharmacist') || strtolower(auth()->user()->role ?? '') === 'pharmacist');
-                            $isNurse = auth()->check() && (auth()->user()->hasRole('Nurse') || strtolower(auth()->user()->role ?? '') === 'nurse');
+                            $isNurse = auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse') || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'head nurse'], true));
 
                             $isCreatorNurse = $isNurse && (int)($order->requested_by ?? 0) === (int)auth()->id();
                             $isPending = strtolower($order->ms_approval_status ?? '') === 'pending';

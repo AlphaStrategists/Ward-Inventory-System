@@ -28,7 +28,7 @@ class TestLoginController extends Controller
         // someone forgets to remove the route later.
         abort_unless(app()->environment(['local', 'testing']), 404);
 
-        $allowedRoles = ['Admin', 'Doctor', 'Nurse', 'Pharmacist'];
+        $allowedRoles = ['Admin', 'Doctor', 'Nurse', 'Pharmacist', 'Head Nurse'];
         $roleName = null;
         foreach ($allowedRoles as $allowed) {
             if (strcasecmp($role, $allowed) === 0) {
@@ -38,7 +38,7 @@ class TestLoginController extends Controller
         }
 
         if (!$roleName) {
-            abort(404, "Invalid role. Only 'Admin', 'Doctor', 'Nurse', and 'Pharmacist' are permitted.");
+            abort(404, "Invalid role. Only 'Admin', 'Doctor', 'Nurse', 'Pharmacist', and 'Head Nurse' are permitted.");
         }
 
         // Look for the role itself.

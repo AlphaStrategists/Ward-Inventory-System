@@ -14,7 +14,7 @@
         :searchValue="request('search', '')"
         addButtonLabel="Add Item"
         addModalId="createGeneralItemModal"
-        :showAddButton="auth()->user()->hasRole('Nurse')"
+        :showAddButton="in_array(auth()->user()->role, ['Nurse', 'Head Nurse'])"
     >
         @forelse($items as $item)
             @php
@@ -47,7 +47,7 @@
 
                 <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-light-subtle">
                     <div class="sidebar-item-actions">
-                        @if(auth()->user()->hasRole('Nurse'))
+                        @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
                             <button type="button" 
                                     class="action-icon-btn" 
                                     title="Edit Item" 
@@ -69,7 +69,7 @@
             </div>
 
                         <!-- Edit Item Modal (nurse-only) -->
-            @if(auth()->user()->hasRole('Nurse'))
+            @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
             <div class="modal fade" id="editItemModal{{ $item->id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
@@ -183,7 +183,7 @@
             <div id="transactionsTab" class="{{ request('tab', 'transactions') === 'transactions' ? '' : 'display: none;' }}">
                                 <x-log-table 
                     title="General Transactions Log"
-                    :actionModalId="auth()->user()->hasRole('Nurse') ? 'addTransactionModal' : null"
+                    :actionModalId="in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) ? 'addTransactionModal' : null"
                     actionLabel="Add Transaction"
                 >
                     <x-slot:headers>
@@ -248,7 +248,7 @@
             <div id="adjustmentsTab" class="{{ request('tab') === 'adjustments' ? '' : 'display: none;' }}">
                 <x-log-table 
                     title="Stock Adjustments & Loss/Damage Log"
-                    :actionModalId="auth()->user()->hasRole('Nurse') ? 'addAdjustmentModal' : null"
+                    :actionModalId="in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) ? 'addAdjustmentModal' : null"
                     actionLabel="Add Adjustment"
                     
                 >
@@ -313,7 +313,7 @@
             </div>
 
             <!-- Modal: Add Transaction (Receipt or Issue) (nurse-only) -->
-            @if(auth()->user()->hasRole('Nurse'))
+            @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
             <div class="modal fade" id="addTransactionModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
@@ -390,7 +390,7 @@
             @endif
 
             <!-- Modal: Add Stock Adjustment (nurse-only) -->
-            @if(auth()->user()->hasRole('Nurse'))
+            @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
             <div class="modal fade" id="addAdjustmentModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
@@ -466,7 +466,7 @@
                 </div>
                 <h3>No Items in General Inventory</h3>
                 <p class="text-muted">Create your first ward general inventory item to view running balances and transaction logs.</p>
-                @if(auth()->user()->hasRole('Nurse'))
+                @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
                     <button type="button" class="btn btn-primary rounded-pill px-4 py-2" data-bs-toggle="modal" data-bs-target="#createGeneralItemModal">
                         <i class="bi bi-plus-lg me-1"></i> Add General Item
                     </button>
@@ -476,7 +476,7 @@
     </main>
 
         <!-- Modal: Create New General Item (nurse-only) -->
-    @if(auth()->user()->hasRole('Nurse'))
+    @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
     <div class="modal fade" id="createGeneralItemModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">

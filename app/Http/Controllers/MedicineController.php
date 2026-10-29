@@ -694,7 +694,7 @@ class MedicineController extends Controller
             abort(401);
         }
 
-        $isNurse = $currentUser->hasRole('Nurse') || strtolower($currentUser->role ?? '') === 'nurse';
+        $isNurse = in_array($currentUser->role, ['Nurse', 'Head Nurse']) || $currentUser->hasRole(['Nurse', 'Head Nurse']) || in_array(strtolower($currentUser->role ?? ''), ['nurse', 'head nurse'], true);
         if (!$isNurse || (int) $order->requested_by !== (int) $currentUser->id) {
             return redirect()->back()->with('error', 'Only the nurse who created this order can cancel it.');
         }

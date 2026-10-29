@@ -82,7 +82,7 @@
             </div>
 
             <!-- Add Button -->
-            @if(auth()->check() && (auth()->user()->hasRole('Admin') || auth()->user()->role_id == 1))
+            @if(auth()->user()->is_admin || auth()->user()->role === 'Head Nurse')
             <button @click="openAddModal = true" class="w-full bg-[#3B82F6] hover:bg-blue-700 text-white font-semibold rounded-xl text-sm px-5 py-3 transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_10px_rgba(59,130,246,0.3)] hover:shadow-[0_4px_15px_rgba(59,130,246,0.4)] active:scale-[0.98] mb-5">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -404,7 +404,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
-                    @if(auth()->check() && auth()->user()->hasAnyRole(['Nurse', 'Doctor']))
+                    @if(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'Doctor']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'Doctor'])))
                     <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -559,7 +559,7 @@
                                     <span class="text-slate-400 font-medium text-xs">Cancelled</span>
                                     @elseif($detail->qty_issued == 0)
                                     <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
-                                    @elseif(auth()->check() && auth()->user()->hasRole('Nurse'))
+                                    @elseif(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse')))
                                     <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                     @else
                                     <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
@@ -569,7 +569,7 @@
                                 <td class="px-6 py-4 text-center">
                                     @php
                                         $isCreatorNurse = auth()->check() 
-                                            && (auth()->user()->hasRole('Nurse') || strtolower(auth()->user()->role ?? '') === 'nurse')
+                                            && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse') || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'head nurse'], true))
                                             && (int)($order->requested_by ?? 0) === (int)auth()->id();
                                         $isPending = strtolower($order->ms_approval_status ?? '') === 'pending';
                                     @endphp
@@ -602,7 +602,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
-                    @if(auth()->check() && auth()->user()->hasAnyRole(['Nurse', 'Doctor']))
+                    @if(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'Doctor']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'Doctor'])))
                     <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -674,7 +674,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
-                    @if(auth()->check() && auth()->user()->hasAnyRole(['Nurse', 'Doctor']))
+                    @if(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'Doctor']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'Doctor'])))
                     <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>

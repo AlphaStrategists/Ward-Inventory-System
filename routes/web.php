@@ -34,8 +34,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('general-inventory')->name('general-inventory.')->group(function () {
         Route::get('/', [GeneralItemController::class, 'index'])->name('index');
 
-        // Nurse-only write actions (Nurse)
-        Route::middleware(['role:Nurse'])->group(function () {
+        // Nurse-only write actions (Nurse, Head Nurse)
+        Route::middleware(['role:Nurse,Head Nurse'])->group(function () {
             Route::post('/', [GeneralItemController::class, 'store'])->name('store');
             Route::put('/{general_item}', [GeneralItemController::class, 'update'])->name('update');
             Route::delete('/{general_item}', [GeneralItemController::class, 'destroy'])->name('destroy');
@@ -67,15 +67,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [PatientController::class, 'index'])->name('index');
         Route::get('/{patient}', [PatientController::class, 'show'])->name('show');
 
-        // Nurse-only write actions (Nurse)
-        Route::middleware(['role:Nurse'])->group(function () {
+        // Nurse-only write actions (Nurse, Head Nurse)
+        Route::middleware(['role:Nurse,Head Nurse'])->group(function () {
             Route::post('/', [PatientController::class, 'store'])->name('store');
             Route::post('/{patient}/admissions', [AdmissionController::class, 'store'])->name('admissions.store');
         });
     });
 
-    // Nurse-only: admission status updates & narcotic dispensations (Nurse)
-    Route::middleware(['role:Nurse'])->group(function () {
+    // Nurse-only: admission status updates & narcotic dispensations (Nurse, Head Nurse)
+    Route::middleware(['role:Nurse,Head Nurse'])->group(function () {
         Route::put('/admissions/{admission}', [AdmissionController::class, 'update'])->name('admissions.update');
         Route::post('/admissions/{admission}/dispensations', [DispensationController::class, 'store'])->name('admissions.dispensations.store');
     });

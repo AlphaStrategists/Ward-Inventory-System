@@ -12,7 +12,7 @@
         :searchValue="request('search', '')"
         addButtonLabel="New Patient"
         addModalId="createPatientModal"
-        :showAddButton="auth()->user()->hasRole('Nurse')"
+        :showAddButton="in_array(auth()->user()->role, ['Nurse', 'Head Nurse'])"
     >
     
         @forelse($patients as $p)
@@ -54,7 +54,7 @@
 
                 <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-light-subtle">
                                         <div class="sidebar-item-actions">
-                        @if($activeAdmission && auth()->user()->hasRole('Nurse'))
+                        @if($activeAdmission && in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
                             <button type="button" 
                                     class="action-icon-btn" 
                                     title="Update Admission Status" 
@@ -76,7 +76,7 @@
             </div>
 
             <!-- Modal: Edit Admission Status for Patient (nurse-only) -->
-            @if($activeAdmission && auth()->user()->hasRole('Nurse'))
+            @if($activeAdmission && in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
                 <div class="modal fade" id="editAdmissionStatusModal{{ $activeAdmission->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
@@ -292,7 +292,7 @@
             <div id="admissionsTab" style="display: none;">
                     <x-log-table 
                     title="Patient Admission Records"
-                    :actionModalId="auth()->user()->hasRole('Nurse') ? 'addAdmissionModal' : null"
+                    :actionModalId="in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) ? 'addAdmissionModal' : null"
                     actionLabel="New Admission"
                 >
                     <x-slot:headers>
@@ -336,7 +336,7 @@
                                 </span>
                             </td>
                             <td>
-                                @if(auth()->user()->hasRole('Nurse'))
+                                @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
                                     <button type="button" 
                                             class="btn btn-sm btn-outline-primary rounded-pill px-3" 
                                             data-bs-toggle="modal" 
@@ -355,7 +355,7 @@
 
 
     <!-- Modal: Add New Admission for Existing Patient (nurse-only) -->
-    @if(auth()->user()->hasRole('Nurse'))
+    @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
     <div class="modal fade" id="addAdmissionModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
@@ -415,7 +415,7 @@
                     <i class="bi bi-shield-exclamation fs-1"></i>
                 </div>
                 <h3>No Narcotic Patients Enrolled</h3>
-                @if(auth()->user()->hasRole('Nurse'))
+                @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
                     
                     <button type="button" class="btn btn-primary rounded-pill px-4 py-2" data-bs-toggle="modal" data-bs-target="#createPatientModal">
                         <i class="bi bi-plus-lg me-1"></i> Enroll Patient
@@ -428,7 +428,7 @@
     </main>
 
     <!-- Modal: Enroll New Patient (nurse-only) -->
-    @if(auth()->user()->hasRole('Nurse'))
+    @if(in_array(auth()->user()->role, ['Nurse', 'Head Nurse']))
     <div class="modal fade" id="createPatientModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
