@@ -4,75 +4,152 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
     /**
      * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  ...$roles
      */
-    public function handle(Request $request, Closure $next, ...$roles): Response
-    {
-        $activeRole = $this->resolveActiveRole($request);
-        $allowedRoles = array_map('strtolower', $roles);
-        $activeRole = strtolower($activeRole);
+    public function handle(
+        Request $request,
+        Closure $next,
+        ...$roles
+    ): Response {
+        /*
+        |--------------------------------------------------------------------------
+        | 1. Check authentication
+        |--------------------------------------------------------------------------
+        */
 
-        // Admin has full access to all nurse, ms, and pharmacist actions
-        if ($activeRole === 'admin' || in_array($activeRole, $allowedRoles, true)) {
-            $request->attributes->set('active_role', $activeRole);
-            return $next($request);
-        }
+        $user = $request->user();
 
-        if ($request->expectsJson() || $request->is('api/*')) {
+        if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => "Unauthorized access: Role '{$activeRole}' is not permitted to perform this action. Allowed: " . implode(', ', $roles) . '.'
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 2. Normalize allowed roles from the route
+        |--------------------------------------------------------------------------
+        |
+        | Example:
+        | role:nurse,admin
+        |
+        */
+
+        $allowedRoles = array_map(
+            fn ($role) => strtolower(trim((string) $role)),
+            $roles
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 3. Get the authenticated user's role from the database
+        |--------------------------------------------------------------------------
+        |
+        | We do NOT trust:
+        | - URL role
+        | - X-Role header
+        | - request input
+        |
+        | The role comes from:
+        |
+        | users.role_id
+        |        ↓
+        | roles.id
+        |        ↓
+        | roles.role_name
+        |
+        */
+
+        $userRole = DB::table('roles')
+            ->where('id', $user->role_id)
+            ->value('role_name');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 4. Make sure the user's role exists
+        |--------------------------------------------------------------------------
+        */
+
+        if (!$userRole) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User role could not be determined.',
             ], 403);
         }
 
-        abort(403, "Unauthorized: Access restricted to " . implode(', ', $roles));
-    }
 
-    /**
-     * Resolve the active role from headers, inputs, route, session, user, or referer.
-     */
-    private function resolveActiveRole(Request $request): string
-    {
-        // 1. Explicit Header
-        if ($headerRole = $request->header('X-Role')) {
-            return trim($headerRole);
+        /*
+        |--------------------------------------------------------------------------
+        | 5. Normalize the user's role
+        |--------------------------------------------------------------------------
+        */
+
+        $userRole = strtolower(
+            trim((string) $userRole)
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 6. Store the authenticated user's real role
+        |--------------------------------------------------------------------------
+        |
+        | Controllers can retrieve it using:
+        |
+        | $request->attributes->get('active_role');
+        |
+        */
+
+        $request->attributes->set(
+            'active_role',
+            $userRole
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 7. Admin has access
+        |--------------------------------------------------------------------------
+        |
+        | Admin can access all role-protected areas.
+        |
+        */
+
+        if ($userRole === 'admin') {
+            return $next($request);
         }
 
-        // 2. Request body / query
-        if ($inputRole = $request->input('role') ?? $request->input('active_role')) {
-            return trim($inputRole);
+
+        /*
+        |--------------------------------------------------------------------------
+        | 8. Check whether the authenticated user's role is allowed
+        |--------------------------------------------------------------------------
+        */
+
+        if (in_array($userRole, $allowedRoles, true)) {
+            return $next($request);
         }
 
-        // 3. Route parameter
-        if ($routeRole = $request->route('role')) {
-            return trim($routeRole);
-        }
 
-        // 4. Session
-        if ($sessionRole = session('role') ?? session('active_role')) {
-            return trim($sessionRole);
-        }
+        /*
+        |--------------------------------------------------------------------------
+        | 9. User does not have permission
+        |--------------------------------------------------------------------------
+        */
 
-        // 5. Authenticated user
-        if ($user = $request->user()) {
-            if (!empty($user->role_name)) return $user->role_name;
-            if ($user->role_id === 1) return 'nurse';
-        }
-
-        // 6. Referer URL path (e.g. /nurse/..., /ms/..., /pharmacist/..., /admin/...)
-        $referer = $request->header('referer');
-        if ($referer && preg_match('#/(admin|nurse|ms|pharmacist)(/|\?|$)#i', $referer, $matches)) {
-            return strtolower($matches[1]);
-        }
-
-        return 'nurse';
+        return response()->json([
+            'success' => false,
+            'message' => 'You do not have permission to access this page.',
+        ], 403);
     }
 }

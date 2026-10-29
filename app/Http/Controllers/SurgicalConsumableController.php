@@ -35,16 +35,25 @@ class SurgicalConsumableController extends Controller
      */
     public function index(Request $request, $role = null)
     {
-        $activeRole = $role ?? $request->query('role', 'admin');
+        // Get the authenticated user's role from RoleMiddleware.
+        // Do NOT take the role from the URL or query string.
+        $activeRole = $request->attributes->get('active_role');
 
-        $user = $request->user();
-        $currentUserId = $user?->id ?? session('ward_user_id') ?? session('user_id') ?? null;
-        $currentUserName = $user?->name ?? session('ward_user_name') ?? session('user_name') ?? '';
-
-        if ($currentUserId && !$currentUserName) {
-            $dbUser = DB::table('users')->where('id', $currentUserId)->first();
-            $currentUserName = $dbUser?->name ?? '';
+        if (!$activeRole) {
+            abort(403, 'Authenticated user role could not be determined.');
         }
+
+        $activeRole = strtolower(trim((string) $activeRole));
+
+        // Get the currently authenticated user.
+        $user = $request->user();
+
+        if (!$user) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        $currentUserId = (int) $user->id;
+        $currentUserName = (string) $user->name;
 
         return view('surgical-consumable-1', [
             'activeRole' => $activeRole,
@@ -120,42 +129,55 @@ class SurgicalConsumableController extends Controller
     /**
      * Helper to verify active role against allowed roles.
      */
-    private function verifyRole(Request $request, array $allowedRoles)
+    private function verifyRole(Request $request, array $allowedRoles): string
     {
-        $activeRole = $request->attributes->get('active_role') 
-            ?? $request->header('X-Role') 
-            ?? $request->input('role')
-            ?? 'nurse';
-        $activeRole = strtolower(trim($activeRole));
+        $activeRole = $request->attributes->get('active_role');
 
-        if ($activeRole === 'admin' || in_array($activeRole, array_map('strtolower', $allowedRoles), true)) {
+        if (!$activeRole) {
+            abort(response()->json([
+                'success' => false,
+                'message' => 'Authenticated user role could not be determined.',
+            ], 403));
+        }
+
+        $activeRole = strtolower(trim((string) $activeRole));
+
+        $allowedRoles = array_map(
+            fn ($role) => strtolower(trim((string) $role)),
+            $allowedRoles
+        );
+
+        if (
+            $activeRole === 'admin' ||
+            in_array($activeRole, $allowedRoles, true)
+        ) {
             return $activeRole;
         }
 
         abort(response()->json([
             'success' => false,
-            'message' => "Unauthorized: Role '{$activeRole}' is not permitted to perform this action. Required: " . implode(', ', $allowedRoles) . '.'
+            'message' => "Unauthorized: Role '{$activeRole}' is not permitted.",
         ], 403));
     }
 
-    /**
-     * Ensure master lookup records exist across units, forms, medicines, etc.
-     */
-    private function ensureLookupData()
-    {
-        WardDatabaseService::ensureMasterRecords();
+        /**
+         * Ensure master lookup records exist across units, forms, medicines, etc.
+         */
+        private function ensureLookupData()
+        {
+            WardDatabaseService::ensureMasterRecords();
 
-        try {
-            DB::table('units')->insertOrIgnore(['id' => 1, 'unit_name' => 'Box']);
-            DB::table('units')->insertOrIgnore(['id' => 2, 'unit_name' => 'Roll']);
-            DB::table('units')->insertOrIgnore(['id' => 3, 'unit_name' => 'Pcs']);
-            DB::table('units')->insertOrIgnore(['id' => 4, 'unit_name' => 'Bottle']);
-            DB::table('units')->insertOrIgnore(['id' => 5, 'unit_name' => 'Kit']);
-            DB::table('medicine_forms')->insertOrIgnore(['id' => 1, 'form_name' => 'Consumable']);
-        } catch (\Exception $e) {
-            // Ignore
+            try {
+                DB::table('units')->insertOrIgnore(['id' => 1, 'unit_name' => 'Box']);
+                DB::table('units')->insertOrIgnore(['id' => 2, 'unit_name' => 'Roll']);
+                DB::table('units')->insertOrIgnore(['id' => 3, 'unit_name' => 'Pcs']);
+                DB::table('units')->insertOrIgnore(['id' => 4, 'unit_name' => 'Bottle']);
+                DB::table('units')->insertOrIgnore(['id' => 5, 'unit_name' => 'Kit']);
+                DB::table('medicine_forms')->insertOrIgnore(['id' => 1, 'form_name' => 'Consumable']);
+            } catch (\Exception $e) {
+                // Ignore
+            }
         }
-    }
 
     /**
      * Ensure a medicine record exists in `medicines` table.
@@ -236,54 +258,23 @@ class SurgicalConsumableController extends Controller
      *
      * This module does NOT create or manage login accounts. It expects the
      * partner login system to expose the authenticated user through Laravel
-     * auth() or through shared session values.
+     * authentication.
      */
     private function currentUser(Request $request): array
-    {
-        $user = $request->user();
+{
+    $user = $request->user();
 
-        if ($user) {
-            return [
-                'id' => (int) $user->id,
-                'name' => (string) $user->name,
-            ];
-        }
-
-        $userId = session('ward_user_id')
-            ?? session('user_id')
-            ?? session('auth_user_id');
-
-        if ($userId) {
-            $dbUser = DB::table('users')->where('id', $userId)->first();
-
-            if ($dbUser) {
-                return [
-                    'id' => (int) $dbUser->id,
-                    'name' => (string) $dbUser->name,
-                ];
-            }
-        }
-
-        // Optional integration fallback. Only use this if the partner login
-        // gateway sets these headers server-side and does not allow the browser
-        // to forge them.
-        $headerUserId = $request->header('X-User-Id');
-        if ($headerUserId && ctype_digit((string) $headerUserId)) {
-            $dbUser = DB::table('users')->where('id', (int) $headerUserId)->first();
-
-            if ($dbUser) {
-                return [
-                    'id' => (int) $dbUser->id,
-                    'name' => (string) $dbUser->name,
-                ];
-            }
-        }
-
-        abort(response()->json([
-            'success' => false,
-            'message' => 'No authenticated user was found. The main login system must provide the logged-in user to the ward inventory module.'
-        ], 401));
+    if (!$user) {
+        throw new \RuntimeException(
+            'No authenticated user found.'
+        );
     }
+
+    return [
+        'id' => (int) $user->id,
+        'name' => (string) $user->name,
+    ];
+}
 
     /**
      * Get current ward stock for one general item.
@@ -1159,40 +1150,9 @@ class SurgicalConsumableController extends Controller
      */
     public function getAdjustments()
     {
-        $fallback = [
-            [
-                'id' => 1001,
-                'date' => '2026-09-14',
-                'item_name' => 'SURGICAL GLOVES 7.5',
-                'type' => 'COUNT_CORRECTION_ADD',
-                'quantity' => '+5 Box',
-                'balance' => '30 Box',
-                'reason' => 'Ward inventory audit recount (surplus found in Emergency Trolley)',
-                'adjusted_by' => 'Sr. Perera (RN-402)',
-            ],
-            [
-                'id' => 1002,
-                'date' => '2026-09-12',
-                'item_name' => 'COTTON WOOL 500G',
-                'type' => 'DAMAGED',
-                'quantity' => '-2 Roll',
-                'balance' => '15 Roll',
-                'reason' => 'Moisture damage on shelf rack during routine ward cleaning',
-                'adjusted_by' => 'Nurse Wickramasinghe (RN-311)',
-            ],
-            [
-                'id' => 1003,
-                'date' => '2026-09-10',
-                'item_name' => 'POVIDONE IODINE 500ML',
-                'type' => 'EXPIRY',
-                'quantity' => '-1 Bottle',
-                'balance' => '12 Bottle',
-                'reason' => 'Batch expiry reached - discarded per hospital waste protocol',
-                'adjusted_by' => 'Sr. Perera (RN-402)',
-            ],
-        ];
-
-        return response()->json(WardDatabaseService::getAdjustments($this->categoryId, $fallback));
+        return response()->json(
+            WardDatabaseService::getAdjustments($this->categoryId, [])
+        );
     }
 
     /**
@@ -1200,6 +1160,10 @@ class SurgicalConsumableController extends Controller
      */
     public function storeAdjustment(Request $request)
     {
+        $this->verifyRole($request, ['nurse', 'admin']);
+
+        $actor = $this->currentUser($request);
+
         $validated = $request->validate([
             'date' => 'required|string',
             'item_name' => 'required|string',
@@ -1207,7 +1171,6 @@ class SurgicalConsumableController extends Controller
             'quantity' => 'required|string',
             'balance' => 'required|string',
             'reason' => 'required|string',
-            'adjusted_by' => 'required|string',
         ]);
 
         $amount = 0;
@@ -1221,11 +1184,12 @@ class SurgicalConsumableController extends Controller
             $validated['type'],
             $amount,
             $validated['reason'],
-            $validated['adjusted_by'],
+            $actor['id'],
             $validated['date']
         );
 
         $validated['id'] = $transId;
+        $validated['adjusted_by'] = $actor['name'];
 
         return response()->json([
             'success' => true,

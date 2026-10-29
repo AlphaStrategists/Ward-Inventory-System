@@ -1598,8 +1598,7 @@ function surgicalConsumableApp() {
                 const res = await fetch('/api/requisitions', {
                     headers: {
                         'Accept': 'application/json',
-                        'X-Role': this.currentRole
-                    }
+                                    }
                 });
 
                 if (!res.ok) {
@@ -1738,8 +1737,7 @@ function surgicalConsumableApp() {
             return {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': this.csrfToken,
-                'X-Role': this.currentRole,
-                'Accept': 'application/json'
+                        'Accept': 'application/json'
             };
         },
 

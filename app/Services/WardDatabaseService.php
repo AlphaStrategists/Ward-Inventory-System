@@ -3,17 +3,21 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class WardDatabaseService
 {
     /**
-     * Ensure master lookup records exist in the 25 tables.
+     * Ensure required master records exist.
      */
     public static function ensureMasterRecords()
     {
         try {
             // 1. Role
-            $roleExists = DB::table('roles')->where('id', 1)->exists();
+            $roleExists = DB::table('roles')
+                ->where('id', 1)
+                ->exists();
+
             if (!$roleExists) {
                 DB::table('roles')->insertOrIgnore([
                     'id' => 1,
@@ -23,7 +27,10 @@ class WardDatabaseService
             }
 
             // 2. Ward
-            $wardExists = DB::table('wards')->where('id', 1)->exists();
+            $wardExists = DB::table('wards')
+                ->where('id', 1)
+                ->exists();
+
             if (!$wardExists) {
                 DB::table('wards')->insertOrIgnore([
                     'id' => 1,
@@ -32,21 +39,7 @@ class WardDatabaseService
                 ]);
             }
 
-            // 3. User
-            $userExists = DB::table('users')->where('id', 1)->exists();
-            if (!$userExists) {
-                DB::table('users')->insertOrIgnore([
-                    'id' => 1,
-                    'name' => 'Sr. Perera (RN-402)',
-                    'email' => 'officer@ward48.local',
-                    'password' => bcrypt('password'),
-                    'role_id' => 1,
-                    'ward_id' => 1,
-                    'created_at' => now(),
-                ]);
-            }
-
-            // 4. Categories
+            // 3. Categories
             $categories = [
                 1 => 'Surgical Consumables 1',
                 2 => 'Surgical Consumables 2',
@@ -54,7 +47,10 @@ class WardDatabaseService
             ];
 
             foreach ($categories as $id => $name) {
-                $catExists = DB::table('categories')->where('id', $id)->exists();
+                $catExists = DB::table('categories')
+                    ->where('id', $id)
+                    ->exists();
+
                 if (!$catExists) {
                     DB::table('categories')->insertOrIgnore([
                         'id' => $id,
@@ -65,52 +61,118 @@ class WardDatabaseService
                 }
             }
         } catch (\Exception $e) {
-            // Ignore if tables not found
+            // Do not stop application if master tables are unavailable.
+        }
+    }
+
+    /**
+     * Return the currently authenticated user's ID.
+     *
+     * Throws an exception when no user is authenticated.
+     */
+    private static function currentUserId(): int
+    {
+        if (auth()->check()) {
+            return (int) auth()->id();
+        }
+
+        throw new \RuntimeException(
+            'No authenticated user found.'
+        );
+    }
+
+    /**
+     * Convert date input safely.
+     */
+    private static function normalizeDate($dateStr)
+    {
+        if (empty($dateStr)) {
+            return now();
+        }
+
+        try {
+            $timestamp = strtotime($dateStr);
+
+            if ($timestamp === false) {
+                return now();
+            }
+
+            return date('Y-m-d H:i:s', $timestamp);
+        } catch (\Throwable $e) {
+            return now();
         }
     }
 
     /**
      * Seed initial items for a category if none exist.
      */
-    public static function seedCategoryItemsIfEmpty($categoryId, array $initialItems)
-    {
+    public static function seedCategoryItemsIfEmpty(
+        $categoryId,
+        array $initialItems
+    ) {
         self::ensureMasterRecords();
 
         try {
-            $count = DB::table('general_items')->where('category_id', $categoryId)->count();
+            $count = DB::table('general_items')
+                ->where('category_id', $categoryId)
+                ->count();
+
             if ($count === 0) {
                 foreach ($initialItems as $index => $item) {
-                    $itemCode = sprintf('CAT%d-%03d', $categoryId, $index + 1);
-                    $itemId = DB::table('general_items')->insertGetId([
-                        'item_code' => $itemCode,
-                        'name' => strtoupper($item['name']),
-                        'category_id' => $categoryId,
-                    ]);
+                    $itemCode = sprintf(
+                        'CAT%d-%03d',
+                        $categoryId,
+                        $index + 1
+                    );
 
-                    // Add initial stock receipt transaction
-                    $initialBalance = isset($item['balance']) ? (int) $item['balance'] : 0;
-                    if ($initialBalance > 0) {
-                        DB::table('general_transactions')->insert([
-                            'item_id' => $itemId,
-                            'ward_id' => 1,
-                            'quantity_received' => $initialBalance,
-                            'quantity_issued' => 0,
-                            'date' => now(),
-                            'recorded_by' => 1,
+                    $itemId = DB::table('general_items')
+                        ->insertGetId([
+                            'item_code' => $itemCode,
+                            'name' => strtoupper(
+                                trim($item['name'])
+                            ),
+                            'category_id' => $categoryId,
                         ]);
+
+                    /*
+                     * Initial stock is a RECEIPT.
+                     * Therefore it goes into quantity_received.
+                     */
+                    $initialBalance = isset($item['balance'])
+                        ? (int) $item['balance']
+                        : 0;
+
+                    if ($initialBalance > 0) {
+                        DB::table('general_transactions')
+                            ->insert([
+                                'item_id' => $itemId,
+                                'ward_id' => 1,
+                                'quantity_received' =>
+                                    $initialBalance,
+                                'quantity_issued' => 0,
+                                'date' => now(),
+                                'recorded_by' =>
+                                    self::currentUserId(),
+                            ]);
                     }
                 }
             }
         } catch (\Exception $e) {
-            // Ignore
+            // Ignore seeding failures.
         }
     }
 
     /**
      * Get all items for a category with calculated balances.
+     *
+     * Balance:
+     *
+     *     Total Received - Total Issued
      */
-    public static function getCategoryItems($categoryId, array $defaultFallback = [])
-    {
+    public static function getCategoryItems(
+        $categoryId,
+        array $defaultFallback = []
+    ) {
         self::ensureMasterRecords();
 
         try {
@@ -120,67 +182,110 @@ class WardDatabaseService
 
             if ($items->count() > 0) {
                 $result = [];
+
                 foreach ($items as $item) {
-                    $received = DB::table('general_transactions')
+                    $received = (int) DB::table(
+                        'general_transactions'
+                    )
                         ->where('item_id', $item->id)
                         ->sum('quantity_received');
-                    $issued = DB::table('general_transactions')
+
+                    $issued = (int) DB::table(
+                        'general_transactions'
+                    )
                         ->where('item_id', $item->id)
                         ->sum('quantity_issued');
-                    $balance = max(0, $received - $issued);
+
+                    /*
+                     * Receiving increases stock.
+                     * Daily Count / issue decreases stock.
+                     */
+                    $balance = max(
+                        0,
+                        $received - $issued
+                    );
 
                     $result[] = [
                         'id' => $item->id,
                         'name' => $item->name,
-                        'balance' => (int) $balance,
-                        'unit' => self::guessUnitFromName($item->name),
+                        'balance' => $balance,
+                        'unit' => self::guessUnitFromName(
+                            $item->name
+                        ),
                     ];
                 }
+
                 return $result;
             }
         } catch (\Exception $e) {
-            // Fallback
+            // Continue to fallback.
         }
 
-        // Seed fallback data into database
         if (!empty($defaultFallback)) {
-            self::seedCategoryItemsIfEmpty($categoryId, $defaultFallback);
-            return self::getCategoryItems($categoryId, []);
+            self::seedCategoryItemsIfEmpty(
+                $categoryId,
+                $defaultFallback
+            );
+
+            return self::getCategoryItems(
+                $categoryId,
+                []
+            );
         }
 
         return [];
     }
 
     /**
-     * Add a new item into general_items.
+     * Add a new item.
      */
-    public static function storeItem($categoryId, $name, $balance, $unit)
-    {
+    public static function storeItem(
+        $categoryId,
+        $name,
+        $balance,
+        $unit
+    ) {
         self::ensureMasterRecords();
 
         $name = strtoupper(trim($name));
-        $itemCode = sprintf('CAT%d-%d-%04d', $categoryId, time(), mt_rand(100, 999));
+
+        $itemCode = sprintf(
+            'CAT%d-%d-%04d',
+            $categoryId,
+            time(),
+            mt_rand(100, 999)
+        );
+
+        $userId = self::currentUserId();
 
         try {
-            $itemId = DB::table('general_items')->insertGetId([
-                'item_code' => $itemCode,
-                'name' => $name,
-                'category_id' => $categoryId,
-            ]);
-
-            if ($balance > 0) {
-                DB::table('general_transactions')->insert([
-                    'item_id' => $itemId,
-                    'ward_id' => 1,
-                    'quantity_received' => (int) $balance,
-                    'quantity_issued' => 0,
-                    'date' => now(),
-                    'recorded_by' => 1,
+            $itemId = DB::table('general_items')
+                ->insertGetId([
+                    'item_code' => $itemCode,
+                    'name' => $name,
+                    'category_id' => $categoryId,
                 ]);
+
+            /*
+             * Initial balance is treated as received stock.
+             */
+            if ((int) $balance > 0) {
+                DB::table('general_transactions')
+                    ->insert([
+                        'item_id' => $itemId,
+                        'ward_id' => 1,
+                        'quantity_received' =>
+                            (int) $balance,
+                        'quantity_issued' => 0,
+                        'date' => now(),
+                        'recorded_by' => $userId,
+                    ]);
             }
 
-            // Log activity
-            self::logActivity('Added item: ' . $name);
+            self::logActivity(
+                'Added item: ' . $name,
+                $userId
+            );
 
             return [
                 'id' => $itemId,
@@ -204,13 +309,19 @@ class WardDatabaseService
     public static function updateItem($itemId, $name)
     {
         self::ensureMasterRecords();
+
         $name = strtoupper(trim($name));
 
         DB::table('general_items')
             ->where('id', $itemId)
-            ->update(['name' => $name]);
+            ->update([
+                'name' => $name,
+            ]);
 
-        self::logActivity('Updated item #' . $itemId . ' name to ' . $name);
+        self::logActivity(
+            'Updated item #' . $itemId .
+            ' name to ' . $name
+        );
 
         return true;
     }
@@ -222,258 +333,936 @@ class WardDatabaseService
     {
         self::ensureMasterRecords();
 
-        DB::table('general_transactions')->where('item_id', $itemId)->delete();
-        DB::table('general_items')->where('id', $itemId)->delete();
+        DB::table('general_transactions')
+            ->where('item_id', $itemId)
+            ->delete();
 
-        self::logActivity('Deleted item #' . $itemId);
+        DB::table('general_items')
+            ->where('id', $itemId)
+            ->delete();
+
+        self::logActivity(
+            'Deleted item #' . $itemId
+        );
 
         return true;
     }
 
     /**
-     * Add a transaction (Issue or Receipt).
+     * Add a transaction.
+     *
+     * $receivedQty = stock coming IN.
+     * $issuedQty   = stock going OUT.
      */
-    public static function storeTransaction($categoryId, $itemName, $receivedQty, $issuedQty, $dateStr, $note = '')
-    {
+    public static function storeTransaction(
+        $categoryId,
+        $itemName,
+        $receivedQty,
+        $issuedQty,
+        $dateStr,
+        $note = '',
+        $recordedBy = null
+    ) {
         self::ensureMasterRecords();
 
-        // Find or create item
+        $recordedBy = $recordedBy !== null
+            ? (int) $recordedBy
+            : self::currentUserId();
+
+        $itemName = strtoupper(trim($itemName));
+
+        /*
+         * Find the item in the selected category.
+         */
         $item = DB::table('general_items')
-            ->where('name', strtoupper(trim($itemName)))
+            ->where('name', $itemName)
             ->where('category_id', $categoryId)
             ->first();
 
+        /*
+         * Create the item if it does not exist.
+         */
         if (!$item) {
-            $itemId = DB::table('general_items')->insertGetId([
-                'item_code' => sprintf('CAT%d-%d', $categoryId, time()),
-                'name' => strtoupper(trim($itemName)),
-                'category_id' => $categoryId,
-            ]);
+            $itemId = DB::table('general_items')
+                ->insertGetId([
+                    'item_code' => sprintf(
+                        'CAT%d-%d',
+                        $categoryId,
+                        time()
+                    ),
+                    'name' => $itemName,
+                    'category_id' => $categoryId,
+                ]);
         } else {
             $itemId = $item->id;
         }
 
-        $transId = DB::table('general_transactions')->insertGetId([
+        $transactionData = [
             'item_id' => $itemId,
             'ward_id' => 1,
-            'quantity_received' => (int) $receivedQty,
-            'quantity_issued' => (int) $issuedQty,
-            'date' => $dateStr ? date('Y-m-d H:i:s', strtotime($dateStr)) : now(),
-            'recorded_by' => 1,
-        ]);
 
-        self::logActivity('Recorded transaction for item: ' . $itemName . ' (Received: ' . $receivedQty . ', Issued: ' . $issuedQty . ')');
+            /*
+             * Received quantity INCREASES stock.
+             */
+            'quantity_received' =>
+                max(0, (int) $receivedQty),
+
+            /*
+             * Issued quantity DECREASES stock.
+             */
+            'quantity_issued' =>
+                max(0, (int) $issuedQty),
+
+            'date' => self::normalizeDate($dateStr),
+            'recorded_by' => $recordedBy,
+        ];
+
+        /*
+         * Store optional Daily Count information if
+         * those columns already exist.
+         */
+        try {
+            if (
+                Schema::hasColumn(
+                    'general_transactions',
+                    'sisters_initials'
+                )
+            ) {
+                // storeDailyCount() handles this.
+            }
+
+            if (
+                Schema::hasColumn(
+                    'general_transactions',
+                    'remarks'
+                )
+            ) {
+                // storeDailyCount() handles this.
+            }
+        } catch (\Throwable $e) {
+            // Ignore schema inspection failure.
+        }
+
+        $transId = DB::table(
+            'general_transactions'
+        )->insertGetId($transactionData);
+
+        self::logActivity(
+            'Recorded transaction for item: '
+            . $itemName
+            . ' (Received: '
+            . (int) $receivedQty
+            . ', Issued: '
+            . (int) $issuedQty
+            . ')'
+            . ($note ? ' | ' . $note : ''),
+            $recordedBy
+        );
 
         return $transId;
     }
 
     /**
-     * Log activity to activity_logs.
+     * Log activity.
      */
-    public static function logActivity($action)
-    {
+    public static function logActivity(
+        $action,
+        $userId = null
+    ) {
         try {
-            DB::table('activity_logs')->insert([
-                'user_id' => 1,
-                'action_performed' => $action,
-                'ip_address' => request()->ip() ?? '127.0.0.1',
-                'created_at' => now(),
-            ]);
+            $userId = $userId !== null
+                ? (int) $userId
+                : self::currentUserId();
+
+            DB::table('activity_logs')
+                ->insert([
+                    'user_id' => $userId,
+                    'action_performed' => $action,
+                    'ip_address' =>
+                        function_exists('request')
+                            ? (
+                                request()->ip()
+                                ?? '127.0.0.1'
+                            )
+                            : '127.0.0.1',
+                    'created_at' => now(),
+                ]);
         } catch (\Exception $e) {
-            // Ignore
+            // Activity logging must never break
+            // the main operation.
         }
     }
 
     /**
-     * Get stock adjustments for category from initial general_stock_adjustments table.
+     * Get stock adjustments for a category.
      */
-    public static function getAdjustments($categoryId, array $fallback = [])
-    {
+    public static function getAdjustments(
+        $categoryId,
+        array $fallback = []
+    ) {
         try {
-            $adjustments = DB::table('general_stock_adjustments')
-                ->join('general_items', 'general_stock_adjustments.item_id', '=', 'general_items.id')
-                ->leftJoin('users', 'general_stock_adjustments.adjusted_by', '=', 'users.id')
-                ->where('general_items.category_id', $categoryId)
+            $adjustments = DB::table(
+                'general_stock_adjustments'
+            )
+                ->join(
+                    'general_items',
+                    'general_stock_adjustments.item_id',
+                    '=',
+                    'general_items.id'
+                )
+                ->leftJoin(
+                    'users',
+                    'general_stock_adjustments.adjusted_by',
+                    '=',
+                    'users.id'
+                )
+                ->where(
+                    'general_items.category_id',
+                    $categoryId
+                )
                 ->select(
                     'general_stock_adjustments.id',
-                    DB::raw('DATE(general_stock_adjustments.created_at) as date'),
+                    'general_stock_adjustments.item_id',
+                    DB::raw(
+                        'DATE(general_stock_adjustments.created_at) as date'
+                    ),
                     'general_items.name as item_name',
                     'general_stock_adjustments.adjustment_type as type',
                     'general_stock_adjustments.quantity',
                     'general_stock_adjustments.reason',
-                    DB::raw('COALESCE(users.name, "Ward Nurse") as adjusted_by')
+                    DB::raw(
+                        'COALESCE(users.name, "Ward Nurse") as adjusted_by'
+                    )
                 )
-                ->orderBy('general_stock_adjustments.id', 'desc')
+                ->orderBy(
+                    'general_stock_adjustments.id',
+                    'desc'
+                )
                 ->get();
 
             if ($adjustments->count() > 0) {
-                return $adjustments->map(function ($adj) {
-                    $unit = self::guessUnitFromName($adj->item_name);
-                    $qtySign = $adj->quantity > 0 ? "+{$adj->quantity} {$unit}" : "{$adj->quantity} {$unit}";
-                    return [
-                        'id' => $adj->id,
-                        'date' => $adj->date,
-                        'item_name' => $adj->item_name,
-                        'type' => $adj->type,
-                        'quantity' => $qtySign,
-                        'balance' => "{$unit}",
-                        'reason' => $adj->reason,
-                        'adjusted_by' => $adj->adjusted_by,
-                    ];
-                })->toArray();
+                return $adjustments
+                    ->map(function ($adj) {
+                        $unit = self::guessUnitFromName(
+                            $adj->item_name
+                        );
+
+                        $qty = (int) $adj->quantity;
+
+                        $qtySign = $qty > 0
+                            ? "+{$qty} {$unit}"
+                            : "{$qty} {$unit}";
+
+                        /*
+                         * Calculate current balance for
+                         * this exact item.
+                         */
+                        $received = (int) DB::table(
+                            'general_transactions'
+                        )
+                            ->where(
+                                'item_id',
+                                $adj->item_id
+                            )
+                            ->sum('quantity_received');
+
+                        $issued = (int) DB::table(
+                            'general_transactions'
+                        )
+                            ->where(
+                                'item_id',
+                                $adj->item_id
+                            )
+                            ->sum('quantity_issued');
+
+                        $balance = max(
+                            0,
+                            $received - $issued
+                        );
+
+                        return [
+                            'id' => $adj->id,
+                            'date' => $adj->date,
+                            'item_name' =>
+                                $adj->item_name,
+                            'type' => $adj->type,
+                            'quantity' => $qtySign,
+                            'balance' =>
+                                $balance . ' ' . $unit,
+                            'reason' => $adj->reason,
+                            'adjusted_by' =>
+                                $adj->adjusted_by,
+                        ];
+                    })
+                    ->toArray();
             }
         } catch (\Exception $e) {
-            // DB not connected or empty, use fallback
+            // Use fallback.
         }
 
         return $fallback;
     }
 
     /**
-     * Store a stock adjustment transaction into initial general_stock_adjustments & general_transactions tables.
+     * Store a stock adjustment.
+     *
+     * Addition / surplus / return:
+     *      increases stock.
+     *
+     * Damaged / lost / subtraction:
+     *      decreases stock.
      */
-    public static function storeAdjustment($categoryId, $itemName, $type, $amount, $reason, $adjustedBy, $dateStr)
-    {
+    public static function storeAdjustment(
+        $categoryId,
+        $itemName,
+        $type,
+        $amount,
+        $reason,
+        $adjustedBy,
+        $dateStr
+    ) {
         self::ensureMasterRecords();
 
         $qty = abs((int) $amount);
-        $isAddition = in_array(strtoupper($type), ['COUNT_CORRECTION_ADD', 'ADDITION', 'SURPLUS', 'RETURN']);
 
-        $receivedQty = $isAddition ? $qty : 0;
-        $issuedQty = $isAddition ? 0 : $qty;
+        /*
+         * $adjustedBy may be a user ID or a display name.
+         *
+         * If it is numeric, use it as the actual user ID.
+         * Otherwise use the currently authenticated user.
+         */
+        $actualUserId = is_numeric($adjustedBy)
+            ? (int) $adjustedBy
+            : self::currentUserId();
 
-        $note = sprintf('[ADJUSTMENT:%s] %s | Adjusted by: %s', strtoupper($type), $reason, $adjustedBy);
+        $isAddition = in_array(
+            strtoupper((string) $type),
+            [
+                'COUNT_CORRECTION_ADD',
+                'ADDITION',
+                'SURPLUS',
+                'RETURN',
+            ],
+            true
+        );
 
+        $receivedQty = $isAddition
+            ? $qty
+            : 0;
+
+        $issuedQty = $isAddition
+            ? 0
+            : $qty;
+
+        $note = sprintf(
+            '[ADJUSTMENT:%s] %s | Adjusted by user ID: %d',
+            strtoupper((string) $type),
+            $reason,
+            $actualUserId
+        );
+
+        /*
+         * Store the corresponding inventory transaction.
+         */
         $transId = self::storeTransaction(
             $categoryId,
             $itemName,
             $receivedQty,
             $issuedQty,
             $dateStr,
-            $note
+            $note,
+            $actualUserId
         );
 
-        // Also record in the initial database table general_stock_adjustments
         try {
             $item = DB::table('general_items')
-                ->where('name', strtoupper(trim($itemName)))
-                ->where('category_id', $categoryId)
+                ->where(
+                    'name',
+                    strtoupper(trim($itemName))
+                )
+                ->where(
+                    'category_id',
+                    $categoryId
+                )
                 ->first();
 
             if ($item) {
                 $adjType = 'COUNT_CORRECTION';
-                if (stripos($type, 'DAMAGED') !== false) $adjType = 'DAMAGED';
-                elseif (stripos($type, 'LOSS') !== false || stripos($type, 'LOST') !== false) $adjType = 'LOST';
-                elseif (stripos($type, 'RETURN') !== false) $adjType = 'RETURN';
 
-                DB::table('general_stock_adjustments')->insert([
+                if (
+                    stripos(
+                        (string) $type,
+                        'DAMAGED'
+                    ) !== false
+                ) {
+                    $adjType = 'DAMAGED';
+                } elseif (
+                    stripos(
+                        (string) $type,
+                        'LOSS'
+                    ) !== false
+                    ||
+                    stripos(
+                        (string) $type,
+                        'LOST'
+                    ) !== false
+                ) {
+                    $adjType = 'LOST';
+                } elseif (
+                    stripos(
+                        (string) $type,
+                        'RETURN'
+                    ) !== false
+                ) {
+                    $adjType = 'RETURN';
+                }
+
+                $adjustmentData = [
                     'item_id' => $item->id,
                     'ward_id' => 1,
                     'adjustment_type' => $adjType,
-                    'quantity' => $isAddition ? $qty : -$qty,
-                    'reason' => $reason . ' (Adjusted by: ' . $adjustedBy . ')',
-                    'adjusted_by' => 1,
-                    'created_at' => $dateStr ? date('Y-m-d H:i:s', strtotime($dateStr)) : now(),
-                ]);
+                    'quantity' => $isAddition
+                        ? $qty
+                        : -$qty,
+                    'reason' => $reason,
+                    'adjusted_by' => $actualUserId,
+                    'created_at' =>
+                        self::normalizeDate($dateStr),
+                ];
+
+                /*
+                 * If the migration has added transaction_id,
+                 * link this adjustment to the exact transaction.
+                 */
+                try {
+                    if (
+                        Schema::hasColumn(
+                            'general_stock_adjustments',
+                            'transaction_id'
+                        )
+                    ) {
+                        $adjustmentData[
+                            'transaction_id'
+                        ] = $transId;
+                    }
+                } catch (\Throwable $e) {
+                    // Continue without optional column.
+                }
+
+                DB::table(
+                    'general_stock_adjustments'
+                )->insert($adjustmentData);
             }
         } catch (\Exception $e) {
-            // Ignore if DB not reachable
+            /*
+             * Keep the inventory transaction even if
+             * the secondary adjustment table fails.
+             */
         }
 
-        self::logActivity("Stock adjustment ({$type}: {$qty}) recorded for {$itemName} by {$adjustedBy}");
+        self::logActivity(
+            "Stock adjustment ({$type}: {$qty}) "
+            . "recorded for {$itemName}",
+            $actualUserId
+        );
 
         return $transId;
     }
 
     /**
-     * Delete an adjustment record from initial tables.
+     * Delete an adjustment and its exact
+     * inventory transaction.
      */
     public static function deleteAdjustment($id)
     {
         try {
-            DB::table('general_stock_adjustments')->where('id', $id)->delete();
-            DB::table('general_transactions')->where('id', $id)->delete();
+            $adjustment = DB::table(
+                'general_stock_adjustments'
+            )
+                ->where('id', $id)
+                ->first();
+
+            if (!$adjustment) {
+                return true;
+            }
+
+            /*
+             * Preferred method:
+             * delete the exact linked transaction.
+             */
+            try {
+                if (
+                    Schema::hasColumn(
+                        'general_stock_adjustments',
+                        'transaction_id'
+                    )
+                ) {
+                    if (
+                        !empty(
+                            $adjustment->transaction_id
+                        )
+                    ) {
+                        DB::table(
+                            'general_transactions'
+                        )
+                            ->where(
+                                'id',
+                                $adjustment->transaction_id
+                            )
+                            ->delete();
+                    }
+                } else {
+                    /*
+                     * Compatibility fallback for old schema.
+                     *
+                     * Find the most recent matching transaction
+                     * for the same item and adjustment quantity.
+                     */
+                    $quantity = abs(
+                        (int) $adjustment->quantity
+                    );
+
+                    $isAddition =
+                        (int) $adjustment->quantity > 0;
+
+                    $query = DB::table(
+                        'general_transactions'
+                    )
+                        ->where(
+                            'item_id',
+                            $adjustment->item_id
+                        );
+
+                    if ($isAddition) {
+                        $query
+                            ->where(
+                                'quantity_received',
+                                $quantity
+                            )
+                            ->where(
+                                'quantity_issued',
+                                0
+                            );
+                    } else {
+                        $query
+                            ->where(
+                                'quantity_received',
+                                0
+                            )
+                            ->where(
+                                'quantity_issued',
+                                $quantity
+                            );
+                    }
+
+                    $transaction = $query
+                        ->orderBy('id', 'desc')
+                        ->first();
+
+                    if ($transaction) {
+                        DB::table(
+                            'general_transactions'
+                        )
+                            ->where(
+                                'id',
+                                $transaction->id
+                            )
+                            ->delete();
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Continue to delete adjustment record.
+            }
+
+            DB::table(
+                'general_stock_adjustments'
+            )
+                ->where('id', $id)
+                ->delete();
+
+            self::logActivity(
+                'Deleted stock adjustment #' . $id
+            );
         } catch (\Exception $e) {
-            // Ignore
+            // Ignore delete failure.
         }
+
         return true;
     }
 
     /**
-     * Get daily counts for category from general_transactions (issues).
+     * Get Daily Count records.
      */
-    public static function getDailyCounts($categoryId, array $fallback = [])
-    {
+    public static function getDailyCounts(
+        $categoryId,
+        array $fallback = []
+    ) {
         try {
-            $records = DB::table('general_transactions')
-                ->join('general_items', 'general_transactions.item_id', '=', 'general_items.id')
-                ->where('general_items.category_id', $categoryId)
-                ->where('general_transactions.quantity_issued', '>', 0)
+            $records = DB::table(
+                'general_transactions'
+            )
+                ->join(
+                    'general_items',
+                    'general_transactions.item_id',
+                    '=',
+                    'general_items.id'
+                )
+                ->where(
+                    'general_items.category_id',
+                    $categoryId
+                )
+                ->where(
+                    'general_transactions.quantity_issued',
+                    '>',
+                    0
+                )
                 ->select(
                     'general_transactions.id',
-                    DB::raw('DATE(general_transactions.date) as date'),
+                    'general_transactions.item_id',
+                    DB::raw(
+                        'DATE(general_transactions.date) as date'
+                    ),
                     'general_items.name as item_name',
                     'general_transactions.quantity_issued as qty_given',
                     'general_transactions.date as created_at'
+                );
+
+            /*
+             * Include Daily Count details when the migration
+             * columns are available.
+             */
+            try {
+                if (
+                    Schema::hasColumn(
+                        'general_transactions',
+                        'sisters_initials'
+                    )
+                ) {
+                    $records->addSelect(
+                        'general_transactions.sisters_initials'
+                    );
+                }
+
+                if (
+                    Schema::hasColumn(
+                        'general_transactions',
+                        'remarks'
+                    )
+                ) {
+                    $records->addSelect(
+                        'general_transactions.remarks'
+                    );
+                }
+            } catch (\Throwable $e) {
+                // Continue without optional columns.
+            }
+
+            $records = $records
+                ->orderBy(
+                    'general_transactions.id',
+                    'desc'
                 )
-                ->orderBy('general_transactions.id', 'desc')
                 ->get();
 
             if ($records->count() > 0) {
-                return $records->map(function ($r) use ($categoryId) {
-                    $unit = self::guessUnitFromName($r->item_name);
-                    return [
-                        'id' => $r->id,
-                        'date' => $r->date,
-                        'item_name' => $r->item_name,
-                        'qty_given' => "{$r->qty_given} {$unit}",
-                        'balance' => "{$unit}",
-                        'sisters_initials' => 'K.P.',
-                        'remarks' => 'Daily ward distribution',
-                    ];
-                })->toArray();
+                return $records
+                    ->map(function ($r) {
+                        $unit = self::guessUnitFromName(
+                            $r->item_name
+                        );
+
+                        /*
+                         * Calculate the balance for the
+                         * exact item.
+                         */
+                        $received = (int) DB::table(
+                            'general_transactions'
+                        )
+                            ->where(
+                                'item_id',
+                                $r->item_id
+                            )
+                            ->sum('quantity_received');
+
+                        $issued = (int) DB::table(
+                            'general_transactions'
+                        )
+                            ->where(
+                                'item_id',
+                                $r->item_id
+                            )
+                            ->sum('quantity_issued');
+
+                        $balance = max(
+                            0,
+                            $received - $issued
+                        );
+
+                        return [
+                            'id' => $r->id,
+                            'date' => $r->date,
+                            'item_name' =>
+                                $r->item_name,
+                            'qty_given' =>
+                                (int) $r->qty_given
+                                . ' ' . $unit,
+                            'balance' =>
+                                $balance . ' ' . $unit,
+                            'sisters_initials' =>
+                                $r->sisters_initials
+                                ?? '',
+                            'remarks' =>
+                                $r->remarks
+                                ?? '',
+                        ];
+                    })
+                    ->toArray();
             }
         } catch (\Exception $e) {
-            // DB not connected, use fallback
+            // Use fallback.
         }
 
         return $fallback;
     }
 
     /**
-     * Store a daily count transaction into general_transactions.
+     * Store Daily Count.
+     *
+     * Daily Count means stock has been given/used.
+     *
+     * Therefore:
+     *
+     * quantity_received = 0
+     * quantity_issued   = quantity given
+     *
+     * This decreases available stock.
      */
-    public static function storeDailyCount($categoryId, $itemName, $qtyGiven, $sistersInitials, $remarks, $dateStr)
-    {
+    public static function storeDailyCount(
+        $categoryId,
+        $itemName,
+        $qtyGiven,
+        $sistersInitials,
+        $remarks,
+        $dateStr,
+        $recordedBy = null
+    ) {
         self::ensureMasterRecords();
 
         $qty = abs((int) $qtyGiven);
-        $note = sprintf('[DAILY_COUNT] Qty given: %d | Sister: %s | Remarks: %s', $qty, $sistersInitials, $remarks);
 
-        $transId = self::storeTransaction(
-            $categoryId,
-            $itemName,
+        $actualUserId = $recordedBy !== null
+            ? (int) $recordedBy
+            : self::currentUserId();
+
+        /*
+         * Find the item first.
+         */
+        $item = DB::table('general_items')
+            ->where(
+                'category_id',
+                $categoryId
+            )
+            ->where(
+                'name',
+                strtoupper(trim($itemName))
+            )
+            ->first();
+
+        if (!$item) {
+            throw new \RuntimeException(
+                'The inventory item could not be found.'
+            );
+        }
+
+        /*
+         * Calculate current balance before issuing stock.
+         */
+        $receivedBefore = (int) DB::table(
+            'general_transactions'
+        )
+            ->where(
+                'item_id',
+                $item->id
+            )
+            ->sum('quantity_received');
+
+        $issuedBefore = (int) DB::table(
+            'general_transactions'
+        )
+            ->where(
+                'item_id',
+                $item->id
+            )
+            ->sum('quantity_issued');
+
+        $currentBalance = max(
             0,
-            $qty,
-            $dateStr,
-            $note
+            $receivedBefore - $issuedBefore
         );
 
-        self::logActivity("Daily count recorded for {$itemName}: Qty {$qty}, Sister {$sistersInitials}");
+        /*
+         * Do not allow Daily Count to issue more
+         * stock than is currently available.
+         */
+        if ($qty > $currentBalance) {
+            throw new \RuntimeException(
+                'The quantity given cannot exceed '
+                . 'the available stock balance of '
+                . $currentBalance
+                . '.'
+            );
+        }
 
-        return $transId;
+        /*
+         * Store Daily Count directly so that
+         * sisters_initials and remarks are saved.
+         */
+        $transactionData = [
+            'item_id' => $item->id,
+            'ward_id' => 1,
+            'quantity_received' => 0,
+            'quantity_issued' => $qty,
+            'date' => self::normalizeDate($dateStr),
+            'recorded_by' => $actualUserId,
+        ];
+
+        /*
+         * Add Daily Count fields if the migration exists.
+         */
+        try {
+            if (
+                Schema::hasColumn(
+                    'general_transactions',
+                    'sisters_initials'
+                )
+            ) {
+                $transactionData[
+                    'sisters_initials'
+                ] = trim(
+                    (string) $sistersInitials
+                );
+            }
+
+            if (
+                Schema::hasColumn(
+                    'general_transactions',
+                    'remarks'
+                )
+            ) {
+                $transactionData[
+                    'remarks'
+                ] = trim(
+                    (string) $remarks
+                );
+            }
+        } catch (\Throwable $e) {
+            // Continue.
+        }
+
+        $transId = DB::table(
+            'general_transactions'
+        )->insertGetId($transactionData);
+
+        /*
+         * Calculate the new balance.
+         */
+        $received = (int) DB::table(
+            'general_transactions'
+        )
+            ->where(
+                'item_id',
+                $item->id
+            )
+            ->sum('quantity_received');
+
+        $issued = (int) DB::table(
+            'general_transactions'
+        )
+            ->where(
+                'item_id',
+                $item->id
+            )
+            ->sum('quantity_issued');
+
+        $balance = max(
+            0,
+            $received - $issued
+        );
+
+        self::logActivity(
+            "Daily count recorded for {$itemName}: "
+            . "Qty {$qty}, "
+            . "Sister {$sistersInitials}, "
+            . "Balance {$balance}",
+            $actualUserId
+        );
+
+        return [
+            'id' => (int) $transId,
+            'balance' => $balance,
+            'quantity_received' => $received,
+            'quantity_issued' => $issued,
+            'recorded_by' => $actualUserId,
+            'sisters_initials' => trim(
+                (string) $sistersInitials
+            ),
+            'remarks' => trim(
+                (string) $remarks
+            ),
+        ];
     }
 
     /**
-     * Helper to guess unit from name.
+     * Guess unit from item name.
      */
     private static function guessUnitFromName($name)
     {
-        if (str_contains($name, 'GLOVES') || str_contains($name, 'MASK')) return 'Box';
-        if (str_contains($name, 'ROLL') || str_contains($name, 'BANDAGE') || str_contains($name, 'WOOL') || str_contains($name, 'PLASTER')) return 'Roll';
-        if (str_contains($name, 'BOTTLE') || str_contains($name, 'IODINE') || str_contains($name, 'SYRUP') || str_contains($name, 'SANITIZER')) return 'Bottle';
-        if (str_contains($name, 'KIT')) return 'Kit';
-        if (str_contains($name, 'PARACETAMOL') || str_contains($name, 'TABS')) return 'Tabs';
+        $name = strtoupper((string) $name);
+
+        if (
+            str_contains($name, 'GLOVES')
+            ||
+            str_contains($name, 'MASK')
+        ) {
+            return 'Box';
+        }
+
+        if (
+            str_contains($name, 'ROLL')
+            ||
+            str_contains($name, 'BANDAGE')
+            ||
+            str_contains($name, 'WOOL')
+            ||
+            str_contains($name, 'PLASTER')
+        ) {
+            return 'Roll';
+        }
+
+        if (
+            str_contains($name, 'BOTTLE')
+            ||
+            str_contains($name, 'IODINE')
+            ||
+            str_contains($name, 'SYRUP')
+            ||
+            str_contains($name, 'SANITIZER')
+        ) {
+            return 'Bottle';
+        }
+
+        if (str_contains($name, 'KIT')) {
+            return 'Kit';
+        }
+
+        if (
+            str_contains($name, 'PARACETAMOL')
+            ||
+            str_contains($name, 'TABS')
+        ) {
+            return 'Tabs';
+        }
+
         return 'Pcs';
     }
 }

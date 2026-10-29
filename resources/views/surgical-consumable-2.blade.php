@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Surgical Consumable 2 - Ward Inventory System</title>
+    <title>Surgical Consumable 1 - Ward Inventory System</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,7 +38,7 @@
                 </div>
                 <div>
                     <h1 class="font-extrabold text-xl text-blue-900 leading-tight">Ward Inventory</h1>
-                    <p class="text-[10px] font-bold tracking-[0.18em] text-slate-400 uppercase">Surgical Consumables 2</p>
+                    <p class="text-[10px] font-bold tracking-[0.18em] text-slate-400 uppercase">Surgical Consumables 1</p>
                 </div>
             </div>
         </div>
@@ -166,7 +166,7 @@
             <!-- HERO -->
             <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 rounded-2xl p-7 text-white shadow-xl shadow-blue-600/10 flex items-center justify-between overflow-hidden relative">
                 <div class="relative z-10">
-                    <h2 class="text-3xl font-extrabold uppercase tracking-tight" x-text="selectedConsumable.name || 'SURGICAL CONSUMABLE 2'"></h2>
+                    <h2 class="text-3xl font-extrabold uppercase tracking-tight" x-text="selectedConsumable.name || 'SURGICAL CONSUMABLE 1'"></h2>
                     <p class="text-blue-100 text-sm font-medium mt-1">Current Ward Stock Balance</p>
                 </div>
 
@@ -1598,8 +1598,7 @@ function surgicalConsumableApp() {
                 const res = await fetch('/api/requisitions', {
                     headers: {
                         'Accept': 'application/json',
-                        'X-Role': this.currentRole
-                    }
+                                    }
                 });
 
                 if (!res.ok) {
@@ -1667,7 +1666,7 @@ function surgicalConsumableApp() {
 
         async fetchDailyCounts() {
             try {
-                const res = await fetch('/api/surgical-consumable-2/daily-counts', {
+                const res = await fetch('/api/daily-counts', {
                     headers: { 'Accept': 'application/json' }
                 });
 
@@ -1695,7 +1694,7 @@ function surgicalConsumableApp() {
             }
 
             try {
-                const res = await fetch('/api/surgical-consumable-2/daily-counts', {
+                const res = await fetch('/api/daily-counts', {
                     method: 'POST',
                     headers: this.jsonHeaders(),
                     body: JSON.stringify({
@@ -1738,8 +1737,7 @@ function surgicalConsumableApp() {
             return {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': this.csrfToken,
-                'X-Role': this.currentRole,
-                'Accept': 'application/json'
+                        'Accept': 'application/json'
             };
         },
 

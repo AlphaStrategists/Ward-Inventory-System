@@ -1744,8 +1744,7 @@ function localPurchaseApp() {
                 const res = await fetch('/api/local-purchases/requisitions', {
                     headers: {
                         'Accept': 'application/json',
-                        'X-Role': this.currentRole
-                    }
+                                    }
                 });
 
                 if (!res.ok) {
@@ -1884,8 +1883,7 @@ function localPurchaseApp() {
             return {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': this.csrfToken,
-                'X-Role': this.currentRole,
-                'Accept': 'application/json'
+                        'Accept': 'application/json'
             };
         },
 

@@ -28,31 +28,22 @@ class LocalPurchaseController extends Controller
      */
     public function index(Request $request, $role = null)
     {
-        $activeRole = strtolower(
-            $role ?? $request->query('role', 'admin')
-        );
+        $activeRole = $request->attributes->get('active_role');
+
+        if (!$activeRole) {
+            abort(403, 'Authenticated user role could not be determined.');
+        }
+
+        $activeRole = strtolower(trim((string) $activeRole));
 
         $user = $request->user();
 
-        $currentUserId = $user?->id
-            ?? session('ward_user_id')
-            ?? session('user_id')
-            ?? session('auth_user_id')
-            ?? null;
-
-        $currentUserName = $user?->name
-            ?? session('ward_user_name')
-            ?? session('user_name')
-            ?? session('auth_user_name')
-            ?? '';
-
-        if ($currentUserId && !$currentUserName) {
-            $dbUser = DB::table('users')
-                ->where('id', $currentUserId)
-                ->first();
-
-            $currentUserName = $dbUser?->name ?? '';
+        if (!$user) {
+            abort(401, 'Unauthenticated.');
         }
+
+        $currentUserId = (int) $user->id;
+        $currentUserName = (string) $user->name;
 
         return view('local-purchases', [
             'activeRole' => $activeRole,
@@ -136,70 +127,51 @@ class LocalPurchaseController extends Controller
      * Get the currently logged-in user.
      */
     private function currentUser(Request $request): array
-    {
-        $user = $request->user();
+{
+    $user = $request->user();
 
-        if ($user) {
-            return [
-                'id' => (int) $user->id,
-                'name' => (string) $user->name,
-            ];
-        }
-
-        $userId = session('ward_user_id')
-            ?? session('user_id')
-            ?? session('auth_user_id');
-
-        if ($userId) {
-            $dbUser = DB::table('users')
-                ->where('id', $userId)
-                ->first();
-
-            if ($dbUser) {
-                return [
-                    'id' => (int) $dbUser->id,
-                    'name' => (string) $dbUser->name,
-                ];
-            }
-        }
-
-        abort(response()->json([
-            'success' => false,
-            'message' => 'No authenticated user was found.',
-        ], 401));
+    if (!$user) {
+        throw new \RuntimeException(
+            'No authenticated user found.'
+        );
     }
 
-    /**
-     * Verify active role.
-     */
-    private function verifyRole(
-        Request $request,
-        array $allowedRoles
-    ) {
-        $activeRole = $request->attributes->get('active_role')
-            ?? $request->header('X-Role')
-            ?? $request->input('role')
-            ?? 'nurse';
+    return [
+        'id' => (int) $user->id,
+        'name' => (string) $user->name,
+    ];
+}
 
-        $activeRole = strtolower(trim($activeRole));
+private function verifyRole(Request $request, array $allowedRoles): string
+{
+    $activeRole = $request->attributes->get('active_role');
 
-        if (
-            $activeRole === 'admin' ||
-            in_array(
-                $activeRole,
-                array_map('strtolower', $allowedRoles),
-                true
-            )
-        ) {
-            return $activeRole;
-        }
-
+    if (!$activeRole) {
         abort(response()->json([
             'success' => false,
-            'message' =>
-                "Unauthorized: Role '{$activeRole}' is not permitted.",
+            'message' => 'Authenticated user role could not be determined.',
         ], 403));
     }
+
+    $activeRole = strtolower(trim((string) $activeRole));
+
+    $allowedRoles = array_map(
+        fn ($role) => strtolower(trim((string) $role)),
+        $allowedRoles
+    );
+
+    if (
+        $activeRole === 'admin' ||
+        in_array($activeRole, $allowedRoles, true)
+    ) {
+        return $activeRole;
+    }
+
+    abort(response()->json([
+        'success' => false,
+        'message' => "Unauthorized: Role '{$activeRole}' is not permitted.",
+    ], 403));
+}
 
     /**
      * Ensure general item exists.
@@ -1265,6 +1237,31 @@ class LocalPurchaseController extends Controller
     }
 
     /**
+     * Backwards-compatible requisition action endpoint.
+     */
+    public function updateRequisition(Request $request, $id)
+    {
+        $action = strtolower((string) $request->input('action', ''));
+
+        if ($action === 'approve') {
+            return $this->approveRequisition($request, $id);
+        }
+
+        if ($action === 'reject') {
+            return $this->rejectRequisition($request, $id);
+        }
+
+        if ($action === 'receive') {
+            return $this->receiveRequisition($request, $id);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Unsupported requisition action.',
+        ], 422);
+    }
+
+    /**
      * Delete pending Local Purchase request.
      */
     public function destroyRequisition(
@@ -1375,6 +1372,10 @@ class LocalPurchaseController extends Controller
     public function storeAdjustment(
         Request $request
     ) {
+        $this->verifyRole($request, ['nurse', 'admin']);
+
+        $actor = $this->currentUser($request);
+
         $validated = $request->validate([
             'date' =>
                 'required|string',
@@ -1387,8 +1388,6 @@ class LocalPurchaseController extends Controller
             'balance' =>
                 'required|string',
             'reason' =>
-                'required|string',
-            'adjusted_by' =>
                 'required|string',
         ]);
 
@@ -1412,11 +1411,12 @@ class LocalPurchaseController extends Controller
                 $validated['type'],
                 $amount,
                 $validated['reason'],
-                $validated['adjusted_by'],
+                $actor['id'],
                 $validated['date']
             );
 
         $validated['id'] = $transId;
+        $validated['adjusted_by'] = $actor['name'];
 
         return response()->json([
             'success' => true,
