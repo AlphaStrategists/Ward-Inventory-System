@@ -14,8 +14,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/*',
         ]);
+
         $middleware->alias([
+            // dev-two inventory role middleware
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+
+            // backup branch middleware
+            'permission' => \App\Http\Middleware\CheckRolePermission::class,
+            'admin' => \App\Http\Middleware\IsAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

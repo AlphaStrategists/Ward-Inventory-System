@@ -11,7 +11,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // No default records.
-        // Records should be added through the application.
+        $this->call([
+            RoleSeeder::class,
+            PermissionSeeder::class,
+            MasterDataSeeder::class,
+            WardInventorySeeder::class,
+            BulkCategorySeeder::class,
+        ]);
     }
 }
