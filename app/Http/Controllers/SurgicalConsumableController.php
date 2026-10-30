@@ -1137,13 +1137,6 @@ class SurgicalConsumableController extends Controller
      * No pharmacist stage exists for Surgical Consumable 1 anymore.
      * Keep this method only so old code does not cause a fatal error if called.
      */
-    public function dispenseRequisition(Request $request, $id)
-    {
-        return response()->json([
-            'success' => false,
-            'message' => 'Pharmacist dispensing is not part of the Surgical Consumable 1 workflow. The nurse records the received quantity after MS approval.',
-        ], 410);
-    }
 
     /**
      * Get stock adjustments for Surgical Consumable 1 from general_stock_adjustments.
