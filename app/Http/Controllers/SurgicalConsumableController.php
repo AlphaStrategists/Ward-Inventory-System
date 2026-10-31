@@ -377,18 +377,50 @@ class SurgicalConsumableController extends Controller
                 ->orderByDesc('orders.id')
                 ->select(
                     'orders.*',
-                    'requester.name as requester_name',
-                    'approver.name as approver_name'
+                    DB::raw("
+                        NULLIF(
+                            TRIM(
+                                CONCAT(
+                                    COALESCE(requester.first_name, ''),
+                                    ' ',
+                                    COALESCE(requester.last_name, '')
+                                )
+                            ),
+                            ''
+                        ) as requester_name
+                    "),
+                    DB::raw("
+                        NULLIF(
+                            TRIM(
+                                CONCAT(
+                                    COALESCE(approver.first_name, ''),
+                                    ' ',
+                                    COALESCE(approver.last_name, '')
+                                )
+                            ),
+                            ''
+                        ) as approver_name
+                    ")
                 )
                 ->get();
 
             foreach ($orders as $order) {
                 $meta = json_decode($order->remark, true) ?: [];
 
-                $categoryId = (int) ($meta['category_id'] ?? $this->categoryId);
+                // SC1 records are identified by module.
+                // Keep category_id only as a fallback for older records.
+                $module = $meta['module'] ?? null;
 
-                if ($categoryId !== (int) $this->categoryId) {
-                    continue;
+                if ($module !== null) {
+                    if ($module !== 'surgical_consumable_1') {
+                        continue;
+                    }
+                } else {
+                    $categoryId = (int) ($meta['category_id'] ?? $this->categoryId);
+
+                    if ($categoryId !== (int) $this->categoryId) {
+                        continue;
+                    }
                 }
 
                 $details = DB::table('order_details')
@@ -454,13 +486,13 @@ class SurgicalConsumableController extends Controller
                     }
                 }
 
-                $workflowStatus = strtolower(
+              $workflowStatus = strtolower(
                     (string) ($meta['workflow_status'] ?? $order->ms_approval_status ?? 'pending')
                 );
 
                 if ($order->ms_approval_status === 'Rejected') {
                     $workflowStatus = 'rejected';
-                } elseif ($meta['workflow_status'] === 'received') {
+                } elseif (($meta['workflow_status'] ?? '') === 'received') {
                     $workflowStatus = 'received';
                 } elseif ($order->ms_approval_status === 'Approved' && $workflowStatus === 'pending') {
                     $workflowStatus = 'approved';
@@ -500,6 +532,13 @@ class SurgicalConsumableController extends Controller
             }
         } catch (\Throwable $e) {
             report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], 500);
         }
 
         return response()->json($results);
@@ -565,6 +604,7 @@ class SurgicalConsumableController extends Controller
                 'ms_approval_status' => 'Pending',
                 'approved_by' => null,
                 'remark' => json_encode([
+                    'module' => 'surgical_consumable_1',
                     'category_id' => $this->categoryId,
                     'workflow_status' => 'pending',
                     'requested_by_name' => $actor['name'],
@@ -594,6 +634,7 @@ class SurgicalConsumableController extends Controller
             }
 
             $meta = [
+                'module' => 'surgical_consumable_1',
                 'category_id' => $this->categoryId,
                 'workflow_status' => 'pending',
                 'requested_by_name' => $actor['name'],
@@ -1197,8 +1238,10 @@ class SurgicalConsumableController extends Controller
     /**
      * Delete a stock adjustment record.
      */
-    public function destroyAdjustment($id)
+    public function destroyAdjustment(Request $request, $id)
     {
+        $this->verifyRole($request, ['nurse', 'admin']);
+
         WardDatabaseService::deleteAdjustment($id);
 
         return response()->json([
@@ -1232,22 +1275,18 @@ class SurgicalConsumableController extends Controller
             'date' => 'required|date',
             'item_name' => 'required|string|max:150',
             'qty_given' => 'required|integer|min:1',
-            'sisters_initials' => 'nullable|string|max:20',
+            'sisters_initials' => 'nullable|string|max:100',
             'remarks' => 'nullable|string|max:1000',
         ]);
 
         try {
-            $initials = $validated['sisters_initials']
-                ?: collect(preg_split('/\s+/', trim($actor['name'])))
-                    ->filter()
-                    ->map(fn ($part) => strtoupper(substr($part, 0, 1)))
-                    ->implode('');
+            $sistersName = trim($actor['name']);
 
             $result = WardDatabaseService::storeDailyCount(
-                $this->categoryId,
+                self::CATEGORY_ID,
                 $validated['item_name'],
                 (int) $validated['qty_given'],
-                $initials,
+                $sistersName,
                 $validated['remarks'] ?? '',
                 $validated['date'],
                 $actor['id']
@@ -1262,7 +1301,7 @@ class SurgicalConsumableController extends Controller
                     'item_name' => $validated['item_name'],
                     'qty_given' => (int) $validated['qty_given'],
                     'balance' => $result['balance'],
-                    'sisters_initials' => strtoupper($initials),
+                    'sisters_initials' => $sistersName,
                     'remarks' => $validated['remarks'] ?? '',
                 ],
             ], 201);

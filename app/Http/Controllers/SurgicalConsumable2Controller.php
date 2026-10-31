@@ -68,10 +68,30 @@ class SurgicalConsumable2Controller extends Controller{
      */
     public function getConsumables()
     {
-        $items = WardDatabaseService::getCategoryItems(
-            $this->categoryId,
-            $this->defaultConsumables
-        );
+        $items = DB::table('general_items')
+            ->where('category_id', $this->categoryId)
+            ->orderBy('name')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => (int) $item->id,
+                    'name' => $item->name,
+                    'balance' => (int) ($item->balance ?? 0),
+                    'unit' => $item->unit ?? 'Box',
+                ];
+            })
+            ->values();
+
+        if ($items->isEmpty()) {
+            $items = collect($this->defaultConsumables)->map(function ($item, $index) {
+                return [
+                    'id' => $index + 1,
+                    'name' => $item['name'],
+                    'balance' => (int) $item['balance'],
+                    'unit' => $item['unit'],
+                ];
+            });
+        }
 
         return response()->json($items);
     }
@@ -381,18 +401,50 @@ class SurgicalConsumable2Controller extends Controller{
                 ->orderByDesc('orders.id')
                 ->select(
                     'orders.*',
-                    'requester.name as requester_name',
-                    'approver.name as approver_name'
+                    DB::raw("
+                        NULLIF(
+                            TRIM(
+                                CONCAT(
+                                    COALESCE(requester.first_name, ''),
+                                    ' ',
+                                    COALESCE(requester.last_name, '')
+                                )
+                            ),
+                            ''
+                        ) as requester_name
+                    "),
+                    DB::raw("
+                        NULLIF(
+                            TRIM(
+                                CONCAT(
+                                    COALESCE(approver.first_name, ''),
+                                    ' ',
+                                    COALESCE(approver.last_name, '')
+                                )
+                            ),
+                            ''
+                        ) as approver_name
+                    ")
                 )
                 ->get();
 
             foreach ($orders as $order) {
-                $meta = json_decode($order->remark, true) ?: [];
+               $meta = json_decode($order->remark, true) ?: [];
 
-                $categoryId = (int) ($meta['category_id'] ?? $this->categoryId);
+                // SC2 records are identified by module.
+                // Keep category_id only as a fallback for older records.
+                $module = $meta['module'] ?? null;
 
-                if ($categoryId !== (int) $this->categoryId) {
-                    continue;
+                if ($module !== null) {
+                    if ($module !== 'surgical_consumable_2') {
+                        continue;
+                    }
+                } else {
+                    $categoryId = (int) ($meta['category_id'] ?? $this->categoryId);
+
+                    if ($categoryId !== (int) $this->categoryId) {
+                        continue;
+                    }
                 }
 
                 $details = DB::table('order_details')
@@ -464,7 +516,7 @@ class SurgicalConsumable2Controller extends Controller{
 
                 if ($order->ms_approval_status === 'Rejected') {
                     $workflowStatus = 'rejected';
-                } elseif ($meta['workflow_status'] === 'received') {
+                } elseif (($meta['workflow_status'] ?? '') === 'received') {
                     $workflowStatus = 'received';
                 } elseif ($order->ms_approval_status === 'Approved' && $workflowStatus === 'pending') {
                     $workflowStatus = 'approved';
@@ -504,147 +556,165 @@ class SurgicalConsumable2Controller extends Controller{
             }
         } catch (\Throwable $e) {
             report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], 500);
         }
 
-        return response()->json($results);
+return response()->json($results);
     }
 
     /**
      * STEP 1: Nurse creates a requisition.
      */
     public function storeRequisition(Request $request)
-    {
-        $this->verifyRole($request, ['nurse', 'admin']);
-        $this->ensureLookupData();
+{
+    $this->verifyRole($request, ['nurse', 'admin']);
+    $this->ensureLookupData();
 
-        $actor = $this->currentUser($request);
+    $actor = $this->currentUser($request);
 
-        $validated = $request->validate([
-            'date' => 'required|date',
-            'items' => 'required|array|min:1',
-            'items.*.name' => 'required|string|max:150',
-            'items.*.requested_qty_num' => 'required|integer|min:1',
-            'items.*.unit' => 'required|string|max:50',
-        ]);
+    $validated = $request->validate([
+        'date' => 'required|date',
+        'items' => 'required|array|min:1',
+        'items.*.name' => 'required|string|max:150',
+        'items.*.requested_qty_num' => 'required|integer|min:1',
+        'items.*.unit' => 'required|string|max:50',
+    ]);
 
-        $orderDate = date('Y-m-d H:i:s', strtotime($validated['date']));
+    $orderDate = date('Y-m-d H:i:s', strtotime($validated['date']));
 
-        $items = [];
+    $items = [];
 
-        foreach ($validated['items'] as $inputItem) {
-            $name = strtoupper(trim($inputItem['name']));
-            $unit = trim($inputItem['unit'] ?: 'Box');
-            $qty = (int) $inputItem['requested_qty_num'];
+    foreach ($validated['items'] as $inputItem) {
+        $name = strtoupper(trim($inputItem['name']));
+        $unit = trim($inputItem['unit'] ?: 'Box');
+        $qty = (int) $inputItem['requested_qty_num'];
 
-            $this->ensureGeneralItem($name, $this->categoryId, $unit);
+        /*
+         * SC2 currently uses the surgical consumable records
+         * stored under category_id = 1.
+         */
+        $consumableCategoryId = 1;
 
-            $currentBalance = $this->getCurrentBalance($name);
-
-            $items[] = [
-                'name' => $name,
-                'requested_qty_num' => $qty,
-                'requested_qty' => $qty . ' ' . $unit,
-                'received_qty_num' => 0,
-                'received_qty' => '',
-                'unit' => $unit,
-                'balance' => $currentBalance . ' ' . $unit,
-            ];
-        }
-
-        $reqNo = sprintf(
-            'REQ-%d-%s-%04d',
-            $this->categoryId,
-            date('YmdHis'),
-            random_int(1000, 9999)
+        $this->ensureGeneralItem(
+            $name,
+            $consumableCategoryId,
+            $unit
         );
 
-        DB::beginTransaction();
+        $currentBalance = DB::table('general_items')
+            ->where('category_id', $consumableCategoryId)
+            ->where('name', $name)
+            ->value('balance');
 
-        try {
-            $orderId = DB::table('orders')->insertGetId([
-                'ward_id' => 1,
-                'req_no' => $reqNo,
-                'date' => $orderDate,
-                'requested_by' => $actor['id'],
-                'ms_approval_status' => 'Pending',
-                'approved_by' => null,
-                'remark' => json_encode([
-                    'category_id' => $this->categoryId,
-                    'workflow_status' => 'pending',
-                    'requested_by_name' => $actor['name'],
-                    'requested_by_id' => $actor['id'],
-                    'items' => $items,
-                    'created_at' => now()->toIso8601String(),
-                ]),
-            ]);
+        $currentBalance = (int) ($currentBalance ?? 0);
 
-            foreach ($items as $index => $item) {
-                $medicineId = $this->ensureMedicineRecord(
-                    $item['name'],
-                    $this->categoryId,
-                    $item['unit']
-                );
+        $items[] = [
+            'name' => $name,
+            'requested_qty_num' => $qty,
+            'requested_qty' => $qty . ' ' . $unit,
+            'received_qty_num' => 0,
+            'received_qty' => '',
+            'unit' => $unit,
+            'balance' => $currentBalance . ' ' . $unit,
+        ];
+    }
 
-                $detailId = DB::table('order_details')->insertGetId([
-                    'order_id' => $orderId,
-                    'medicine_id' => $medicineId,
-                    'qty_requested' => $item['requested_qty_num'],
-                    'qty_issued' => 0,
-                    'remark' => $item['unit'],
-                ]);
+    $reqNo = sprintf(
+        'REQ-SC2-%s-%04d',
+        date('YmdHis'),
+        random_int(1000, 9999)
+    );
 
-                $items[$index]['id'] = $detailId;
-                $items[$index]['medicine_id'] = $medicineId;
-            }
+    DB::beginTransaction();
 
-            $meta = [
-                'category_id' => $this->categoryId,
+    try {
+        $orderId = DB::table('orders')->insertGetId([
+            'ward_id' => 1,
+            'req_no' => $reqNo,
+            'date' => $orderDate,
+            'requested_by' => $actor['id'],
+            'ms_approval_status' => 'Pending',
+            'approved_by' => null,
+            'remark' => json_encode([
+                'module' => 'surgical_consumable_2',
+                'category_id' => $consumableCategoryId,
                 'workflow_status' => 'pending',
                 'requested_by_name' => $actor['name'],
                 'requested_by_id' => $actor['id'],
                 'items' => $items,
                 'created_at' => now()->toIso8601String(),
-            ];
+            ]),
+        ]);
 
-            DB::table('orders')
-                ->where('id', $orderId)
-                ->update(['remark' => json_encode($meta)]);
+        foreach ($items as $index => $item) {
 
-            $this->logWorkflowEvent($orderId, 'CREATED', [
-                'req_no' => $reqNo,
-                'requested_by_id' => $actor['id'],
-                'requested_by' => $actor['name'],
-                'items' => $items,
-            ], $actor['id']);
+            $medicineId = $this->ensureMedicineRecord(
+                $item['name'],
+                $consumableCategoryId,
+                $item['unit']
+            );
 
-            DB::commit();
+            $detailId = DB::table('order_details')->insertGetId([
+                'order_id' => $orderId,
+                'medicine_id' => $medicineId,
+                'qty_requested' => $item['requested_qty_num'],
+                'qty_issued' => 0,
+                'remark' => $item['unit'],
+            ]);
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'id' => $orderId,
-                    'order_id' => $orderId,
-                    'req_no' => $reqNo,
-                    'date' => $orderDate,
-                    'status' => 'pending',
-                    'ms_approval_status' => 'Pending',
-                    'requested_by' => $actor['name'],
-                    'requested_by_id' => $actor['id'],
-                    'items' => $items,
-                ],
-                'message' => "Order #{$reqNo} submitted successfully. Waiting for MS approval.",
-            ], 201);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            report($e);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Unable to create the requisition: ' . $e->getMessage(),
-            ], 422);
+            $items[$index]['id'] = $detailId;
+            $items[$index]['medicine_id'] = $medicineId;
         }
+
+        $meta = [
+            'module' => 'surgical_consumable_2',
+            'category_id' => $consumableCategoryId,
+            'workflow_status' => 'pending',
+            'requested_by_name' => $actor['name'],
+            'requested_by_id' => $actor['id'],
+            'items' => $items,
+            'created_at' => now()->toIso8601String(),
+        ];
+
+        DB::table('orders')
+            ->where('id', $orderId)
+            ->update([
+                'remark' => json_encode($meta)
+            ]);
+
+        $this->logWorkflowEvent($orderId, 'CREATED', [
+            'req_no' => $reqNo,
+            'requested_by_id' => $actor['id'],
+            'requested_by' => $actor['name'],
+            'items' => $items,
+        ], $actor['id']);
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Surgical Consumable 2 requisition created successfully.',
+            'order_id' => $orderId,
+            'req_no' => $reqNo,
+        ], 201);
+
+    } catch (\Throwable $e) {
+
+        DB::rollBack();
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to create requisition.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
 
     /**
      * STEP 2: MS reviews the nurse request, changes quantities if necessary,
@@ -1201,8 +1271,10 @@ class SurgicalConsumable2Controller extends Controller{
     /**
      * Delete a stock adjustment record.
      */
-    public function destroyAdjustment($id)
+    public function destroyAdjustment(Request $request, $id)
     {
+        $this->verifyRole($request, ['nurse', 'admin']);
+
         WardDatabaseService::deleteAdjustment($id);
 
         return response()->json([
@@ -1236,22 +1308,18 @@ class SurgicalConsumable2Controller extends Controller{
             'date' => 'required|date',
             'item_name' => 'required|string|max:150',
             'qty_given' => 'required|integer|min:1',
-            'sisters_initials' => 'nullable|string|max:20',
+            'sisters_initials' => 'nullable|string|max:100',
             'remarks' => 'nullable|string|max:1000',
         ]);
 
         try {
-            $initials = $validated['sisters_initials']
-                ?: collect(preg_split('/\s+/', trim($actor['name'])))
-                    ->filter()
-                    ->map(fn ($part) => strtoupper(substr($part, 0, 1)))
-                    ->implode('');
+            $sistersName = trim($actor['name']);
 
             $result = WardDatabaseService::storeDailyCount(
-                $this->categoryId,
+                self::CATEGORY_ID,
                 $validated['item_name'],
                 (int) $validated['qty_given'],
-                $initials,
+                $sistersName,
                 $validated['remarks'] ?? '',
                 $validated['date'],
                 $actor['id']
@@ -1266,7 +1334,7 @@ class SurgicalConsumable2Controller extends Controller{
                     'item_name' => $validated['item_name'],
                     'qty_given' => (int) $validated['qty_given'],
                     'balance' => $result['balance'],
-                    'sisters_initials' => strtoupper($initials),
+                    'sisters_initials' => $sistersName,
                     'remarks' => $validated['remarks'] ?? '',
                 ],
             ], 201);

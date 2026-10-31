@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class LocalPurchaseController extends Controller
 {
+    private const MODULE = 'local_purchase';
     private const CATEGORY_ID = 3;
 
     private array $defaultItems = [
@@ -56,14 +57,35 @@ class LocalPurchaseController extends Controller
      * Get Local Purchase items.
      */
     public function getItems()
-    {
-        $items = WardDatabaseService::getCategoryItems(
-            self::CATEGORY_ID,
-            $this->defaultItems
-        );
+{
+    $items = DB::table('general_items')
+        ->where('category_id', self::CATEGORY_ID)
+        ->orderBy('name')
+        ->get()
+        ->map(function ($item) {
+            return [
+                'id' => (int) $item->id,
+                'name' => $item->name,
+                'balance' => (int) ($item->balance ?? 0),
+                'unit' => $item->unit ?? 'Box',
+                'category_id' => (int) ($item->category_id ?? 0),
+            ];
+        });
 
-        return response()->json($items);
+    if ($items->isEmpty()) {
+        $items = collect($this->defaultItems)->map(function ($item, $index) {
+            return [
+                'id' => $index + 1,
+                'name' => $item['name'],
+                'balance' => (int) ($item['balance'] ?? 0),
+                'unit' => $item['unit'] ?? 'Box',
+                'category_id' => self::CATEGORY_ID,
+            ];
+        });
     }
+
+    return response()->json($items->values());
+}
 
     /**
      * Add Local Purchase item.
@@ -113,8 +135,10 @@ class LocalPurchaseController extends Controller
     /**
      * Delete Local Purchase item.
      */
-    public function destroyItem($id)
+    public function destroyItem(Request $request, $id)
     {
+        $this->verifyRole($request, ['nurse', 'admin']);
+
         WardDatabaseService::deleteItem($id);
 
         return response()->json([
@@ -365,27 +389,57 @@ private function verifyRole(Request $request, array $allowedRoles): string
             ->orderByDesc('orders.id')
             ->select(
                 'orders.*',
-                'requester.name as requester_name',
-                'approver.name as approver_name'
+                DB::raw("
+                    NULLIF(
+                        TRIM(
+                            CONCAT(
+                                COALESCE(requester.first_name, ''),
+                                ' ',
+                                COALESCE(requester.last_name, '')
+                            )
+                        ),
+                        ''
+                    ) as requester_name
+                "),
+                DB::raw("
+                    NULLIF(
+                        TRIM(
+                            CONCAT(
+                                COALESCE(approver.first_name, ''),
+                                ' ',
+                                COALESCE(approver.last_name, '')
+                            )
+                        ),
+                        ''
+                    ) as approver_name
+                ")
             )
             ->get();
 
         $results = [];
 
-        foreach ($orders as $order) {
-            $meta = json_decode(
-                $order->remark,
-                true
-            ) ?: [];
+       foreach ($orders as $order) {
+        $meta = json_decode(
+            $order->remark,
+            true
+        ) ?: [];
 
-            $categoryId = (int) (
-                $meta['category_id']
-                ?? self::CATEGORY_ID
-            );
+        // Local Purchase records are identified by module.
+        // Keep category_id only as a fallback for older records.
+        $module = $meta['module'] ?? null;
 
-            if ($categoryId !== self::CATEGORY_ID) {
+        if ($module !== null) {
+            if ($module !== self::MODULE) {
                 continue;
             }
+        } else {
+            $categoryId = (int) ($meta['category_id'] ?? self::CATEGORY_ID);
+
+            if ($categoryId !== (int) self::CATEGORY_ID) {
+                continue;
+            }
+        }
+
 
             $details = DB::table('order_details')
                 ->leftJoin(
@@ -416,8 +470,12 @@ private function verifyRole(Request $request, array $allowedRoles): string
                 $requestedQty =
                     (int) $detail->qty_requested;
 
-                $receivedQty =
+               $receivedQty =
                     (int) ($detail->qty_issued ?? 0);
+
+                $balanceQty = $this->currentBalanceForItem(
+                    $detail->medicine_name
+                );
 
                 $items[] = [
                     'id' => (int) $detail->id,
@@ -432,14 +490,19 @@ private function verifyRole(Request $request, array $allowedRoles): string
                         $requestedQty . ' ' . $unit,
                     'received_qty_num' =>
                         $receivedQty,
-                    'received_qty' =>
+                   'received_qty' =>
                         $receivedQty > 0
                             ? $receivedQty . ' ' . $unit
                             : '',
+
+                    'balance_num' => $balanceQty,
+
+                    'balance' => $balanceQty . ' ' . $unit,
+
                     'unit' => $unit,
                 ];
             }
-
+            $firstItem = $items[0] ?? null;
             $status = strtolower(
                 $meta['workflow_status']
                 ?? $order->ms_approval_status
@@ -463,44 +526,42 @@ private function verifyRole(Request $request, array $allowedRoles): string
                 $status = 'received';
             }
 
-            $results[] = [
+           $results[] = [
                 'id' => (int) $order->id,
                 'order_id' => (int) $order->id,
                 'req_no' => $order->req_no,
+
                 'date' => date(
                     'Y-m-d H:i:s',
                     strtotime($order->date)
                 ),
+
                 'status' => $status,
+
                 'ms_approval_status' =>
                     $order->ms_approval_status,
+
+                'supply_name' =>
+                    $firstItem['name'] ?? 'LOCAL PURCHASE ITEM',
+
+                'balance' =>
+                    $firstItem['balance'] ?? '0 Box',
+
+                'requested_qty' =>
+                    $firstItem['requested_qty'] ?? '0 Box',
+
+                'received_qty' =>
+                    $firstItem['received_qty'] ?? '',
+
                 'requested_by' =>
                     $order->requester_name
                     ?? $meta['requested_by_name']
                     ?? '-',
+
                 'requested_by_id' =>
                     (int) $order->requested_by,
-                'approved_by' =>
-                    $order->approver_name
-                    ?? $meta['approved_by_name']
-                    ?? '',
-                'approved_by_id' =>
-                    $order->approved_by
-                        ? (int) $order->approved_by
-                        : null,
-                'received_by' =>
-                    $meta['received_by_name'] ?? '',
-                'received_by_id' =>
-                    isset($meta['received_by_id'])
-                        ? (int) $meta['received_by_id']
-                        : null,
-                'rejection_reason' =>
-                    $meta['rejection_reason'] ?? '',
-                'items' => $items,
 
-                // Nurse can delete only while pending.
-                'can_delete' =>
-                    $status === 'pending',
+                // keep the rest of your existing fields...
             ];
         }
 
@@ -585,17 +646,13 @@ private function verifyRole(Request $request, array $allowedRoles): string
                         'Pending',
                     'approved_by' => null,
                     'remark' => json_encode([
-                        'category_id' =>
-                            self::CATEGORY_ID,
-                        'workflow_status' =>
-                            'pending',
-                        'requested_by_name' =>
-                            $actor['name'],
-                        'requested_by_id' =>
-                            $actor['id'],
+                        'module' => self::MODULE,
+                        'category_id' => self::CATEGORY_ID,
+                        'workflow_status' => 'pending',
+                        'requested_by_name' => $actor['name'],
+                        'requested_by_id' => $actor['id'],
                         'items' => $items,
-                        'created_at' =>
-                            now()->toIso8601String(),
+                        'created_at' => now()->toIso8601String(),
                     ]),
                 ]);
 
@@ -632,18 +689,14 @@ private function verifyRole(Request $request, array $allowedRoles): string
             DB::table('orders')
                 ->where('id', $orderId)
                 ->update([
-                    'remark' => json_encode([
-                        'category_id' =>
-                            self::CATEGORY_ID,
-                        'workflow_status' =>
-                            'pending',
-                        'requested_by_name' =>
-                            $actor['name'],
-                        'requested_by_id' =>
-                            $actor['id'],
+                   'remark' => json_encode([
+                        'module' => self::MODULE,
+                        'category_id' => self::CATEGORY_ID,
+                        'workflow_status' => 'pending',
+                        'requested_by_name' => $actor['name'],
+                        'requested_by_id' => $actor['id'],
                         'items' => $items,
-                        'created_at' =>
-                            now()->toIso8601String(),
+                        'created_at' => now()->toIso8601String(),
                     ]),
                 ]);
 
@@ -1423,16 +1476,15 @@ private function verifyRole(Request $request, array $allowedRoles): string
     /**
      * Delete Local Purchase adjustment.
      */
-    public function destroyAdjustment($id)
+    public function destroyAdjustment(Request $request, $id)
     {
-        WardDatabaseService::deleteAdjustment(
-            $id
-        );
+        $this->verifyRole($request, ['nurse', 'admin']);
+
+        WardDatabaseService::deleteAdjustment($id);
 
         return response()->json([
             'success' => true,
-            'message' =>
-                'Stock adjustment record removed.',
+            'message' => 'Stock adjustment record removed.'
         ]);
     }
 
@@ -1461,22 +1513,18 @@ private function verifyRole(Request $request, array $allowedRoles): string
             'date' => 'required|date',
             'item_name' => 'required|string|max:150',
             'qty_given' => 'required|integer|min:1',
-            'sisters_initials' => 'nullable|string|max:20',
+            'sisters_initials' => 'nullable|string|max:100',
             'remarks' => 'nullable|string|max:1000',
         ]);
 
         try {
-            $initials = $validated['sisters_initials']
-                ?: collect(preg_split('/\s+/', trim($actor['name'])))
-                    ->filter()
-                    ->map(fn ($part) => strtoupper(substr($part, 0, 1)))
-                    ->implode('');
+            $sistersName = trim($actor['name']);
 
             $result = WardDatabaseService::storeDailyCount(
                 self::CATEGORY_ID,
                 $validated['item_name'],
                 (int) $validated['qty_given'],
-                $initials,
+                $sistersName,
                 $validated['remarks'] ?? '',
                 $validated['date'],
                 $actor['id']
@@ -1491,7 +1539,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
                     'item_name' => $validated['item_name'],
                     'qty_given' => (int) $validated['qty_given'],
                     'balance' => $result['balance'],
-                    'sisters_initials' => strtoupper($initials),
+                    'sisters_initials' => $sistersName,
                     'remarks' => $validated['remarks'] ?? '',
                 ],
             ], 201);

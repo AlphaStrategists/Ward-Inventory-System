@@ -437,7 +437,6 @@
 
                 <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs text-slate-500">
                     <span>Showing <strong class="text-slate-800" x-text="filteredRequisitions.length"></strong> record(s)</span>
-                    <span class="font-semibold">No pharmacist stage in this workflow</span>
                 </div>
             </section>
 
@@ -802,7 +801,9 @@
                             <tr>
                                 <td class="py-4 px-4 font-bold text-slate-800" x-text="item.name"></td>
                                 <td class="py-4 px-4">
-                                    <span class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-extrabold" x-text="`${item.requested_qty_num} ${item.unit}`"></span>
+                                    <span class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-extrabold"
+                                    x-text="item.requested_qty || '--'">
+                                    </span>
                                 </td>
                                 <td class="py-4 px-4">
                                     <div class="flex items-center gap-2">
@@ -1728,16 +1729,25 @@ function localPurchaseApp() {
             }
         },
 
-        async fetchConsumables() {
+       async fetchConsumables() {
             try {
-                const res = await fetch('/api/local-purchases/items', { headers: { 'Accept': 'application/json' } });
-                if (!res.ok) return;
+                const res = await fetch('/api/local-purchases/items', {
+                    headers: { 'Accept': 'application/json' }
+                });
 
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    throw new Error(data.message || 'Unable to load local purchase items.');
+                }
+
                 this.consumables = Array.isArray(data) ? data : [];
 
                 if (this.selectedConsumable.id) {
-                    const current = this.consumables.find(item => Number(item.id) === Number(this.selectedConsumable.id));
+                    const current = this.consumables.find(
+                        item => Number(item.id) === Number(this.selectedConsumable.id)
+                    );
+
                     if (current) {
                         this.selectedConsumable = { ...current };
                         return;
@@ -1749,6 +1759,10 @@ function localPurchaseApp() {
                 }
             } catch (error) {
                 console.error('fetchConsumables', error);
+                this.showToast(
+                    error.message || 'Unable to load local purchase items.',
+                    'error'
+                );
             }
         },
 
@@ -1756,26 +1770,36 @@ function localPurchaseApp() {
             try {
                 const res = await fetch('/api/local-purchases/requisitions', {
                     headers: {
-                        'Accept': 'application/json',
-                                    }
+                        'Accept': 'application/json'
+                    }
                 });
 
+                const data = await res.json().catch(() => ({}));
+
                 if (!res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    console.error(data.message || 'Unable to load requisitions.');
-                    return;
+                    throw new Error(
+                        data.message || 'Unable to load requisitions.'
+                    );
                 }
 
-                const data = await res.json();
+                this.requisitions = Array.isArray(data)
+                    ? data.map(record => ({
+                        ...record,
+                        items: Array.isArray(record.items)
+                            ? record.items
+                            : [],
+                        requested_qty: record.requested_qty || '',
+                        received_qty: record.received_qty || ''
+                    }))
+                    : [];
 
-                this.requisitions = Array.isArray(data) ? data.map(record => ({
-                    ...record,
-                    items: Array.isArray(record.items) ? record.items : [],
-                    requested_qty: record.requested_qty || '',
-                    received_qty: record.received_qty || ''
-                })) : [];
             } catch (error) {
                 console.error('fetchRequisitions', error);
+
+                this.showToast(
+                    error.message || 'Unable to load requisitions.',
+                    'error'
+                );
             }
         },
 
@@ -1829,12 +1853,21 @@ function localPurchaseApp() {
                     headers: { 'Accept': 'application/json' }
                 });
 
-                if (!res.ok) return;
+                const data = await res.json().catch(() => ({}));
 
-                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(
+                        data.message || 'Unable to load daily count records.'
+                    );
+                }
+
                 this.dailyCounts = Array.isArray(data) ? data : [];
             } catch (error) {
                 console.error('fetchDailyCounts', error);
+                this.showToast(
+                    error.message || 'Unable to load daily count records.',
+                    'error'
+                );
             }
         },
 
@@ -1860,7 +1893,7 @@ function localPurchaseApp() {
                         date: this.newDailyCount.date,
                         item_name: this.selectedConsumable.name,
                         qty_given: qty,
-                        sisters_initials: this.getInitials(this.currentUserName),
+                        sisters_initials: this.currentUserName,
                         remarks: this.newDailyCount.remarks || ''
                     })
                 });
@@ -1883,12 +1916,25 @@ function localPurchaseApp() {
 
         async fetchAdjustments() {
             try {
-                const res = await fetch('/api/local-purchases/adjustments', { headers: { 'Accept': 'application/json' } });
-                if (!res.ok) return;
-                const data = await res.json();
+                const res = await fetch('/api/local-purchases/adjustments', {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    throw new Error(
+                        data.message || 'Unable to load stock adjustments.'
+                    );
+                }
+
                 this.adjustments = Array.isArray(data) ? data : [];
             } catch (error) {
                 console.error('fetchAdjustments', error);
+                this.showToast(
+                    error.message || 'Unable to load stock adjustments.',
+                    'error'
+                );
             }
         },
 

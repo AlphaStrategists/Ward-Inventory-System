@@ -58,11 +58,9 @@ class User extends Authenticatable
 
     public function getRoleAttribute(): ?string
     {
-        if (isset($this->attributes['role']) && !empty($this->attributes['role'])) {
-            return $this->attributes['role'];
-        }
-
-        return $this->roleRelation?->role_name;
+        return isset($this->attributes['role'])
+            ? trim((string) $this->attributes['role'])
+            : null;
     }
 
     public function generalTransactions(): HasMany
