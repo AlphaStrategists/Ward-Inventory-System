@@ -31,7 +31,7 @@ use App\Http\Controllers\UnitController;
 */
 
 Route::get('/', function () {
-    return view('home');
+    return view('login');
 });
 
 Route::get('/home', function () {
