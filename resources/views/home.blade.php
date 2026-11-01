@@ -1521,7 +1521,7 @@
 
 <body class="bg-slate-50 text-slate-800">
 
-@php
+    @php
     /*
     |--------------------------------------------------------------------------
     | ORIGINAL DATABASE ROLE
@@ -1532,8 +1532,8 @@
     |
     */
     $originalRole = auth()->check()
-        ? trim((string) auth()->user()->role)
-        : null;
+    ? trim((string) auth()->user()->role)
+    : null;
 
     /*
     |--------------------------------------------------------------------------
@@ -1545,21 +1545,21 @@
     |
     */
     $surgicalRoleMap = [
-        'Admin'      => 'admin',
-        'Doctor'     => 'ms',
-        'Nurse'      => 'nurse',
-        'Pharmacist' => 'pharmacist',
-        'Head Nurse' => 'head_nurse',
+    'Admin' => 'admin',
+    'Doctor' => 'ms',
+    'Nurse' => 'nurse',
+    'Pharmacist' => 'pharmacist',
+    'Head Nurse' => 'head_nurse',
     ];
 
     $surgicalRole = $surgicalRoleMap[$originalRole] ?? null;
 
     $hasSurgicalAccess = in_array(
-        $surgicalRole,
-        ['admin', 'ms', 'nurse', 'pharmacist'],
-        true
+    $surgicalRole,
+    ['admin', 'ms', 'nurse', 'pharmacist'],
+    true
     );
-@endphp
+    @endphp
 
     <header class="relative min-h-[460px] overflow-hidden">
 
@@ -1794,34 +1794,23 @@
 
                                     <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
 
-                                        @if ($hasSurgicalAccess)
+                                        <a href="{{ route($surgicalRole . '.surgical-consumable-1') }}"
+                                            class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-kit-medical text-slate-400"></i>
+                                            Surgical Consumables 1
+                                        </a>
 
-                                            <a href="{{ route($surgicalRole . '.surgical-consumable-1') }}"
-                                                class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
-                                                <i class="fa-solid fa-kit-medical text-slate-400"></i>
-                                                Surgical Consumables 1
-                                            </a>
+                                        <a href="{{ route($surgicalRole . '.surgical-consumable-2') }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-boxes-stacked text-slate-400"></i>
+                                            Surgical Consumables 2
+                                        </a>
 
-                                            <a href="{{ route($surgicalRole . '.surgical-consumable-2') }}"
-                                                class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
-                                                <i class="fa-solid fa-boxes-stacked text-slate-400"></i>
-                                                Surgical Consumables 2
-                                            </a>
-
-                                            <a href="{{ route($surgicalRole . '.local-purchases') }}"
-                                                class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
-                                                <i class="fa-solid fa-cart-shopping text-slate-400"></i>
-                                                Local Purchases
-                                            </a>
-
-                                        @else
-
-                                            <div class="px-4 py-3 text-sm text-slate-500">
-                                                Surgical inventory access is not available for your role.
-                                            </div>
-
-                                        @endif
-
+                                        <a href="{{ route($surgicalRole . '.local-purchases') }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-cart-shopping text-slate-400"></i>
+                                            Local Purchases
+                                        </a>
                                     </div>
 
                                 </div>
@@ -1951,7 +1940,7 @@
 
                     </div>
 
-                    
+
                     <!-- Reports -->
                     <a
                         href="{{ route('test'   ) }}"
@@ -2077,11 +2066,11 @@
 
                         <div class="group/menu relative mt-5 inline-block">
 
-                            <a href="#"
+                            <div
                                 class="inline-flex items-center font-semibold text-[#1894f2] transition group-hover/menu:text-[#003af8]">
                                 Manage Medicines
                                 <i class="fa-solid fa-chevron-down ml-2 text-xs transition group-hover/menu:rotate-180"></i>
-                            </a>
+                            </div>
 
                             {{-- pt-2 keeps the hover area connected so the menu doesn't vanish when the cursor moves down --}}
                             <div
@@ -2152,21 +2141,37 @@
 
                         </p>
 
-                        @if ($hasSurgicalAccess)
-                            <a
-                                href="{{ route($surgicalRole . '.surgical-consumable-1') }}"
-                                class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
+                        <div class="group/menu relative mt-5 inline-block">
 
-                                Manage Surgical Items
+                            <div
+                                class="inline-flex items-center font-semibold text-[#1894f2] transition group-hover/menu:text-[#003af8]">
+                                Manage Surgicals Items
+                                <i class="fa-solid fa-chevron-down ml-2 text-xs transition group-hover/menu:rotate-180"></i>
+                            </div>
 
-                                <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
+                            {{-- pt-2 keeps the hover area connected so the menu doesn't vanish when the cursor moves down --}}
+                            <div
+                                class="invisible absolute left-0 top-full z-10 w-56 pt-2 opacity-0 transition duration-200 group-hover/menu:visible group-hover/menu:opacity-100">
+                                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                    <a href="{{ route($surgicalRole . '.surgical-consumable-1') }}"
+                                        class="flex items-center px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-kit-medical mr-3 text-slate-400"></i>
+                                        Surgical Consumables 1
+                                    </a>
+                                    <a href="{{ route($surgicalRole . '.surgical-consumable-2') }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-boxes-stacked mr-3 text-slate-400"></i>
+                                        Surgical Consumables 2
+                                    </a>
+                                    <a href="{{ route($surgicalRole . '.local-purchases') }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-cart-shopping mr-3 text-slate-400"></i>
+                                        Local Purchases
+                                    </a>
+                                </div>
+                            </div>
 
-                            </a>
-                        @else
-                            <span class="mt-5 inline-flex items-center font-semibold text-slate-400">
-                                Access restricted
-                            </span>
-                        @endif
+                        </div>
 
                     </div>
 
