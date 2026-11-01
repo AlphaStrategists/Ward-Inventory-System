@@ -189,8 +189,8 @@
                                 <option value="" disabled {{ old('role') ? '' : 'selected' }}>
                                     Select a role
                                 </option>
-                                <option value="Doctor" {{ old('role') === 'Doctor' ? 'selected' : '' }}>
-                                    Doctor
+                                <option value="Ms" {{ old('role') === 'Ms' ? 'selected' : '' }}>
+                                    Ms
                                 </option>
                                 <option value="Nurse" {{ old('role') === 'Nurse' ? 'selected' : '' }}>
                                     Nurse
