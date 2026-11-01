@@ -55,8 +55,8 @@
         <!-- SIDEBAR -->
         <!-- ================================================================ -->
         <aside class="w-[310px] shrink-0 bg-white border-r border-slate-200 flex flex-col sticky top-0 h-screen">
-            <div class="p-6 pb-4 border-b border-transparent">
-                <div class="flex items-center gap-3 mb-6">
+            <div class="p-4 pb-4 border-b border-transparent">
+                <div class="flex items-center justify-center gap-3 mb-6">
                     <!-- Icon -->
                     <div class="text-[#3B82F6]">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1116,9 +1116,8 @@
         function localPurchaseApp() {
             return {
                 csrfToken: '',
-                currentRole: @json($activeRole),
-                currentUserId: @json($currentUserId),
-                currentUserName: @json($currentUserName),
+                isLeaving: false,
+                isPolling: false,
 
                 sidebarSearch: '',
                 logSearch: '',
@@ -1191,25 +1190,23 @@
                 },
 
                 init() {
-                    this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    window.addEventListener('beforeunload', () => {
+                        this.isLeaving = true;
+                    });
 
-                    this.currentRole = String(this.currentRole || 'nurse').toLowerCase();
-
-                    this.fetchConsumables();
-                    this.fetchRequisitions();
-                    this.fetchAdjustments();
-                    this.fetchDailyCounts();
-
-                    // Keep the requisition list fresh for nurse/MS screens.
-                    if (this.currentRole === 'nurse' || this.currentRole === 'ms' || this.currentRole === 'admin' || this.currentRole === 'pharmacist') {
-                        setInterval(() => {
-                            if (!this.isAnyModalOpen()) {
-                                this.fetchRequisitions();
-                                this.fetchConsumables();
-                                this.fetchDailyCounts();
-                            }
-                        }, 15000);
-                    }
+                    setInterval(async () => {
+                        if (document.hidden || this.isLeaving || this.isPolling || this.isAnyModalOpen()) return;
+                        this.isPolling = true;
+                        try {
+                            await Promise.all([
+                                this.fetchRequisitions(true),
+                                this.fetchConsumables(true),
+                                this.fetchDailyCounts(true),
+                            ]);
+                        } finally {
+                            this.isPolling = false;
+                        }
+                    }, 30000);
                 },
 
                 isAnyModalOpen() {

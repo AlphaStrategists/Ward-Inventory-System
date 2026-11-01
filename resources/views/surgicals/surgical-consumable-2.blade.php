@@ -55,72 +55,75 @@
         <!-- SIDEBAR -->
         <!-- ================================================================ -->
         <aside class="w-[310px] shrink-0 bg-white border-r border-slate-200 flex flex-col sticky top-0 h-screen">
-            <div class="p-6 border-b border-slate-100">
-                <div class="flex items-center gap-3">
-                    <div class="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
-                        <i class="fa-solid fa-flask text-lg"></i>
+            <div class="p-4 pb-4 border-b border-transparent">
+                <div class="flex items-center justify-center gap-3 mb-6">
+                    <!-- Icon -->
+                    <div class="text-[#3B82F6]">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                        </svg>
                     </div>
                     <div>
-                        <h1 class="font-extrabold text-xl text-blue-900 leading-tight">Ward Inventory</h1>
-                        <p class="text-[10px] font-bold tracking-[0.18em] text-slate-400 uppercase">Surgical Consumables 2</p>
+                        <h1 class="text-xl font-bold text-[#1E3A8A] tracking-tight leading-tight">Ward Inventory</h1>
+                        <p class="text-[10px] font-bold text-slate-400 tracking-[0.15em] uppercase mt-0.5">Surgical Consumables 2</p>
                     </div>
                 </div>
-            </div>
 
-            <div class="p-5 border-b border-slate-100 space-y-3">
-                <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                    <input
-                        type="text"
-                        x-model="sidebarSearch"
-                        placeholder="Search consumables..."
-                        class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+                <div class="p-5 border-b border-slate-100 space-y-3">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input
+                            type="text"
+                            x-model="sidebarSearch"
+                            placeholder="Search local purchase items..."
+                            class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+                    </div>
+
+                    <template x-if="currentRole === 'admin'">
+                        <button
+                            @click="openAddConsumableModal()"
+                            class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus"></i>
+                            Add Local Purchase Item
+                        </button>
+                    </template>
                 </div>
 
-                <template x-if="currentRole === 'admin'">
-                    <button
-                        @click="openAddConsumableModal()"
-                        class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-plus"></i>
-                        Add Consumable
-                    </button>
-                </template>
-            </div>
-
-            <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
-                <template x-for="item in filteredConsumables" :key="item.id">
-                    <button
-                        @click="selectConsumable(item)"
-                        class="w-full text-left p-3.5 rounded-xl border transition-all"
-                        :class="selectedConsumable.id === item.id
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
+                    <template x-for="item in filteredConsumables" :key="item.id">
+                        <button
+                            @click="selectConsumable(item)"
+                            class="w-full text-left p-3.5 rounded-xl border transition-all"
+                            :class="selectedConsumable.id === item.id
                         ? 'bg-blue-50 border-blue-200 border-l-4 border-l-blue-600'
                         : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300'">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <div class="font-bold text-sm text-slate-900 uppercase truncate" x-text="item.name"></div>
-                                <template x-if="isLowStock(item)">
-                                    <span class="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded bg-red-50 border border-red-200 text-red-700 text-[9px] font-extrabold uppercase">
-                                        <i class="fa-solid fa-triangle-exclamation"></i>
-                                        Low stock
-                                    </span>
-                                </template>
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <div class="font-bold text-sm text-slate-900 uppercase truncate" x-text="item.name"></div>
+                                    <template x-if="isLowStock(item)">
+                                        <span class="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded bg-red-50 border border-red-200 text-red-700 text-[9px] font-extrabold uppercase">
+                                            <i class="fa-solid fa-triangle-exclamation"></i>
+                                            Low stock
+                                        </span>
+                                    </template>
+                                </div>
+                                <span
+                                    class="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold"
+                                    :class="selectedConsumable.id === item.id ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'"
+                                    x-text="`${item.balance} ${item.unit}`"></span>
                             </div>
-                            <span
-                                class="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold"
-                                :class="selectedConsumable.id === item.id ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'"
-                                x-text="`${item.balance} ${item.unit}`"></span>
-                        </div>
-                    </button>
-                </template>
+                        </button>
+                    </template>
 
-                <div x-show="filteredConsumables.length === 0" class="text-center py-10 text-slate-400 text-xs">
-                    No consumables found.
+                    <div x-show="filteredConsumables.length === 0" class="text-center py-10 text-slate-400 text-xs">
+                        No consumables found.
+                    </div>
                 </div>
-            </div>
 
-            <div class="p-4 border-t border-slate-100 bg-slate-50/60 text-[11px] text-slate-500 flex justify-between">
-                <span>Total items: <strong class="text-slate-700" x-text="consumables.length"></strong></span>
-                <span class="text-emerald-600 font-bold">● Live Stock</span>
+                <div class="p-4 border-t border-slate-100 bg-slate-50/60 text-[11px] text-slate-500 flex justify-between">
+                    <span>Total items: <strong class="text-slate-700" x-text="consumables.length"></strong></span>
+                    <span class="text-emerald-600 font-bold">● Live Stock</span>
+                </div>
             </div>
         </aside>
 
@@ -130,53 +133,78 @@
         <main class="flex-1 min-w-0">
 
             <!-- TOP BAR -->
-            <header class="h-[82px] bg-white border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-20">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
-                        <i class="fa-solid fa-plus"></i>
-                    </div>
-                    <div>
-                        <h2 class="font-extrabold text-lg text-slate-900">Hospital Inventory Management System</h2>
-                        <p class="text-[10px] font-bold tracking-[0.18em] text-slate-400 uppercase">Ward Stock Management</p>
-                    </div>
-                </div>
+            <div class="w-full bg-white border-b border-slate-200 px-8 py-3 flex shadow-sm">
+                <div class="ms-auto w-full flex justify-start sm:justify-start items-center gap-6">
+                    <a
+                        href="{{ route('home') }}"
+                        class="flex items-center gap-3">
 
-                <div class="relative" x-data="{ userMenuOpen: false }">
-                    <button
-                        type="button"
-                        @click="userMenuOpen = !userMenuOpen"
-                        @click.outside="userMenuOpen = false"
-                        class="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-slate-50 transition">
-                        <div class="hidden md:block text-right">
-                            <div class="text-sm font-bold text-slate-800" x-text="currentUserName || 'Authenticated User'"></div>
-                            <div class="text-[10px] font-bold text-slate-400 uppercase" x-text="currentRole === 'ms' ? 'Medical Superintendent' : currentRole"></div>
-                        </div>
-                        <div class="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 text-blue-700 flex items-center justify-center font-extrabold" x-text="getInitials(currentUserName || currentRole)"></div>
-                        <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
-                    </button>
-
-                    <div
-                        x-show="userMenuOpen"
-                        x-cloak
-                        x-transition
-                        class="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
-                        <div class="px-4 py-3 border-b border-slate-100">
-                            <div class="text-xs font-extrabold text-slate-800" x-text="currentUserName || 'Authenticated User'"></div>
-                            <div class="text-[10px] text-slate-400 uppercase font-bold mt-1" x-text="currentRole === 'ms' ? 'Medical Superintendent' : currentRole"></div>
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1894f2] text-white shadow-md">
+                            <i class="fa-solid fa-plus text-lg"></i>
                         </div>
 
-                        <form method="POST" action="{{ url('/logout') }}">
-                            @csrf
-                            <button
-                                type="submit"
-                                class="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-bold text-red-600 hover:bg-red-50 transition">
-                                <i class="fa-solid fa-right-from-bracket w-4"></i>
-                                Logout
-                            </button>
-                        </form>
+                        <div class="hidden sm:block">
+
+                            <span class="block text-base font-bold text-slate-800">
+                                Hospital Inventory Management System
+                            </span>
+
+                            <span class="block text-[10px] font-medium uppercase tracking-wider text-[#7b838f]">
+                                Hospital Management
+                            </span>
+
+                        </div>
+
+                    </a>
+
+                    <div class="h-6 w-px bg-slate-200 hidden sm:block"></div>
+
+                    <a href="{{ route('home') }}"
+                        class="hidden sm:inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#1894f2] bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95">
+                        <i class="fa-solid fa-arrow-left text-[11px]"></i>
+                        Back to Home
+                    </a>
+                </div>
+                <div class="ms-auto justify-content-end w-full flex justify-end">
+                    <div x-data="{ open: false }" class="relative dropdown">
+                        <button @click="open = !open" @click.away="open = false" class="dropdown-toggle flex items-center gap-3 focus:outline-none hover:bg-slate-50 p-1.5 pr-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">
+                            <div class="text-right hidden sm:block">
+                                <div class="text-sm font-bold text-slate-700 leading-tight">{{ auth()->user()->name ?? 'Guest User' }}</div>
+                                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ auth()->user()->role ?? 'Nurse' }}</div>
+                            </div>
+                            <div class="w-9 h-9 rounded-full bg-blue-100 text-[#3B82F6] flex items-center justify-center font-bold text-sm border border-blue-200 shadow-sm">
+                                {{ substr(auth()->user()->name ?? 'U', 0, 1) }}
+                            </div>
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+
+                        <div x-show="open" x-cloak
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="transform opacity-0 scale-95"
+                            x-transition:enter-end="transform opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="transform opacity-100 scale-100"
+                            x-transition:leave-end="transform opacity-0 scale-95"
+                            class="dropdown-menu absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
+                            <div class="px-4 py-3 border-b border-slate-50 mb-1">
+                                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Signed in as</p>
+                                <p class="text-sm font-semibold text-slate-700 truncate">{{ auth()->user()->email ?? 'user@example.com' }}</p>
+                            </div>
+                            <form action="{{ route('logout') }}" method="POST" class="w-full m-0 p-0">
+                                @csrf
+                                <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-semibold transition-colors flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                    </svg>
+                                    Logout
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
-            </header>
+            </div>
 
             <div class="p-8 space-y-6">
 
@@ -1087,9 +1115,8 @@
         function surgicalConsumableApp() {
             return {
                 csrfToken: '{{ csrf_token() }}',
-                currentRole: @json($activeRole),
-                currentUserId: @json($currentUserId),
-                currentUserName: @json($currentUserName),
+                isLeaving: false,
+                isPolling: false,
 
                 sidebarSearch: '',
                 logSearch: '',
@@ -1162,25 +1189,23 @@
                 },
 
                 init() {
-                    this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    window.addEventListener('beforeunload', () => {
+                        this.isLeaving = true;
+                    });
 
-                    this.currentRole = String(this.currentRole || 'nurse').toLowerCase();
-
-                    this.fetchConsumables();
-                    this.fetchRequisitions();
-                    this.fetchAdjustments();
-                    this.fetchDailyCounts();
-
-                    // Keep the requisition list fresh for nurse/MS screens.
-                    if (this.currentRole === 'nurse' || this.currentRole === 'ms' || this.currentRole === 'admin' || this.currentRole === 'pharmacist') {
-                        setInterval(() => {
-                            if (!this.isAnyModalOpen()) {
-                                this.fetchRequisitions();
-                                this.fetchConsumables();
-                                this.fetchDailyCounts();
-                            }
-                        }, 15000);
-                    }
+                    setInterval(async () => {
+                        if (document.hidden || this.isLeaving || this.isPolling || this.isAnyModalOpen()) return;
+                        this.isPolling = true;
+                        try {
+                            await Promise.all([
+                                this.fetchRequisitions(true),
+                                this.fetchConsumables(true),
+                                this.fetchDailyCounts(true),
+                            ]);
+                        } finally {
+                            this.isPolling = false;
+                        }
+                    }, 30000);
                 },
 
                 isAnyModalOpen() {
@@ -1805,12 +1830,10 @@
                             data.map(record => ({
                                 ...record,
                                 items: Array.isArray(record.items) ?
-                                    record.items :
-                                    [],
+                                    record.items : [],
                                 requested_qty: record.requested_qty || '',
                                 received_qty: record.received_qty || ''
-                            })) :
-                            [];
+                            })) : [];
 
                     } catch (error) {
                         console.error('fetchRequisitions', error);
