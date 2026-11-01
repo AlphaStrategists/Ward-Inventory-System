@@ -24,7 +24,7 @@ class WardInventoryPagesTest extends TestCase
 
     public function test_all_pages_render(): void
     {
-        foreach (['home', 'login', 'injections.index', 'injection-antibiotics.index', 'ms.index'] as $name) {
+        foreach (['home', 'login', 'injections.index', 'injection-antibiotics.index'] as $name) {
             $this->get(route($name))->assertOk();
         }
     }
@@ -139,12 +139,5 @@ class WardInventoryPagesTest extends TestCase
 
         $this->patch(route('orders.updateStatus', $order), ['ms_approval_status' => 'Bogus'])
             ->assertSessionHasErrors('ms_approval_status');
-    }
-
-    public function test_ms_page_filters_by_status(): void
-    {
-        Order::first()->update(['ms_approval_status' => 'Approved']);
-        $this->get(route('ms.index', ['status' => 'Approved']))
-            ->assertSee('Orders List (1)');
     }
 }

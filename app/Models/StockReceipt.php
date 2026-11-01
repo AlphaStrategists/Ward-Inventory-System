@@ -31,4 +31,17 @@ class StockReceipt extends Model
     {
         return $this->belongsTo(User::class, 'received_by');
     }
+
+    protected function casts(): array
+    {
+        return [
+            'date' => 'datetime',
+            'quantity_received' => 'integer',
+        ];
+    }
+
+    public function receivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
+    }
 }

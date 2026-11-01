@@ -582,6 +582,72 @@
             gap: 12px;
             background-color: #f8fafc;
         }
+
+        .btn-secondary {
+            background-color: #f1f5f9;
+            color: #475569;
+            border: 1px solid var(--border-color);
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e2e8f0;
+            color: var(--text-dark);
+        }
+
+        .action-btn-group {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-action-edit {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            background-color: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 13px;
+        }
+
+        .btn-action-edit:hover {
+            background-color: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+        }
+
+        .btn-action-delete {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            background-color: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 13px;
+        }
+
+        .btn-action-delete:hover {
+            background-color: #dc2626;
+            color: #ffffff;
+            border-color: #dc2626;
+        }
     </style>
     @yield('styles')
 </head>
@@ -599,9 +665,6 @@
             </a>
             <a href="{{ route('injection-antibiotics.index') }}" class="nav-link {{ request()->routeIs('injection-antibiotics.index') ? 'active' : '' }}">
                 <i class="fa-solid fa-capsules" style="margin-right: 6px;"></i> Injection Antibiotics
-            </a>
-            <a href="{{ route('ms.index') }}" class="nav-link {{ request()->routeIs('ms.index') ? 'active' : '' }}">
-                <i class="fa-solid fa-user-shield" style="margin-right: 6px;"></i> MS Approval Page
             </a>
         </div>
     </nav>

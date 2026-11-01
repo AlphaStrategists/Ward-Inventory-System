@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrderDetail extends Model
 {
@@ -27,5 +28,13 @@ class OrderDetail extends Model
     public function medicine()
     {
         return $this->belongsTo(Medicine::class);
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'qty_requested' => 'integer',
+            'qty_issued' => 'integer',
+        ];
     }
 }

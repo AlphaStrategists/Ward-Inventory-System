@@ -28,6 +28,12 @@ class InjectionController extends Controller
             ['description' => $this->categoryDescription]
         );
 
+        // Fetch all medicines in category for modal selections
+        $allCategoryMedicines = Medicine::where('category_id', $category->id)
+            ->with(['unit', 'form'])
+            ->orderBy('name')
+            ->get();
+
         // 2. Fetch medicines under this category with optional search filter
         $medicines = Medicine::where('category_id', $category->id)
             ->with(['unit', 'form'])
@@ -90,6 +96,7 @@ class InjectionController extends Controller
         return view($this->view, compact(
             'category',
             'medicines',
+            'allCategoryMedicines',
             'selectedMedicine',
             'requisitionLogs',
             'categories',

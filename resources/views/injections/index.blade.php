@@ -34,7 +34,22 @@
                         <div>
                             <div class="medicine-name">{{ $med->name }}</div>
                             <div class="medicine-actions">
-                                <i class="fa-solid fa-pen-to-square" title="Edit"></i>
+                                <button type="button" 
+                                        onclick="event.preventDefault(); event.stopPropagation(); openEditMedicineModal({
+                                            id: {{ $med->id }},
+                                            item_code: '{{ addslashes($med->item_code) }}',
+                                            name: '{{ addslashes($med->name) }}',
+                                            category_id: {{ $med->category_id }},
+                                            unit_id: {{ $med->unit_id }},
+                                            form_id: {{ $med->form_id }},
+                                            strength: '{{ addslashes($med->strength ?? '') }}',
+                                            min_level: {{ (int) $med->min_level }},
+                                            warning_limit: {{ (int) $med->warning_limit }}
+                                        })"
+                                        style="background: none; border: none; padding: 0; color: inherit; cursor: pointer;"
+                                        title="Edit Medicine">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
                                 <i class="fa-solid fa-lock" title="Lock"></i>
                             </div>
                         </div>
@@ -127,6 +142,7 @@
                         <th>RECEIVED QUANTITY</th>
                         <th>SIGNATURE OF ISSUED OFFICER & DATE</th>
                         <th>CONFIRM SIGNATURE RECEIVED & DATE</th>
+                        <th style="text-align: center;">ACTIONS</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -144,10 +160,40 @@
                             <td>{{ $log->qty_issued }}</td>
                             <td>{{ $log->order->approver->name ?? '-' }}</td>
                             <td>{{ $log->order->requester->name ?? 'Ward Nurse' }}</td>
+                            <td style="text-align: center;">
+                                <div class="action-btn-group">
+                                    <button type="button" 
+                                            class="btn-action-edit" 
+                                            title="Edit Order"
+                                            onclick="openEditOrderModal({
+                                                id: {{ $log->order_id }},
+                                                detail_id: {{ $log->id }},
+                                                req_no: '{{ addslashes($log->order->req_no ?? '') }}',
+                                                medicine_id: {{ $log->medicine_id }},
+                                                qty_requested: {{ (int) $log->qty_requested }},
+                                                qty_issued: {{ (int) $log->qty_issued }},
+                                                ward_id: {{ $log->order->ward_id ?? 0 }},
+                                                date: '{{ $log->order->date ? \Carbon\Carbon::parse($log->order->date)->format('Y-m-d') : '' }}',
+                                                requested_by: {{ $log->order->requested_by ?? 0 }},
+                                                ms_approval_status: '{{ addslashes($log->order->ms_approval_status ?? 'Pending') }}',
+                                                approved_by: '{{ $log->order->approved_by ?? '' }}',
+                                                remark: '{{ addslashes(str_replace(["\r", "\n"], ' ', $log->remark ?? $log->order->remark ?? '')) }}'
+                                            })">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <form action="{{ route('orders.destroy', $log->order_id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete requisition order {{ $log->order->req_no ?? '' }}?');" style="display: inline-block; margin: 0;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn-action-delete" title="Delete Order">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                            <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">
                                 No requisition log entries found. Click <strong>+ Add Order</strong> to record a new requisition.
                             </td>
                         </tr>
@@ -162,5 +208,7 @@
 
 @section('modals')
     @include('components.add-medicine-modal', ['currentCategory' => $category])
+    @include('components.edit-medicine-modal')
     @include('components.add-order-modal')
+    @include('components.edit-order-modal')
 @endsection

@@ -11,7 +11,7 @@
                 <div class="form-group">
                     <label for="medicine_id">Drug / Medicine *</label>
                     <select id="medicine_id" name="medicine_id" class="form-control" required>
-                        @foreach($medicines as $med)
+                        @foreach(($allCategoryMedicines ?? $medicines) as $med)
                             <option value="{{ $med->id }}" {{ isset($selectedMedicine) && $selectedMedicine->id == $med->id ? 'selected' : '' }}>
                                 {{ $med->name }} ({{ $med->item_code }})
                             </option>

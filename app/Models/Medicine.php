@@ -5,12 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Medicine extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    const UPDATED_AT = null;
 
     protected $fillable = [
         'item_code',
@@ -22,6 +25,8 @@ class Medicine extends Model
         'is_controlled',
         'min_level',
         'warning_limit',
+        'units_per_pack',
+        'created_at',
     ];
 
     public function category()
@@ -64,5 +69,26 @@ class Medicine extends Model
             ->join('medicine_batches', 'stock_ledger.batch_id', '=', 'medicine_batches.id')
             ->where('medicine_batches.medicine_id', $this->id)
             ->sum('stock_ledger.quantity');
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'is_controlled' => 'boolean',
+            'min_level' => 'integer',
+            'warning_limit' => 'integer',
+            'units_per_pack' => 'integer',
+            'created_at' => 'datetime',
+        ];
+    }
+
+    public function scopeControlled(Builder $query): Builder
+    {
+        return $query->where('is_controlled', 1);
+    }
+
+    public function getStockAttribute()
+    {
+        return \App\Models\StockLedger::whereIn('batch_id', $this->batches()->pluck('id'))->sum('quantity');
     }
 }

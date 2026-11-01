@@ -223,4 +223,19 @@ class DatabaseSeeder extends Seeder
             );
         }
     }
+
+    /**
+     * Seed the application's database.
+     */
+    public function runWardInventorySeeders(): void
+    {
+        $this->call([
+            RoleSeeder::class,
+            PermissionSeeder::class,
+            MasterDataSeeder::class,
+            WardInventorySeeder::class,
+            BulkCategorySeeder::class,
+            DummyBulkPatientSeeder::class,
+        ]);
+    }
 }
