@@ -16,7 +16,7 @@ class TestLoginController extends Controller
      * a dummy user on the fly if one does not exist yet.
      *
      * Usage:  /test-login/Admin
-     *         /test-login/Doctor
+     *         /test-login/Ms
      *         /test-login/Nurse
      *         /test-login/Pharmacist
      *
@@ -28,7 +28,7 @@ class TestLoginController extends Controller
         // someone forgets to remove the route later.
         abort_unless(app()->environment(['local', 'testing']), 404);
 
-        $allowedRoles = ['Admin', 'Doctor', 'Nurse', 'Pharmacist', 'Head Nurse'];
+        $allowedRoles = ['Ms', 'Nurse', 'Pharmacist', 'Head Nurse'];
         $roleName = null;
         foreach ($allowedRoles as $allowed) {
             if (strcasecmp($role, $allowed) === 0) {
@@ -38,7 +38,7 @@ class TestLoginController extends Controller
         }
 
         if (!$roleName) {
-            abort(404, "Invalid role. Only 'Admin', 'Doctor', 'Nurse', 'Pharmacist', and 'Head Nurse' are permitted.");
+            abort(404, "Invalid role. Only 'Ms', 'Nurse', 'Pharmacist', and 'Head Nurse' are permitted.");
         }
 
         // Look for the role itself.

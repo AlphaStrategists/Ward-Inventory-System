@@ -24,12 +24,12 @@ class OrderController extends Controller
 
         // Default role-based filtering if no explicit filter is passed:
         // Nurses: Show all their requested orders.
-        // Doctors: Show all orders across all medicines where ms_approval is 'Pending'.
+        // Ms: Show all orders across all medicines where ms_approval is 'Pending'.
         // Pharmacists: Show all orders where ms_approval is 'Approved' but pending issue.
         if (!$statusFilter) {
             if (in_array($user->role, ['Nurse', 'Head Nurse']) || $user->hasRole(['Nurse', 'Head Nurse']) || in_array($userRole, ['nurse', 'head nurse'], true)) {
                 $statusFilter = 'my_orders';
-            } elseif ($user->hasRole('Doctor') || $userRole === 'doctor') {
+            } elseif ($user->hasRole('Ms') || $userRole === 'ms') {
                 $statusFilter = 'pending';
             } elseif ($user->hasRole('Pharmacist') || $userRole === 'pharmacist') {
                 $statusFilter = 'pending_issue';
@@ -113,7 +113,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Approve or Reject an order requisition (Doctor action).
+     * Approve or Reject an order requisition (Ms action).
      */
     public function approve(Request $request, $id)
     {
@@ -147,7 +147,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Approve all pending requisitions in bulk (Doctor action).
+     * Approve all pending requisitions in bulk (Ms action).
      */
     public function approveAll(Request $request)
     {
@@ -156,9 +156,9 @@ class OrderController extends Controller
             abort(401);
         }
 
-        $isDoctor = $currentUser->hasRole('Doctor') || strtolower($currentUser->role ?? '') === 'doctor';
-        if (!$isDoctor) {
-            return redirect()->back()->with('error', 'Only doctors can approve requisitions.');
+        $isMs = $currentUser->hasRole('Ms') || strtolower($currentUser->role ?? '') === 'ms';
+        if (!$isMs) {
+            return redirect()->back()->with('error', 'Only Ms can approve requisitions.');
         }
 
         $userId = Auth::id() ?? 1;
