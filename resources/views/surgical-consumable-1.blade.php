@@ -1730,14 +1730,27 @@ function surgicalConsumableApp() {
 
         async fetchConsumables() {
             try {
-                const res = await fetch('/api/consumables', { headers: { 'Accept': 'application/json' } });
-                if (!res.ok) return;
+                const res = await fetch('/api/consumables', {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
 
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    throw new Error(
+                        data.message || 'Unable to load surgical consumables.'
+                    );
+                }
+
                 this.consumables = Array.isArray(data) ? data : [];
 
                 if (this.selectedConsumable.id) {
-                    const current = this.consumables.find(item => Number(item.id) === Number(this.selectedConsumable.id));
+                    const current = this.consumables.find(
+                        item => Number(item.id) === Number(this.selectedConsumable.id)
+                    );
+
                     if (current) {
                         this.selectedConsumable = { ...current };
                         return;
@@ -1747,8 +1760,14 @@ function surgicalConsumableApp() {
                 if (this.consumables.length) {
                     this.selectedConsumable = { ...this.consumables[0] };
                 }
+
             } catch (error) {
                 console.error('fetchConsumables', error);
+
+                this.showToast(
+                    error.message || 'Unable to load surgical consumables.',
+                    'error'
+                );
             }
         },
 
@@ -1756,28 +1775,39 @@ function surgicalConsumableApp() {
             try {
                 const res = await fetch('/api/requisitions', {
                     headers: {
-                        'Accept': 'application/json',
-                                    }
+                        'Accept': 'application/json'
+                    }
                 });
 
+                const data = await res.json().catch(() => ({}));
+
                 if (!res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    console.error(data.message || 'Unable to load requisitions.');
-                    return;
+                    throw new Error(
+                        data.message || 'Unable to load requisitions.'
+                    );
                 }
 
-                const data = await res.json();
+                this.requisitions = Array.isArray(data)
+                    ? data.map(record => ({
+                        ...record,
+                        items: Array.isArray(record.items)
+                            ? record.items
+                            : [],
+                        requested_qty: record.requested_qty || '',
+                        received_qty: record.received_qty || ''
+                    }))
+                    : [];
 
-                this.requisitions = Array.isArray(data) ? data.map(record => ({
-                    ...record,
-                    items: Array.isArray(record.items) ? record.items : [],
-                    requested_qty: record.requested_qty || '',
-                    received_qty: record.received_qty || ''
-                })) : [];
             } catch (error) {
                 console.error('fetchRequisitions', error);
+
+                this.showToast(
+                    error.message || 'Unable to load requisitions.',
+                    'error'
+                );
             }
         },
+
 
         get dailyCountCalculatedBalance() {
             const current = Number(this.selectedConsumable?.balance ?? 0);
@@ -1826,15 +1856,28 @@ function surgicalConsumableApp() {
         async fetchDailyCounts() {
             try {
                 const res = await fetch('/api/daily-counts', {
-                    headers: { 'Accept': 'application/json' }
+                    headers: {
+                        'Accept': 'application/json'
+                    }
                 });
 
-                if (!res.ok) return;
+                const data = await res.json().catch(() => ({}));
 
-                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(
+                        data.message || 'Unable to load daily counts.'
+                    );
+                }
+
                 this.dailyCounts = Array.isArray(data) ? data : [];
+
             } catch (error) {
                 console.error('fetchDailyCounts', error);
+
+                this.showToast(
+                    error.message || 'Unable to load daily counts.',
+                    'error'
+                );
             }
         },
 
@@ -1860,7 +1903,7 @@ function surgicalConsumableApp() {
                         date: this.newDailyCount.date,
                         item_name: this.selectedConsumable.name,
                         qty_given: qty,
-                        sisters_initials: this.getInitials(this.currentUserName),
+                        sisters_initials: this.currentUserName,
                         remarks: this.newDailyCount.remarks || ''
                     })
                 });
@@ -1883,12 +1926,29 @@ function surgicalConsumableApp() {
 
         async fetchAdjustments() {
             try {
-                const res = await fetch('/api/adjustments', { headers: { 'Accept': 'application/json' } });
-                if (!res.ok) return;
-                const data = await res.json();
+                const res = await fetch('/api/adjustments', {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    throw new Error(
+                        data.message || 'Unable to load stock adjustments.'
+                    );
+                }
+
                 this.adjustments = Array.isArray(data) ? data : [];
+
             } catch (error) {
                 console.error('fetchAdjustments', error);
+
+                this.showToast(
+                    error.message || 'Unable to load stock adjustments.',
+                    'error'
+                );
             }
         },
 
@@ -1896,7 +1956,7 @@ function surgicalConsumableApp() {
             return {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': this.csrfToken,
-                        'Accept': 'application/json'
+                'Accept': 'application/json'
             };
         },
 

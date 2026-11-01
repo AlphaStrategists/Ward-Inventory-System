@@ -479,9 +479,21 @@ class WardDatabaseService
                     'general_stock_adjustments.adjustment_type as type',
                     'general_stock_adjustments.quantity',
                     'general_stock_adjustments.reason',
-                    DB::raw(
-                        'COALESCE(users.name, "Ward Nurse") as adjusted_by'
-                    )
+                    DB::raw("
+                        COALESCE(
+                            NULLIF(
+                                TRIM(
+                                    CONCAT(
+                                        COALESCE(users.first_name, ''),
+                                        ' ',
+                                        COALESCE(users.last_name, '')
+                                    )
+                                ),
+                                ''
+                            ),
+                            'Ward Nurse'
+                        ) as adjusted_by
+                    ")
                 )
                 ->orderBy(
                     'general_stock_adjustments.id',
@@ -602,6 +614,49 @@ class WardDatabaseService
         $issuedQty = $isAddition
             ? 0
             : $qty;
+
+        /*
+        * For stock decreases, do not allow the adjustment
+        * to make the available balance negative.
+        */
+        if (!$isAddition) {
+            $item = DB::table('general_items')
+                ->where('name', strtoupper(trim($itemName)))
+                ->where('category_id', $categoryId)
+                ->first();
+
+            if (!$item) {
+                throw new \RuntimeException(
+                    'The inventory item could not be found.'
+                );
+            }
+
+            $receivedBefore = (int) DB::table(
+                'general_transactions'
+            )
+                ->where('item_id', $item->id)
+                ->sum('quantity_received');
+
+            $issuedBefore = (int) DB::table(
+                'general_transactions'
+            )
+                ->where('item_id', $item->id)
+                ->sum('quantity_issued');
+
+            $currentBalance = max(
+                0,
+                $receivedBefore - $issuedBefore
+            );
+
+            if ($qty > $currentBalance) {
+                throw new \RuntimeException(
+                    'The adjustment quantity cannot exceed '
+                    . 'the available stock balance of '
+                    . $currentBalance
+                    . '.'
+                );
+            }
+        }
 
         $note = sprintf(
             '[ADJUSTMENT:%s] %s | Adjusted by user ID: %d',

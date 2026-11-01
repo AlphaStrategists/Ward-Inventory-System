@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Surgical Consumable 1 - Ward Inventory System</title>
+    <title>Surgical Consumable 2 - Ward Inventory System</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,7 +38,7 @@
                 </div>
                 <div>
                     <h1 class="font-extrabold text-xl text-blue-900 leading-tight">Ward Inventory</h1>
-                    <p class="text-[10px] font-bold tracking-[0.18em] text-slate-400 uppercase">Surgical Consumables 1</p>
+                    <p class="text-[10px] font-bold tracking-[0.18em] text-slate-400 uppercase">Surgical Consumables 2</p>
                 </div>
             </div>
         </div>
@@ -166,7 +166,7 @@
             <!-- HERO -->
             <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 rounded-2xl p-7 text-white shadow-xl shadow-blue-600/10 flex items-center justify-between overflow-hidden relative">
                 <div class="relative z-10">
-                    <h2 class="text-3xl font-extrabold uppercase tracking-tight" x-text="selectedConsumable.name || 'SURGICAL CONSUMABLE 1'"></h2>
+                    <h2 class="text-3xl font-extrabold uppercase tracking-tight" x-text="selectedConsumable.name || 'SURGICAL CONSUMABLE 2'"></h2>
                     <p class="text-blue-100 text-sm font-medium mt-1">Current Ward Stock Balance</p>
                 </div>
 
@@ -437,7 +437,6 @@
 
                 <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs text-slate-500">
                     <span>Showing <strong class="text-slate-800" x-text="filteredRequisitions.length"></strong> record(s)</span>
-                    <span class="font-semibold">No pharmacist stage in this workflow</span>
                 </div>
             </section>
 
@@ -1183,13 +1182,14 @@ function surgicalConsumableApp() {
         },
 
         isAnyModalOpen() {
-            return this.showAddOrderModal ||
-                this.showAddConsumableModal ||
-                this.showMsApprovalModal ||
-                this.showNurseReceiveModal ||
-                this.showRejectModal ||
-                this.showDailyCountModal;
-        },
+    return this.showAddOrderModal ||
+        this.showAddConsumableModal ||
+        this.showMsApprovalModal ||
+        this.showNurseReceiveModal ||
+        this.showRejectModal ||
+        this.showDailyCountModal ||
+        this.showAdjustmentModal;
+    },
 
         getLiveDateTime() {
             const now = new Date();
@@ -1730,14 +1730,27 @@ function surgicalConsumableApp() {
 
         async fetchConsumables() {
             try {
-                const res = await fetch('/api/surgical-consumable-2/consumables', { headers: { 'Accept': 'application/json' } });
-                if (!res.ok) return;
+                const res = await fetch('/api/surgical-consumable-2/consumables', {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
 
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    throw new Error(
+                        data.message || 'Unable to load surgical consumables.'
+                    );
+                }
+
                 this.consumables = Array.isArray(data) ? data : [];
 
                 if (this.selectedConsumable.id) {
-                    const current = this.consumables.find(item => Number(item.id) === Number(this.selectedConsumable.id));
+                    const current = this.consumables.find(
+                        item => Number(item.id) === Number(this.selectedConsumable.id)
+                    );
+
                     if (current) {
                         this.selectedConsumable = { ...current };
                         return;
@@ -1747,8 +1760,14 @@ function surgicalConsumableApp() {
                 if (this.consumables.length) {
                     this.selectedConsumable = { ...this.consumables[0] };
                 }
+
             } catch (error) {
                 console.error('fetchConsumables', error);
+
+                this.showToast(
+                    error.message || 'Unable to load surgical consumables.',
+                    'error'
+                );
             }
         },
 
@@ -1756,26 +1775,36 @@ function surgicalConsumableApp() {
             try {
                 const res = await fetch('/api/surgical-consumable-2/requisitions', {
                     headers: {
-                        'Accept': 'application/json',
-                                    }
+                        'Accept': 'application/json'
+                    }
                 });
 
+                const data = await res.json().catch(() => ({}));
+
                 if (!res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    console.error(data.message || 'Unable to load requisitions.');
-                    return;
+                    throw new Error(
+                        data.message || 'Unable to load requisitions.'
+                    );
                 }
 
-                const data = await res.json();
+                this.requisitions = Array.isArray(data)
+                    ? data.map(record => ({
+                        ...record,
+                        items: Array.isArray(record.items)
+                            ? record.items
+                            : [],
+                        requested_qty: record.requested_qty || '',
+                        received_qty: record.received_qty || ''
+                    }))
+                    : [];
 
-                this.requisitions = Array.isArray(data) ? data.map(record => ({
-                    ...record,
-                    items: Array.isArray(record.items) ? record.items : [],
-                    requested_qty: record.requested_qty || '',
-                    received_qty: record.received_qty || ''
-                })) : [];
             } catch (error) {
                 console.error('fetchRequisitions', error);
+
+                this.showToast(
+                    error.message || 'Unable to load requisitions.',
+                    'error'
+                );
             }
         },
 
@@ -1825,16 +1854,32 @@ function surgicalConsumableApp() {
 
         async fetchDailyCounts() {
             try {
-                const res = await fetch('/api/surgical-consumable-2/daily-counts', {
-                    headers: { 'Accept': 'application/json' }
-                });
+                const res = await fetch(
+                    '/api/surgical-consumable-2/daily-counts',
+                    {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
 
-                if (!res.ok) return;
+                const data = await res.json().catch(() => ({}));
 
-                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(
+                        data.message || 'Unable to load daily counts.'
+                    );
+                }
+
                 this.dailyCounts = Array.isArray(data) ? data : [];
+
             } catch (error) {
                 console.error('fetchDailyCounts', error);
+
+                this.showToast(
+                    error.message || 'Unable to load daily counts.',
+                    'error'
+                );
             }
         },
 
@@ -1860,7 +1905,7 @@ function surgicalConsumableApp() {
                         date: this.newDailyCount.date,
                         item_name: this.selectedConsumable.name,
                         qty_given: qty,
-                        sisters_initials: this.getInitials(this.currentUserName),
+                        sisters_initials: this.currentUserName,
                         remarks: this.newDailyCount.remarks || ''
                     })
                 });
@@ -1883,12 +1928,32 @@ function surgicalConsumableApp() {
 
         async fetchAdjustments() {
             try {
-                const res = await fetch('/api/surgical-consumable-2/adjustments', { headers: { 'Accept': 'application/json' } });
-                if (!res.ok) return;
-                const data = await res.json();
+                const res = await fetch(
+                    '/api/surgical-consumable-2/adjustments',
+                    {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    throw new Error(
+                        data.message || 'Unable to load stock adjustments.'
+                    );
+                }
+
                 this.adjustments = Array.isArray(data) ? data : [];
+
             } catch (error) {
                 console.error('fetchAdjustments', error);
+
+                this.showToast(
+                    error.message || 'Unable to load stock adjustments.',
+                    'error'
+                );
             }
         },
 

@@ -1521,6 +1521,46 @@
 
 <body class="bg-slate-50 text-slate-800">
 
+@php
+    /*
+    |--------------------------------------------------------------------------
+    | ORIGINAL DATABASE ROLE
+    |--------------------------------------------------------------------------
+    |
+    | These are the original roles stored in the database.
+    | They are NOT changed.
+    |
+    */
+    $originalRole = auth()->check()
+        ? trim((string) auth()->user()->role)
+        : null;
+
+    /*
+    |--------------------------------------------------------------------------
+    | SURGICAL INVENTORY ROLE MAPPING
+    |--------------------------------------------------------------------------
+    |
+    | Doctor is treated as MS only for the surgical inventory navigation.
+    | The database value remains "Doctor".
+    |
+    */
+    $surgicalRoleMap = [
+        'Admin'      => 'admin',
+        'Doctor'     => 'ms',
+        'Nurse'      => 'nurse',
+        'Pharmacist' => 'pharmacist',
+        'Head Nurse' => 'head_nurse',
+    ];
+
+    $surgicalRole = $surgicalRoleMap[$originalRole] ?? null;
+
+    $hasSurgicalAccess = in_array(
+        $surgicalRole,
+        ['admin', 'ms', 'nurse', 'pharmacist'],
+        true
+    );
+@endphp
+
     <header class="relative min-h-[460px] overflow-hidden">
 
         <!-- Background Image -->
@@ -1726,24 +1766,67 @@
                             </div>
 
 
-                            <a
-                                href="{{ route('test') }}"
-                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                            <!-- Surgical Items -->
+                            <div class="group/item relative">
 
-                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
-                                    <i class="fa-solid fa-kit-medical"></i>
-                                </span>
+                                <button
+                                    type="button"
+                                    class="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
-                                <span>
-                                    <span class="block font-semibold">
-                                        Surgical Items
+                                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                        <i class="fa-solid fa-kit-medical"></i>
                                     </span>
-                                    <span class="text-xs text-slate-400">
-                                        Surgical inventory
-                                    </span>
-                                </span>
 
-                            </a>
+                                    <span class="flex-1 text-left">
+                                        <span class="block font-semibold">
+                                            Surgical Items
+                                        </span>
+                                        <span class="text-xs text-slate-400">
+                                            Surgical inventory
+                                        </span>
+                                    </span>
+
+                                    <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+
+                                </button>
+
+                                <div class="invisible absolute left-full top-0 z-30 w-64 pl-2 opacity-0 transition duration-200 group-hover/item:visible group-hover/item:opacity-100">
+
+                                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+
+                                        @if ($hasSurgicalAccess)
+
+                                            <a href="{{ route($surgicalRole . '.surgical-consumable-1') }}"
+                                                class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                                <i class="fa-solid fa-kit-medical text-slate-400"></i>
+                                                Surgical Consumables 1
+                                            </a>
+
+                                            <a href="{{ route($surgicalRole . '.surgical-consumable-2') }}"
+                                                class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                                <i class="fa-solid fa-boxes-stacked text-slate-400"></i>
+                                                Surgical Consumables 2
+                                            </a>
+
+                                            <a href="{{ route($surgicalRole . '.local-purchases') }}"
+                                                class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                                <i class="fa-solid fa-cart-shopping text-slate-400"></i>
+                                                Local Purchases
+                                            </a>
+
+                                        @else
+
+                                            <div class="px-4 py-3 text-sm text-slate-500">
+                                                Surgical inventory access is not available for your role.
+                                            </div>
+
+                                        @endif
+
+                                    </div>
+
+                                </div>
+
+                            </div>
 
 
                             <a
@@ -2069,15 +2152,21 @@
 
                         </p>
 
-                        <a
-                            href="{{ route('test') }}"
-                            class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
+                        @if ($hasSurgicalAccess)
+                            <a
+                                href="{{ route($surgicalRole . '.surgical-consumable-1') }}"
+                                class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
 
-                            Manage Surgical Items
+                                Manage Surgical Items
 
-                            <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
+                                <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
 
-                        </a>
+                            </a>
+                        @else
+                            <span class="mt-5 inline-flex items-center font-semibold text-slate-400">
+                                Access restricted
+                            </span>
+                        @endif
 
                     </div>
 
@@ -2272,7 +2361,6 @@
         </div>
 
     </footer>
-    ```
 
 </body>
 

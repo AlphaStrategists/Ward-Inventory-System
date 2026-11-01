@@ -12,7 +12,6 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\MedicineController;
-use App\Http\Controllers\Auth\TestLoginController;
 use App\Http\Controllers\AdmissionController;
 use App\Http\Controllers\DispensationController;
 use App\Http\Controllers\GeneralItemController;
@@ -55,21 +54,6 @@ Route::post('/login', [AuthController::class, 'login'])
 Route::post('/logout', [AuthController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
-
-
-/*
-|--------------------------------------------------------------------------
-| TEST LOGIN
-|--------------------------------------------------------------------------
-|
-| DEV-ONLY — remove before final submission.
-|
-*/
-
-Route::get(
-    '/test-login/{role}',
-    [TestLoginController::class, 'login']
-)->name('test-login');
 
 
 /*
@@ -361,7 +345,7 @@ Route::delete(
     '/api/adjustments/{id}',
     [SurgicalConsumableController::class, 'destroyAdjustment']
 )
-    ->middleware(['auth', 'role:admin'])
+    ->middleware(['auth', 'role:nurse,admin'])
     ->name('api.sc1.adjustments.destroy');
 
 
@@ -522,7 +506,7 @@ Route::delete(
     '/api/surgical-consumable-2/adjustments/{id}',
     [SurgicalConsumable2Controller::class, 'destroyAdjustment']
 )
-    ->middleware(['auth', 'role:admin'])
+    ->middleware(['auth', 'role:nurse,admin'])
     ->name('api.sc2.adjustments.destroy');
 
 
@@ -669,7 +653,7 @@ Route::delete(
     '/api/local-purchases/adjustments/{id}',
     [LocalPurchaseController::class, 'destroyAdjustment']
 )
-    ->middleware(['auth', 'role:admin'])
+    ->middleware(['auth', 'role:nurse,admin'])
     ->name('api.local.adjustments.destroy');
 
 
