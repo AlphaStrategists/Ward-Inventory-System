@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('header.app')
 
 @section('title', 'Medical Superintendent (MS) Approval Portal')
 
