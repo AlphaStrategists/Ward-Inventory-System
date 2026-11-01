@@ -46,7 +46,7 @@ class LocalPurchaseController extends Controller
         $currentUserId = (int) $user->id;
         $currentUserName = (string) $user->name;
 
-        return view('local-purchases', [
+        return view('surgicals.local-purchases', [
             'activeRole' => $activeRole,
             'currentUserId' => $currentUserId,
             'currentUserName' => $currentUserName,

@@ -55,7 +55,7 @@ class SurgicalConsumableController extends Controller
         $currentUserId = (int) $user->id;
         $currentUserName = (string) $user->name;
 
-        return view('surgical-consumable-1', [
+        return view('surgicals.surgical-consumable-1', [
             'activeRole' => $activeRole,
             'currentUserId' => $currentUserId,
             'currentUserName' => $currentUserName,
