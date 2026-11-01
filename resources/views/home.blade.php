@@ -1956,44 +1956,18 @@
 
 
                     <!-- Account -->
-                    <div class="group relative ml-2">
-
-                        <button
-                            class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-[#1894f2]">
-
-                            <i class="fa-solid fa-circle-user text-lg"></i>
-                            Account
-                            <i class="fa-solid fa-chevron-down text-[10px]"></i>
-
-                        </button>
-
-
-                        <div
-                            class="invisible absolute right-0 top-full mt-2 w-48 translate-y-2 rounded-xl border border-slate-100 bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
-
-                            <a
-                                href="{{ route('login') }}"
-                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-[#1894f2]">
-
-                                <i class="fa-solid fa-user"></i>
-                                Profile
-
-                            </a>
-
-                            <div class="my-1 border-t border-slate-100"></div>
-
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button
-                                    type="submit"
-                                    class="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-red-500 hover:bg-red-50">
-                                    <i class="fa-solid fa-right-from-bracket"></i>
-                                    Logout
-                                </button>
-                            </form>
-
-                        </div>
-
+                    <div class="ml-2">
+                        <form method="POST" action="{{ route('logout') }}"
+                            onsubmit="return confirm('Are you sure you want to log out?');">
+                            @csrf
+                            <button
+                                type="submit"
+                                title="Log out"
+                                class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-red-600/20 transition hover:bg-red-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 active:scale-95">
+                                <i class="fa-solid fa-right-from-bracket"></i>
+                                <span>Logout</span>
+                            </button>
+                        </form>
                     </div>
 
                 </div>
