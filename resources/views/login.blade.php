@@ -43,7 +43,7 @@
     <!-- =========================================================
          LOGIN SECTION
     ========================================================== -->
-    <main class="relative flex min-h-[calc(100vh-73px)] items-center justify-center overflow-hidden px-8 py-16">
+    <main class="relative flex min-h-[calc(100vh-150px)] items-center justify-center overflow-hidden px-8 py-16">
 
         <!-- Soft background accent, echoing the hero gradient on the home page -->
         <div class="pointer-events-none absolute inset-0">
