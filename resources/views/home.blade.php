@@ -1793,20 +1793,23 @@
                                 <div class="invisible absolute left-full top-0 z-30 w-64 pl-2 opacity-0 transition duration-200 group-hover/item:visible group-hover/item:opacity-100">
 
                                     <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                        @php
+                                        $surgicalRole = $surgicalRole ?? null;
+                                        @endphp
 
-                                        <a href="{{ route($surgicalRole . '.surgical-consumable-1') }}"
+                                        <a href="{{ $surgicalRole ? route($surgicalRole . '.surgical-consumable-1') : route('login') }}"
                                             class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
                                             <i class="fa-solid fa-kit-medical text-slate-400"></i>
                                             Surgical Consumables 1
                                         </a>
 
-                                        <a href="{{ route($surgicalRole . '.surgical-consumable-2') }}"
+                                        <a href="{{ $surgicalRole ? route($surgicalRole . '.surgical-consumable-2') : route('login') }}"
                                             class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
                                             <i class="fa-solid fa-boxes-stacked text-slate-400"></i>
                                             Surgical Consumables 2
                                         </a>
 
-                                        <a href="{{ route($surgicalRole . '.local-purchases') }}"
+                                        <a href="{{ $surgicalRole ? route($surgicalRole . '.local-purchases') : route('login') }}"
                                             class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
                                             <i class="fa-solid fa-cart-shopping text-slate-400"></i>
                                             Local Purchases
@@ -2153,17 +2156,20 @@
                             <div
                                 class="invisible absolute left-0 top-full z-10 w-56 pt-2 opacity-0 transition duration-200 group-hover/menu:visible group-hover/menu:opacity-100">
                                 <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-                                    <a href="{{ route($surgicalRole . '.surgical-consumable-1') }}"
+                                    @php
+                                    $surgicalRole = $surgicalRole ?? null;
+                                    @endphp
+                                    <a href="{{ $surgicalRole ? route($surgicalRole . '.surgical-consumable-1') : route('login') }}"
                                         class="flex items-center px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
                                         <i class="fa-solid fa-kit-medical mr-3 text-slate-400"></i>
                                         Surgical Consumables 1
                                     </a>
-                                    <a href="{{ route($surgicalRole . '.surgical-consumable-2') }}"
+                                    <a href="{{ $surgicalRole ? route($surgicalRole . '.surgical-consumable-2') : route('login') }}"
                                         class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
                                         <i class="fa-solid fa-boxes-stacked mr-3 text-slate-400"></i>
                                         Surgical Consumables 2
                                     </a>
-                                    <a href="{{ route($surgicalRole . '.local-purchases') }}"
+                                    <a href="{{ $surgicalRole ? route($surgicalRole . '.local-purchases') : route('login') }}"
                                         class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
                                         <i class="fa-solid fa-cart-shopping mr-3 text-slate-400"></i>
                                         Local Purchases
