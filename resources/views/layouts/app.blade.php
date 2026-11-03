@@ -689,6 +689,7 @@
                 </a>
                 @endif
 
+                @if(auth()->check() && (auth()->user()->is_admin || strtolower(trim((string) (auth()->user()->role ?? ''))) === 'admin' || auth()->user()->hasRole('Admin')))
                 <!-- Master Data Dropdown -->
                 <div class="dropdown">
                     <a href="#" class="nav-pill-link dropdown-toggle {{ $isMasterDataRoute ? 'active' : '' }}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -727,6 +728,7 @@
                         </li>
                     </ul>
                 </div>
+                @endif
             </nav>
         </div>
 

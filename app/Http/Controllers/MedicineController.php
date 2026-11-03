@@ -114,7 +114,10 @@ class MedicineController extends Controller
 
         $admissions = collect([]);
         $availableBatches = collect([]);
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'suppliers', 'admissions', 'availableBatches'));
+        $rawUserRole = Auth::check() ? (Auth::user()->role ?? 'Nurse') : 'Nurse';
+        $displayRole = strtolower(trim((string) $rawUserRole)) === 'doctor' ? 'MS' : $rawUserRole;
+
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
     }
 
     public function getDetails($category, $id)
@@ -330,7 +333,10 @@ class MedicineController extends Controller
                 return $batch->available_qty > 0;
             });
 
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'suppliers', 'admissions', 'availableBatches'));
+        $rawUserRole = Auth::check() ? (Auth::user()->role ?? 'Nurse') : 'Nurse';
+        $displayRole = strtolower(trim((string) $rawUserRole)) === 'doctor' ? 'MS' : $rawUserRole;
+
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
     }
 
     public function storeMedicine($category, Request $request)

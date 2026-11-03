@@ -11,10 +11,28 @@ use Illuminate\View\View;
 class UnitController extends Controller
 {
     /**
+     * Ensure only Admin users can access Master Data actions.
+     */
+    private function authorizeAdmin(): void
+    {
+        $user = auth()->user();
+
+        $isAdmin = $user && (
+            $user->is_admin ||
+            strtolower(trim((string) $user->role)) === 'admin' ||
+            $user->hasRole('Admin')
+        );
+
+        abort_unless($isAdmin, 403, 'Unauthorized. Only Admin users can access Master Data.');
+    }
+
+    /**
      * Display a listing of measurement units.
      */
     public function index(Request $request): View
     {
+        $this->authorizeAdmin();
+
         $search = $request->query('search');
 
         $query = Unit::query()
@@ -40,6 +58,8 @@ class UnitController extends Controller
      */
     public function create(): View
     {
+        $this->authorizeAdmin();
+
         return view('units.create');
     }
 
@@ -48,6 +68,8 @@ class UnitController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $this->authorizeAdmin();
+
         $validated = $request->validate([
             'unit_name' => ['required', 'string', 'max:50', 'unique:units,unit_name'],
         ], [
@@ -69,6 +91,8 @@ class UnitController extends Controller
      */
     public function show(Unit $unit): RedirectResponse
     {
+        $this->authorizeAdmin();
+
         return redirect()->route('units.edit', $unit);
     }
 
@@ -77,6 +101,8 @@ class UnitController extends Controller
      */
     public function edit(Unit $unit): View
     {
+        $this->authorizeAdmin();
+
         $unit->loadCount('medicines');
 
         return view('units.edit', compact('unit'));
@@ -87,6 +113,8 @@ class UnitController extends Controller
      */
     public function update(Request $request, Unit $unit): RedirectResponse
     {
+        $this->authorizeAdmin();
+
         $validated = $request->validate([
             'unit_name' => ['required', 'string', 'max:50', 'unique:units,unit_name,' . $unit->id],
         ], [
@@ -108,6 +136,7 @@ class UnitController extends Controller
      */
     public function destroy(Unit $unit): RedirectResponse
     {
+        $this->authorizeAdmin();
         if ($unit->medicines()->exists()) {
             return redirect()
                 ->route('units.index')

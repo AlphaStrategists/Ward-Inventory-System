@@ -11,10 +11,28 @@ use Illuminate\View\View;
 class FormTypeController extends Controller
 {
     /**
+     * Ensure only Admin users can access Master Data actions.
+     */
+    private function authorizeAdmin(): void
+    {
+        $user = auth()->user();
+
+        $isAdmin = $user && (
+            $user->is_admin ||
+            strtolower(trim((string) $user->role)) === 'admin' ||
+            $user->hasRole('Admin')
+        );
+
+        abort_unless($isAdmin, 403, 'Unauthorized. Only Admin users can access Master Data.');
+    }
+
+    /**
      * Display a listing of medicine form types.
      */
     public function index(Request $request): View
     {
+        $this->authorizeAdmin();
+
         $search = $request->query('search');
 
         $query = MedicineForm::query()
@@ -41,6 +59,8 @@ class FormTypeController extends Controller
      */
     public function create(): View
     {
+        $this->authorizeAdmin();
+
         return view('form-types.create');
     }
 
@@ -49,6 +69,8 @@ class FormTypeController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $this->authorizeAdmin();
+
         $validated = $request->validate([
             'form_name' => ['required', 'string', 'max:100', 'unique:medicine_forms,form_name'],
         ], [
@@ -70,6 +92,8 @@ class FormTypeController extends Controller
      */
     public function show(MedicineForm $form_type): RedirectResponse
     {
+        $this->authorizeAdmin();
+
         return redirect()->route('form-types.edit', $form_type);
     }
 
@@ -78,6 +102,8 @@ class FormTypeController extends Controller
      */
     public function edit(MedicineForm $form_type): View
     {
+        $this->authorizeAdmin();
+
         $form_type->loadCount('medicines');
         $formType = $form_type;
         $medicineForm = $form_type;
@@ -90,6 +116,8 @@ class FormTypeController extends Controller
      */
     public function update(Request $request, MedicineForm $form_type): RedirectResponse
     {
+        $this->authorizeAdmin();
+
         $validated = $request->validate([
             'form_name' => ['required', 'string', 'max:100', 'unique:medicine_forms,form_name,' . $form_type->id],
         ], [
@@ -111,6 +139,7 @@ class FormTypeController extends Controller
      */
     public function destroy(MedicineForm $form_type): RedirectResponse
     {
+        $this->authorizeAdmin();
         if ($form_type->medicines()->exists()) {
             return redirect()
                 ->route('form-types.index')

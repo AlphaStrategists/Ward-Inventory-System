@@ -11,10 +11,28 @@ use Illuminate\View\View;
 class SupplierController extends Controller
 {
     /**
+     * Ensure only Admin users can access Master Data actions.
+     */
+    private function authorizeAdmin(): void
+    {
+        $user = auth()->user();
+
+        $isAdmin = $user && (
+            $user->is_admin ||
+            strtolower(trim((string) $user->role)) === 'admin' ||
+            $user->hasRole('Admin')
+        );
+
+        abort_unless($isAdmin, 403, 'Unauthorized. Only Admin users can access Master Data.');
+    }
+
+    /**
      * Display a listing of suppliers.
      */
     public function index(Request $request): View
     {
+        $this->authorizeAdmin();
+
         $search = $request->query('search');
 
         $query = Supplier::query()
@@ -43,6 +61,8 @@ class SupplierController extends Controller
      */
     public function create(): View
     {
+        $this->authorizeAdmin();
+
         return view('suppliers.create');
     }
 
@@ -51,6 +71,8 @@ class SupplierController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $this->authorizeAdmin();
+
         $validated = $request->validate([
             'supplier_name' => ['required', 'string', 'max:150', 'unique:suppliers,supplier_name'],
             'contact_info' => ['nullable', 'string', 'max:255'],
@@ -74,6 +96,8 @@ class SupplierController extends Controller
      */
     public function show(Supplier $supplier): RedirectResponse
     {
+        $this->authorizeAdmin();
+
         return redirect()->route('suppliers.edit', $supplier);
     }
 
@@ -82,6 +106,8 @@ class SupplierController extends Controller
      */
     public function edit(Supplier $supplier): View
     {
+        $this->authorizeAdmin();
+
         $supplier->loadCount('medicineBatches');
 
         return view('suppliers.edit', compact('supplier'));
@@ -92,6 +118,8 @@ class SupplierController extends Controller
      */
     public function update(Request $request, Supplier $supplier): RedirectResponse
     {
+        $this->authorizeAdmin();
+
         $validated = $request->validate([
             'supplier_name' => ['required', 'string', 'max:150', 'unique:suppliers,supplier_name,' . $supplier->id],
             'contact_info' => ['nullable', 'string', 'max:255'],
@@ -115,6 +143,7 @@ class SupplierController extends Controller
      */
     public function destroy(Supplier $supplier): RedirectResponse
     {
+        $this->authorizeAdmin();
         if ($supplier->medicineBatches()->exists()) {
             return redirect()
                 ->route('suppliers.index')

@@ -67,7 +67,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold text-[#1E3A8A] tracking-tight leading-tight">Ward Inventory</h1>
-                    <p class="text-[10px] font-bold text-slate-400 tracking-[0.15em] uppercase mt-0.5">{{ Str::title(str_replace('-', ' ', $category)) }}</p>
+                    <p class="text-[10px] font-bold text-slate-400 tracking-[0.15em] uppercase mt-0.5">{{ Str::headline(str_replace('-', ' ', $category)) }}</p>
                 </div>
             </div>
 
@@ -210,8 +210,14 @@
                 <div x-data="{ open: false }" class="relative dropdown">
                     <button @click="open = !open" @click.away="open = false" class="dropdown-toggle flex items-center gap-3 focus:outline-none hover:bg-slate-50 p-1.5 pr-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">
                         <div class="text-right hidden sm:block">
+                            @php
+                                $headerRole = $displayRole ?? (auth()->user()->role ?? 'Nurse');
+                                if (strtolower(trim((string) $headerRole)) === 'doctor') {
+                                    $headerRole = 'MS';
+                                }
+                            @endphp
                             <div class="text-sm font-bold text-slate-700 leading-tight">{{ auth()->user()->name ?? 'Guest User' }}</div>
-                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ auth()->user()->role ?? 'Nurse' }}</div>
+                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ $headerRole }}</div>
                         </div>
                         <div class="w-9 h-9 rounded-full bg-blue-100 text-[#3B82F6] flex items-center justify-center font-bold text-sm border border-blue-200 shadow-sm">
                             {{ substr(auth()->user()->name ?? 'U', 0, 1) }}
@@ -248,7 +254,33 @@
         </div>
 
         <!-- Main Content Scrollable Area -->
-        <div class="flex-1 overflow-y-auto p-8 pt-7 max-w-7xl mx-auto w-full">
+        <div class="flex-1 overflow-y-auto p-8 pt-6 max-w-7xl mx-auto w-full">
+
+            <!-- Horizontal Medicine Categories Navigation Bar -->
+            @php
+                $navCategories = [
+                    ['slug' => 'narcotics', 'label' => 'Narcotics', 'icon' => 'fa-solid fa-syringe', 'match' => ['narcotics', 'narcotic']],
+                    ['slug' => 'bulk', 'label' => 'Bulk', 'icon' => 'fa-solid fa-boxes-stacked', 'match' => ['bulk']],
+                    ['slug' => 'syrups', 'label' => 'Syrup', 'icon' => 'fa-solid fa-bottle-droplet', 'match' => ['syrups', 'syrup']],
+                    ['slug' => 'antibiotics', 'label' => 'Antibiotics', 'icon' => 'fa-solid fa-capsules', 'match' => ['antibiotics', 'antibiotic']],
+                    ['slug' => 'oral-antibiotics', 'label' => 'Oral Antibiotics', 'icon' => 'fa-solid fa-tablets', 'match' => ['oralantibiotics', 'oralantibiotic']],
+                    ['slug' => 'OralCountable', 'label' => 'Oral Countable', 'icon' => 'fa-solid fa-pills', 'match' => ['oralcountable']],
+                    ['slug' => 'iv-fluids', 'label' => 'IV Fluids', 'icon' => 'fa-solid fa-droplet', 'match' => ['ivfluids', 'ivfluid']],
+                ];
+                $normalizedCurrentCat = strtolower(str_replace(['-', '_', ' '], '', $category));
+            @endphp
+            <div class="flex flex-row flex-wrap items-center gap-2.5 bg-white rounded-2xl p-2.5 mb-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-200/80">
+                @foreach($navCategories as $navCat)
+                    @php
+                        $isCatActive = in_array($normalizedCurrentCat, $navCat['match'], true);
+                    @endphp
+                    <a href="{{ route('inventory.index', ['category' => $navCat['slug']]) }}"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 {{ $isCatActive ? 'bg-[#3B82F6] text-white shadow-sm' : 'bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-[#3B82F6] border border-slate-200/70 hover:border-blue-200' }}">
+                        <i class="{{ $navCat['icon'] }} text-[11px] {{ $isCatActive ? 'text-white' : 'text-slate-400' }}"></i>
+                        <span>{{ $navCat['label'] }}</span>
+                    </a>
+                @endforeach
+            </div>
 
             <!-- Hero Banner -->
             <div class="bg-gradient-to-r from-[#3B82F6] to-[#4F46E5] rounded-2xl p-7 mb-6 text-white shadow-[0_10px_25px_-5px_rgba(59,130,246,0.4)] flex justify-between items-center relative overflow-hidden">

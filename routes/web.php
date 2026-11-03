@@ -908,43 +908,23 @@ Route::middleware(['auth'])->group(function () {
     */
 
     Route::middleware([
-        'role:Admin,Head Nurse,Nurse,Pharmacist,Doctor'
-    ])->group(function () {
-
-        Route::get(
-            '/form-types',
-            [FormTypeController::class, 'index']
-        )->name('form-types.index');
-
-        Route::get(
-            '/units',
-            [UnitController::class, 'index']
-        )->name('units.index');
-
-        Route::get(
-            '/suppliers',
-            [SupplierController::class, 'index']
-        )->name('suppliers.index');
-    });
-
-    Route::middleware([
-        'role:Admin,Head Nurse,Nurse,Pharmacist'
+        'role:Admin'
     ])->group(function () {
 
         Route::resource(
             'form-types',
             FormTypeController::class
-        )->except(['index']);
+        );
 
         Route::resource(
             'units',
             UnitController::class
-        )->except(['index']);
+        );
 
         Route::resource(
             'suppliers',
             SupplierController::class
-        )->except(['index']);
+        );
     });
 });
 

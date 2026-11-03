@@ -1865,6 +1865,7 @@
 
                     </a>
 
+                    @if(auth()->check() && (auth()->user()->is_admin || strtolower(trim((string) (auth()->user()->role ?? ''))) === 'admin' || auth()->user()->hasRole('Admin')))
                     <!-- Master Data -->
                     <div class="group relative">
 
@@ -1942,6 +1943,7 @@
                         </div>
 
                     </div>
+                    @endif
 
 
                     <!-- Reports -->
