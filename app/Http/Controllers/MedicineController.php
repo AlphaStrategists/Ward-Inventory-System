@@ -455,6 +455,22 @@ class MedicineController extends Controller
             'usage_time' => 'nullable|string|max:100',
         ]);
 
+        $batch = \App\Models\MedicineBatch::where('medicine_id', $medicine->id)
+            ->findOrFail($validated['batch_id']);
+
+        $received = (int) \App\Models\StockReceipt::where('batch_id', $batch->id)->sum('quantity_received');
+        $dispensed = (int) \App\Models\Dispensation::where('batch_id', $batch->id)->sum('qty_given');
+        $adjustments = (int) \App\Models\MedicineStockAdjustment::where('batch_id', $batch->id)->sum('quantity');
+        $availableQty = max(0, $received - $dispensed + $adjustments);
+
+        if ((int) $validated['qty_given'] > $availableQty) {
+            $errorMessage = "Insufficient stock in the selected batch (Available: {$availableQty}).";
+            return redirect()->back()
+                ->withErrors(['qty_given' => $errorMessage])
+                ->withInput()
+                ->with('error', $errorMessage);
+        }
+
         if ($isBulk) {
             $dummyPatient = \App\Models\Patient::firstOrCreate(
                 ['patient_name' => 'Ward General Use']
@@ -471,16 +487,6 @@ class MedicineController extends Controller
                 ]
             );
             $validated['admission_id'] = $dummyAdmission->id;
-        }
-
-        $batch = \App\Models\MedicineBatch::findOrFail($validated['batch_id']);
-        
-        $received = \App\Models\StockReceipt::where('batch_id', $batch->id)->sum('quantity_received');
-        $dispensed = \App\Models\Dispensation::where('batch_id', $batch->id)->sum('qty_given');
-        $availableQty = $received - $dispensed;
-
-        if ($validated['qty_given'] > $availableQty) {
-            return redirect()->back()->with('error', 'Quantity given exceeds available batch quantity.');
         }
 
         $validated['issued_by'] = Auth::id() ?? 1;

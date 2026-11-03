@@ -30,7 +30,7 @@
     </style>
 </head>
 
-<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: 'pharmacy', searchQuery: '', searchDate: '', openAddModal: false, openAdminModal: false, showAdjustmentModal: false, openOrderModal: {{ $errors->has('req_no') ? 'true' : 'false' }}, openReceiveModal: false, receiveModalDetailId: '', editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
+<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: '{{ $errors->has('qty_given') ? 'patient' : 'pharmacy' }}', searchQuery: '', searchDate: '', openAddModal: false, openAdminModal: {{ $errors->has('qty_given') ? 'true' : 'false' }}, showAdjustmentModal: false, openOrderModal: {{ $errors->has('req_no') ? 'true' : 'false' }}, openReceiveModal: false, receiveModalDetailId: '', editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
 
     @if(session('success'))
     <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)"
@@ -1179,7 +1179,10 @@
                                 <div class="grid grid-cols-2 gap-5">
                                     <div>
                                         <label class="block text-sm font-semibold text-slate-700 mb-1.5">Quantity Given <span class="text-red-500">*</span></label>
-                                        <input type="number" name="qty_given" required min="1" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                        <input type="number" name="qty_given" value="{{ old('qty_given') }}" required min="1" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                        @error('qty_given')
+                                        <p class="mt-1.5 text-[11px] font-bold text-red-500">{{ $message }}</p>
+                                        @enderror
                                     </div>
                                     <div>
                                         <label class="block text-sm font-semibold text-slate-700 mb-1.5">Remark / Dosage <span class="text-red-500">*</span></label>
