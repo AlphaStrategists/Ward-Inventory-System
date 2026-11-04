@@ -191,15 +191,7 @@
                         <i class="fa-solid fa-right-to-bracket"></i>
                         Sign In
                     </button>
-                </form>
-                
-                <div class="mt-4 text-center">
-                    <a href="{{ route('home') }}" class="text-xs hover:underline" style="color: var(--color-secondary)">
-                        <i class="fa-solid fa-arrow-left mr-1"></i>
-                        Back to home
-                    </a>
-                </div>
-
+                </form> 
             </div>
         </div>
     </main>
