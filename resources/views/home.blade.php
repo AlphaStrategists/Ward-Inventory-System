@@ -1639,14 +1639,14 @@
 ========================================================== -->
     <nav class="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
 
-        <div class="mx-auto max-w-7xl px-6 lg:px-8">
+        <div class="w-full px-6 lg:px-8">
 
             <div class="flex h-18 items-center justify-between">
 
                 <!-- Brand -->
                 <a
                     href="{{ route('home') }}"
-                    class="flex items-center gap-3">
+                    class="flex items-center gap-3 ml-69">
 
                     <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1894f2] text-white shadow-md">
                         <i class="fa-solid fa-plus text-lg"></i>
@@ -1943,7 +1943,7 @@
                         class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
                         <i class="fa-solid fa-chart-column mr-1.5"></i>
-                        Reports
+                        Help
 
                     </a>
 
@@ -1964,6 +1964,27 @@
                     </div>
 
                 </div>
+                @auth
+                <div class="hidden items-center gap-2 rounded-xl border-slate-200 bg-slate-50 px-3 py-1.5 lg:flex"
+                    title="{{ auth()->user()->email ?? '' }}">
+
+                    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#a9adb0] text-white">
+
+                        <i class="fa-regular fa-user"></i>
+
+                    </div>
+
+                    <span class="leading-tight">
+                        <span class="block text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                            Hi,
+                        </span>
+                        <span class="block max-w-[140px] truncate text-sm font-semibold text-slate-800">
+                            {{ auth()->user()->name }}
+                        </span>
+                    </span>
+
+                </div>
+                @endauth
 
             </div>
 
