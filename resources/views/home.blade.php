@@ -1615,16 +1615,7 @@
 
 
                 <!-- Hero Buttons -->
-                <div class="mt-8 flex flex-wrap gap-4">
-
-                    <a
-                        href="{{ route('login') }}"
-                        class="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 font-semibold text-[#003af8] shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50">
-                        <i class="fa-solid fa-right-to-bracket"></i>
-                        User login
-                    </a>
-
-
+                <div class="mt-8 flex flex-wrap">
                     <!-- Create a new user -->
                     @if (auth()->check() && auth()->user()->is_admin)
                     <a
