@@ -28,7 +28,7 @@ class InjectionInventoryTest extends TestCase
         DB::purge();
         DB::reconnect('sqlite');
 
-        // Create minimal isolated users table in memory
+        // Clean & initialize isolated tables in SQLite memory
         Schema::dropIfExists('injection_antibiotic_requisitions');
         Schema::dropIfExists('injection_requisitions');
         Schema::dropIfExists('injection_medicines');
@@ -48,7 +48,7 @@ class InjectionInventoryTest extends TestCase
             $table->timestamps();
         });
 
-        // Run additive migrations against the in-memory SQLite database
+        // Run additive migrations against isolated SQLite database
         (require database_path('migrations/2026_11_07_000001_create_injection_medicines_table.php'))->up();
         (require database_path('migrations/2026_11_07_000002_create_injection_requisitions_table.php'))->up();
         (require database_path('migrations/2026_11_07_000003_create_injection_antibiotic_requisitions_table.php'))->up();
@@ -66,13 +66,50 @@ class InjectionInventoryTest extends TestCase
         ]);
     }
 
-    public function test_guest_is_redirected_to_login(): void
-    {
-        $response = $this->get(route('injection.index'));
-        $response->assertRedirect(route('login'));
+    // ==========================================
+    // PHASE 01: ORIGINAL SYSTEM REGRESSION TESTS
+    // ==========================================
 
-        $antibioticsResponse = $this->get(route('injection.antibiotics'));
-        $antibioticsResponse->assertRedirect(route('login'));
+    public function test_original_home_is_publicly_accessible_without_login(): void
+    {
+        $response = $this->get('/home');
+        $response->assertOk();
+        $response->assertSee('Hospital Inventory Management System');
+    }
+
+    public function test_original_root_and_login_display_login_page_for_guest(): void
+    {
+        $this->get('/')->assertOk();
+        $this->get('/login')->assertOk();
+    }
+
+    public function test_guest_is_redirected_to_login_from_protected_modules(): void
+    {
+        $this->get('/general-inventory')->assertRedirect(route('login'));
+        $this->get('/inventory/narcotics')->assertRedirect(route('login'));
+        $this->get('/inventory/injections')->assertRedirect(route('login'));
+        $this->get('/inventory/injectionantibiotics')->assertRedirect(route('login'));
+    }
+
+    public function test_original_home_navigation_includes_injection_submenu_items(): void
+    {
+        $response = $this->get('/home');
+        $response->assertOk();
+        $response->assertSee(route('injection.index'));
+        $response->assertSee(route('injection.antibiotics'));
+        $response->assertSee('Injection Antibiotics');
+    }
+
+    // ==========================================
+    // PHASE 02: INJECTION MODULE FEATURE TESTS
+    // ==========================================
+
+    public function test_injection_routes_resolve_to_correct_inventory_urls(): void
+    {
+        $this->assertEquals(url('/inventory/injections'), route('injection.index'));
+        $this->assertEquals(url('/inventory/injectionantibiotics'), route('injection.antibiotics'));
+        $this->assertEquals(url('/inventory/injections/orders/5'), route('injection.orders.update', 5));
+        $this->assertEquals(url('/inventory/injectionantibiotics/orders/5'), route('injection.antibiotics.orders.update', 5));
     }
 
     public function test_nurse_can_access_both_pages(): void
@@ -139,17 +176,6 @@ class InjectionInventoryTest extends TestCase
         $this->actingAs($pharmacist)
             ->get(route('injection.antibiotics'))
             ->assertForbidden();
-    }
-
-    public function test_home_navigation_includes_injection_submenu_items(): void
-    {
-        $nurse = $this->createUser('Nurse');
-
-        $response = $this->actingAs($nurse)->get(route('home'));
-        $response->assertOk();
-        $response->assertSee(route('injection.index'));
-        $response->assertSee(route('injection.antibiotics'));
-        $response->assertSee('Injection Antibiotics');
     }
 
     public function test_add_medicine_works_independently_for_injection_and_antibiotics(): void
@@ -312,7 +338,7 @@ class InjectionInventoryTest extends TestCase
             'ms_approval_status' => 'Approved',
         ]);
 
-        // Status should still remain Pending because nurse cannot approve
+        // Status must remain Pending because nurse cannot approve
         $this->assertDatabaseHas('injection_requisitions', [
             'id' => $req->id,
             'ms_approval_status' => 'Pending',

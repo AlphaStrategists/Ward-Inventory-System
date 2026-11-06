@@ -734,6 +734,70 @@ Route::middleware(['auth'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | Injection & Injection Antibiotics Inventory
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('inventory')->name('injection.')->group(function () {
+
+        // Injection
+        Route::get('/injections', [
+            InjectionInventoryController::class,
+            'index'
+        ])->name('index');
+
+        Route::post('/injections/medicines', [
+            InjectionInventoryController::class,
+            'storeMedicine'
+        ])->name('medicines.store');
+
+        Route::post('/injections/orders', [
+            InjectionInventoryController::class,
+            'storeOrder'
+        ])->name('orders.store');
+
+        Route::put('/injections/orders/{id}', [
+            InjectionInventoryController::class,
+            'updateOrder'
+        ])->name('orders.update');
+
+        Route::delete('/injections/orders/{id}', [
+            InjectionInventoryController::class,
+            'destroyOrder'
+        ])->name('orders.destroy');
+
+
+        // Injection Antibiotics
+        Route::get('/injectionantibiotics', [
+            InjectionInventoryController::class,
+            'antibiotics'
+        ])->name('antibiotics');
+
+        Route::post('/injectionantibiotics/medicines', [
+            InjectionInventoryController::class,
+            'storeAntibioticMedicine'
+        ])->name('antibiotics.medicines.store');
+
+        Route::post('/injectionantibiotics/orders', [
+            InjectionInventoryController::class,
+            'storeAntibioticOrder'
+        ])->name('antibiotics.orders.store');
+
+        Route::put('/injectionantibiotics/orders/{id}', [
+            InjectionInventoryController::class,
+            'updateAntibioticOrder'
+        ])->name('antibiotics.orders.update');
+
+        Route::delete('/injectionantibiotics/orders/{id}', [
+            InjectionInventoryController::class,
+            'destroyAntibioticOrder'
+        ])->name('antibiotics.orders.destroy');
+
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
     | Medicines Inventory
     |--------------------------------------------------------------------------
     */
@@ -808,26 +872,6 @@ Route::middleware(['auth'])->group(function () {
         '/inventory/medicines/expire-batches',
         [MedicineController::class, 'expireBatches']
     )->name('inventory.medicines.expire-batches');
-
-    /*
-    |--------------------------------------------------------------------------
-    | Injection & Injection Antibiotics Inventory
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('injection')->name('injection.')->group(function () {
-        Route::get('/', [InjectionInventoryController::class, 'index'])->name('index');
-        Route::post('/medicines', [InjectionInventoryController::class, 'storeMedicine'])->name('medicines.store');
-        Route::post('/orders', [InjectionInventoryController::class, 'storeOrder'])->name('orders.store');
-        Route::put('/orders/{id}', [InjectionInventoryController::class, 'updateOrder'])->name('orders.update');
-        Route::delete('/orders/{id}', [InjectionInventoryController::class, 'destroyOrder'])->name('orders.destroy');
-
-        // Injection Antibiotics
-        Route::get('/antibiotics', [InjectionInventoryController::class, 'antibiotics'])->name('antibiotics');
-        Route::post('/antibiotics/medicines', [InjectionInventoryController::class, 'storeAntibioticMedicine'])->name('antibiotics.medicines.store');
-        Route::post('/antibiotics/orders', [InjectionInventoryController::class, 'storeAntibioticOrder'])->name('antibiotics.orders.store');
-        Route::put('/antibiotics/orders/{id}', [InjectionInventoryController::class, 'updateAntibioticOrder'])->name('antibiotics.orders.update');
-        Route::delete('/antibiotics/orders/{id}', [InjectionInventoryController::class, 'destroyAntibioticOrder'])->name('antibiotics.orders.destroy');
-    });
 
 
     /*

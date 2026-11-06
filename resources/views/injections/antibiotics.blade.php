@@ -641,7 +641,7 @@
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-            <form :action="'{{ url('/injection/antibiotics/orders') }}/' + editOrder.id" method="POST">
+            <form :action="'{{ route('injection.antibiotics.orders.update', ['id' => '__ORDER_ID__']) }}'.replace('__ORDER_ID__', editOrder.id)" method="POST">
                 @csrf
                 @method('PUT')
                 <div class="p-6 space-y-4">
