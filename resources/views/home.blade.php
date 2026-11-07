@@ -1751,16 +1751,7 @@
                                             <i class="fa-solid fa-droplet text-slate-400"></i>
                                             IV Fluids
                                         </a>
-                                        <a href="{{ route('inventory.index', ['category' => 'injections']) }}"
-                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
-                                            <i class="fa-solid fa-syringe text-slate-400"></i>
-                                            Injection
-                                        </a>
-                                        <a href="{{ route('inventory.index', ['category' => 'injectionantibiotics']) }}"
-                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
-                                            <i class="fa-solid fa-shield-virus text-slate-400"></i>
-                                            Injection Antibiotics
-                                        </a>
+                                        
                                     </div>
                                 </div>
 
@@ -1814,6 +1805,55 @@
                                             class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
                                             <i class="fa-solid fa-cart-shopping text-slate-400"></i>
                                             Local Purchases
+                                        </a>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            
+
+                            <!-- injections-->
+                            <div class="group/item relative">
+
+                                <button
+                                    type="button"
+                                    class="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                       <i class="fa-solid fa-syringe"></i>
+                                    </span>
+
+                                    <span class="flex-1 text-left">
+                                        <span class="block font-semibold">
+                                            Injections
+                                        </span>
+                                        <span class="text-xs text-slate-400">
+                                            Injection Antibiotics
+                                        </span>
+                                    </span>
+
+                                    <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+
+                                </button>
+
+                                <div class="invisible absolute left-full top-0 z-30 w-64 pl-2 opacity-0 transition duration-200 group-hover/item:visible group-hover/item:opacity-100">
+
+                                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                        @php
+                                        $surgicalRole = $surgicalRole ?? null;
+                                        @endphp
+
+                                        <a href="{{ route('inventory.index', ['category' => 'injections']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-syringe text-slate-400"></i>
+                                            Injection
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'injectionantibiotics']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-shield-virus text-slate-400"></i>
+                                            Injection Antibiotics
                                         </a>
                                     </div>
 
