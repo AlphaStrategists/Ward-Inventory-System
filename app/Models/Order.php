@@ -19,12 +19,18 @@ class Order extends Model
         'ms_approval_status',
         'approved_by',
         'remark',
+        'issued_by',
+        'issued_date',
+        'received_by',
+        'received_date',
     ];
 
     protected function casts(): array
     {
         return [
             'date' => 'datetime',
+            'issued_date' => 'datetime',
+            'received_date' => 'datetime',
         ];
     }
 
@@ -41,6 +47,26 @@ class Order extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function issuedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'issued_by');
+    }
+
+    public function issuer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'issued_by');
+    }
+
+    public function receivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
+    }
+
+    public function receiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
     }
 
     public function details(): HasMany
