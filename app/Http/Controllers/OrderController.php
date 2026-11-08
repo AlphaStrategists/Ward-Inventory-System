@@ -19,7 +19,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $userRole = strtolower($user->role ?? '');
+        $userRole = strtolower(trim((string) ($user->role ?? '')));
         $statusFilter = $request->query('status');
 
         // Default role-based filtering if no explicit filter is passed:
@@ -29,7 +29,7 @@ class OrderController extends Controller
         if (!$statusFilter) {
             if (in_array($user->role, ['Nurse', 'Head Nurse']) || $user->hasRole(['Nurse', 'Head Nurse']) || in_array($userRole, ['nurse', 'head nurse'], true)) {
                 $statusFilter = 'my_orders';
-            } elseif ($user->hasRole('Ms') || $userRole === 'ms') {
+            } elseif ($user->hasRole('MS') || $userRole === 'ms') {
                 $statusFilter = 'pending';
             } elseif ($user->hasRole('Pharmacist') || $userRole === 'pharmacist') {
                 $statusFilter = 'pending_issue';
@@ -156,7 +156,7 @@ class OrderController extends Controller
             abort(401);
         }
 
-        $isMs = $currentUser->hasRole('Ms') || strtolower($currentUser->role ?? '') === 'ms';
+        $isMs = $currentUser->hasRole('MS') || strtolower(trim((string) ($currentUser->role ?? ''))) === 'ms';
         if (!$isMs) {
             return redirect()->back()->with('error', 'Only Ms can approve requisitions.');
         }

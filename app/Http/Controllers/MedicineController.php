@@ -163,7 +163,7 @@ class MedicineController extends Controller
         $admissions = collect([]);
         $availableBatches = collect([]);
         $rawUserRole = Auth::check() ? (Auth::user()->role ?? 'Nurse') : 'Nurse';
-        $displayRole = strtolower(trim((string) $rawUserRole)) === 'doctor' ? 'MS' : $rawUserRole;
+        $displayRole = in_array(strtolower(trim((string) $rawUserRole)), ['ms', 'doctor'], true) ? 'MS' : $rawUserRole;
 
         return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
     }
@@ -382,7 +382,7 @@ class MedicineController extends Controller
             });
 
         $rawUserRole = Auth::check() ? (Auth::user()->role ?? 'Nurse') : 'Nurse';
-        $displayRole = strtolower(trim((string) $rawUserRole)) === 'doctor' ? 'MS' : $rawUserRole;
+        $displayRole = in_array(strtolower(trim((string) $rawUserRole)), ['ms', 'doctor'], true) ? 'MS' : $rawUserRole;
 
         return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
     }

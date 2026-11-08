@@ -95,7 +95,7 @@
         <!-- Search & Filter Controls Bar -->
         <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-between gap-3 mt-3 pt-2 border-top">
             <div>
-                @if(auth()->check() && (auth()->user()->hasRole('Doctor') || strtolower(auth()->user()->role ?? '') === 'doctor'))
+                @if(auth()->check() && (auth()->user()->hasRole('MS') || strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms'))
                 <form id="approve-all-form" action="{{ route('orders.approveAll') }}" method="POST" class="d-inline-block">
                     @csrf
                     @method('PATCH')
@@ -184,7 +184,7 @@
                             $issuedPacks = $isPackOrdering && $unitsPerPack > 0 ? round($actualIssued / $unitsPerPack, 2) : 0;
                             $displayIssuedPacks = (float)$issuedPacks == (int)$issuedPacks ? (int)$issuedPacks : $issuedPacks;
 
-                            $isDoctor = auth()->check() && (auth()->user()->hasRole('Doctor') || strtolower(auth()->user()->role ?? '') === 'doctor');
+                            $isDoctor = auth()->check() && (auth()->user()->hasRole('MS') || strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms');
                             $isPharmacist = auth()->check() && (auth()->user()->hasRole('Pharmacist') || strtolower(auth()->user()->role ?? '') === 'pharmacist');
                             $isNurse = auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse') || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'head nurse'], true));
 
