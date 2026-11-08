@@ -15,6 +15,8 @@ class OrderDetail extends Model
         'medicine_id',
         'qty_requested',
         'qty_issued',
+        'qty_received',
+        'balance_before_order',
         'remark',
     ];
 
@@ -23,6 +25,8 @@ class OrderDetail extends Model
         return [
             'qty_requested' => 'integer',
             'qty_issued' => 'integer',
+            'qty_received' => 'integer',
+            'balance_before_order' => 'integer',
         ];
     }
 

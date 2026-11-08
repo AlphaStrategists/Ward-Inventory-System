@@ -31,8 +31,49 @@ class MedicineController extends Controller
         $categoryClean = strtolower(trim($category));
         $normalizedSlug = str_replace(['-', '_', ' '], '', $categoryClean);
 
+        // Disambiguation flags
+        $hasInjection = str_contains($categoryClean, 'injection');
+        $hasAntibiotic = str_contains($categoryClean, 'antibiotic');
+        $hasOral = str_contains($categoryClean, 'oral');
+
         // Find all category records matching the active category name or common aliases/variations
-        $matchingCategories = Category::where(function ($q) use ($category, $categoryClean, $normalizedSlug) {
+        $matchingCategories = Category::where(function ($q) use ($category, $categoryClean, $normalizedSlug, $hasInjection, $hasAntibiotic, $hasOral) {
+            if ($hasInjection && $hasAntibiotic) {
+                // Injection Antibiotics (Category ID 7)
+                $q->where('id', 7)
+                  ->orWhere(function ($sub) {
+                      $sub->whereRaw('LOWER(name) LIKE ?', ['%injection%'])
+                          ->whereRaw('LOWER(name) LIKE ?', ['%antibiotic%']);
+                  });
+                return;
+            }
+
+            if ($hasInjection) {
+                // Injection (Category ID 6) - exclude antibiotics
+                $q->where('id', 6)
+                  ->orWhere(function ($sub) {
+                      $sub->whereRaw('LOWER(name) LIKE ?', ['%injection%'])
+                          ->whereRaw('LOWER(name) NOT LIKE ?', ['%antibiotic%']);
+                  });
+                return;
+            }
+
+            if ($hasAntibiotic) {
+                if ($hasOral) {
+                    // Oral Antibiotics
+                    $q->whereRaw('LOWER(name) LIKE ?', ['%oral%antibiotic%']);
+                } else {
+                    // Antibiotics (General, Category ID 4) - strictly exclude oral and injection
+                    $q->where('id', 4)
+                      ->orWhere(function ($sub) {
+                          $sub->whereRaw('LOWER(name) LIKE ?', ['%antibiotic%'])
+                              ->whereRaw('LOWER(name) NOT LIKE ?', ['%oral%'])
+                              ->whereRaw('LOWER(name) NOT LIKE ?', ['%injection%']);
+                      });
+                }
+                return;
+            }
+
             $q->where('name', $category)
               ->orWhereRaw('LOWER(name) = ?', [$categoryClean])
               ->orWhereRaw('LOWER(REPLACE(REPLACE(REPLACE(name, "-", ""), "_", ""), " ", "")) = ?', [$normalizedSlug]);
@@ -45,17 +86,6 @@ class MedicineController extends Controller
                 $q->orWhereRaw('LOWER(name) LIKE ?', ['%syrup%']);
             }
 
-            if (str_contains($categoryClean, 'antibiotic')) {
-                if (str_contains($categoryClean, 'oral')) {
-                    $q->orWhereRaw('LOWER(name) LIKE ?', ['%oral%antibiotic%']);
-                } else {
-                    $q->orWhere(function ($sub) {
-                        $sub->whereRaw('LOWER(name) LIKE ?', ['%antibiotic%'])
-                            ->whereRaw('LOWER(name) NOT LIKE ?', ['%oral%']);
-                    });
-                }
-            }
-
             if (str_contains($categoryClean, 'fluid') || str_contains($categoryClean, 'iv')) {
                 $q->orWhereRaw('LOWER(name) LIKE ?', ['%fluid%'])
                   ->orWhereRaw('LOWER(name) LIKE ?', ['%iv%']);
@@ -66,15 +96,33 @@ class MedicineController extends Controller
             }
         })->get();
 
-        $currentCategory = $matchingCategories->firstWhere('name', $category)
-            ?? $matchingCategories->firstWhere(fn ($cat) => strtolower($cat->name) === $categoryClean)
-            ?? $matchingCategories->first()
-            ?? Category::where('name', $category)->first()
-            ?? Category::firstOrCreate(['name' => $category]);
+        // Priority resolution for Category instance
+        if ($hasInjection && $hasAntibiotic) {
+            $currentCategory = $matchingCategories->firstWhere('id', 7)
+                ?? $matchingCategories->first();
+        } elseif ($hasInjection) {
+            $currentCategory = $matchingCategories->firstWhere('id', 6)
+                ?? $matchingCategories->firstWhere('name', 'Injection')
+                ?? $matchingCategories->first();
+        } elseif ($hasAntibiotic && !$hasOral) {
+            $currentCategory = $matchingCategories->firstWhere('id', 4)
+                ?? $matchingCategories->first();
+        } else {
+            $currentCategory = $matchingCategories->firstWhere('name', $category)
+                ?? $matchingCategories->firstWhere(fn ($cat) => strtolower($cat->name) === $categoryClean)
+                ?? $matchingCategories->first()
+                ?? Category::where('name', $category)->first()
+                ?? Category::firstOrCreate(['name' => $category]);
+        }
 
         $categoryIds = $matchingCategories->pluck('id')->filter()->all();
         if ($currentCategory && !in_array($currentCategory->id, $categoryIds)) {
             $categoryIds[] = $currentCategory->id;
+        }
+
+        // For Injection (Category 6), exclude Category 10 (empty duplicate) if 6 is present
+        if ($hasInjection && !$hasAntibiotic && in_array(6, $categoryIds)) {
+            $categoryIds = array_values(array_filter($categoryIds, fn($id) => (int)$id !== 10));
         }
 
         // Query medicines for this category without excluding medicines that do not have batches or stock_ledger records yet
@@ -207,7 +255,7 @@ class MedicineController extends Controller
 
         // Fetch Pharmacy Orders
         $selectedMedicine->load('batches.supplier');
-        $pharmacyOrders = OrderDetail::with(['order.requester', 'order.approver', 'medicine.batches.supplier'])
+        $pharmacyOrders = OrderDetail::with(['order.requester', 'order.approver', 'order.issuedBy', 'order.receivedBy', 'medicine.batches.supplier'])
             ->where('medicine_id', $selectedMedicine->id)
             ->get();
 
@@ -596,6 +644,68 @@ class MedicineController extends Controller
 
     public function storeOrder(Request $request, $category, $id)
     {
+        // Support editing an existing pending order
+        if ($request->filled('order_detail_id')) {
+            $detail = OrderDetail::findOrFail($request->input('order_detail_id'));
+            $order = $detail->order;
+
+            $currentUser = Auth::user();
+            $isNurse = $currentUser && (in_array($currentUser->role, ['Nurse', 'Head Nurse']) || in_array(strtolower($currentUser->role ?? ''), ['nurse', 'head nurse'], true));
+            if (!$isNurse || (int) $order->requested_by !== (int) $currentUser->id) {
+                return redirect()->back()->with('error', 'Only the nurse who created this order can edit it.');
+            }
+
+            if (strtolower($order->ms_approval_status ?? '') !== 'pending') {
+                return redirect()->back()->with('error', 'Only pending orders can be edited.');
+            }
+
+            $validated = $request->validate([
+                'date' => 'required|date',
+                'req_no' => 'required|string|max:100|unique:orders,req_no,' . $order->id,
+                'qty_requested' => 'required|integer|min:1',
+                'units_per_pack' => 'required|integer|min:1',
+                'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            ], [
+                'req_no.unique' => 'This Requisition Number already exists. Please enter a new requisition number.'
+            ]);
+
+            $medicine = Medicine::findOrFail($id);
+            $qtyRequested = $validated['qty_requested'] * $validated['units_per_pack'];
+
+            $order->update([
+                'req_no' => $validated['req_no'],
+                'date' => \Carbon\Carbon::parse($validated['date'])->format('Y-m-d H:i:s'),
+            ]);
+
+            $formNameStr = strtolower($medicine->form->form_name ?? '');
+            if (in_array($formNameStr, ['syrup', 'drops', 'suspension', 'solution', 'iv-fluid'])) {
+                $singleUnitName = 'Bottle(s)';
+            } elseif (in_array($formNameStr, ['injection'])) {
+                $singleUnitName = 'Vial(s)';
+            } elseif (in_array($formNameStr, ['capsule', 'tablet', 'pill'])) {
+                $singleUnitName = ucfirst($formNameStr) . '(s)';
+            } else {
+                $singleUnitName = !empty($medicine->unit->unit_name) ? ucfirst($medicine->unit->unit_name) . '(s)' : 'Unit(s)';
+            }
+
+            $packLabel = $validated['units_per_pack'] > 1 ? 'Pack(s)' : $singleUnitName;
+            $remark = $validated['qty_requested'] . ' ' . $packLabel;
+
+            if (!empty($validated['supplier_id'])) {
+                $supplierModel = Supplier::find($validated['supplier_id']);
+                if ($supplierModel) {
+                    $remark = '[SUPPLIER:' . $supplierModel->supplier_name . '] ' . $remark;
+                }
+            }
+
+            $detail->update([
+                'qty_requested' => $qtyRequested,
+                'remark' => $remark,
+            ]);
+
+            return redirect()->back()->with('success', 'Order updated successfully.');
+        }
+
         $validated = $request->validate([
             'date' => 'required|date',
             'req_no' => 'required|string|max:100|unique:orders,req_no',
@@ -642,13 +752,34 @@ class MedicineController extends Controller
             }
         }
 
-        OrderDetail::create([
+        // Snapshot balance_before_order for Injection Antibiotics
+        $categoryClean = strtolower(trim($category));
+        $isInjectionAntibiotics = (str_contains($categoryClean, 'injection') && str_contains($categoryClean, 'antibiotic')) || ((int)$medicine->category_id === 7);
+        $balanceBeforeOrder = null;
+        if ($isInjectionAntibiotics) {
+            $balanceBeforeOrder = 0;
+            if ($wardId) {
+                $balanceBeforeOrder = (int) DB::table('stock_ledger')
+                    ->join('medicine_batches', 'stock_ledger.batch_id', '=', 'medicine_batches.id')
+                    ->where('medicine_batches.medicine_id', $medicine->id)
+                    ->where('stock_ledger.ward_id', $wardId)
+                    ->sum('stock_ledger.quantity');
+            }
+        }
+
+        $detailAttributes = [
             'order_id' => $order->id,
             'medicine_id' => $medicine->id,
             'qty_requested' => $qtyRequested,
             'qty_issued' => 0,
             'remark' => $remark,
-        ]);
+        ];
+
+        if ($balanceBeforeOrder !== null && \Illuminate\Support\Facades\Schema::hasColumn('order_details', 'balance_before_order')) {
+            $detailAttributes['balance_before_order'] = $balanceBeforeOrder;
+        }
+
+        OrderDetail::create($detailAttributes);
 
         return redirect()->back()->with('success', 'Order created successfully.');
     }
@@ -700,10 +831,19 @@ class MedicineController extends Controller
             return redirect()->back()->with('error', 'Issued quantity cannot exceed requested quantity.');
         }
 
-        $detail->update([
-            'qty_issued' => $qtyIssued,
-            'remark' => '[ISSUED_BY:' . \Illuminate\Support\Facades\Auth::user()->name . '] ' . ($detail->remark ?? '')
-        ]);
+        DB::transaction(function () use ($detail, $qtyIssued) {
+            $detail->update([
+                'qty_issued' => $qtyIssued,
+                'remark' => '[ISSUED_BY:' . (\Illuminate\Support\Facades\Auth::user()->name ?? 'Pharmacist') . '] ' . ($detail->remark ?? '')
+            ]);
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'issued_by')) {
+                $detail->order->update([
+                    'issued_by' => Auth::id() ?? 1,
+                    'issued_date' => now(),
+                ]);
+            }
+        });
         
         return redirect()->back()->with('success', 'Order issued successfully.');
     }
@@ -720,11 +860,29 @@ class MedicineController extends Controller
 
         $isNurse = in_array($currentUser->role, ['Nurse', 'Head Nurse']) || $currentUser->hasRole(['Nurse', 'Head Nurse']) || in_array(strtolower($currentUser->role ?? ''), ['nurse', 'head nurse'], true);
         if (!$isNurse || (int) $order->requested_by !== (int) $currentUser->id) {
-            return redirect()->back()->with('error', 'Only the nurse who created this order can cancel it.');
+            return redirect()->back()->with('error', 'Only the nurse who created this order can cancel or delete it.');
         }
 
         if (strtolower($order->ms_approval_status ?? '') !== 'pending') {
-            return redirect()->back()->with('error', 'Only pending orders can be cancelled.');
+            return redirect()->back()->with('error', 'Only pending orders can be cancelled or deleted.');
+        }
+
+        // Support safe deletion for pending orders
+        if ($request->input('action') === 'delete' || $request->has('delete')) {
+            DB::transaction(function () use ($detail, $order) {
+                if ($detail) {
+                    $orderId = $detail->order_id;
+                    $detail->delete();
+                    if (OrderDetail::where('order_id', $orderId)->count() === 0) {
+                        $order->delete();
+                    }
+                } else {
+                    OrderDetail::where('order_id', $order->id)->delete();
+                    $order->delete();
+                }
+            });
+
+            return redirect()->back()->with('success', 'Order deleted successfully.');
         }
 
         $order->update([
@@ -736,72 +894,109 @@ class MedicineController extends Controller
 
     public function receiveOrder(Request $request, $category, $id)
     {
-        $detail = OrderDetail::findOrFail($id);
+        return DB::transaction(function () use ($request, $id) {
+            $detail = OrderDetail::lockForUpdate()->findOrFail($id);
+            $order = $detail->order;
 
-        if (strtolower($detail->order->ms_approval_status ?? '') === 'cancelled') {
-            return back()->with('error', 'Cannot receive a cancelled order.');
-        }
-
-        if (str_contains($detail->remark ?? '', '[RECEIVED')) {
-            return back()->with('error', 'This order has already been received.');
-        }
-        
-        $isNewBatch = $request->input('batch_type') === 'new';
-
-        if ($isNewBatch) {
-            $validated = $request->validate([
-                'new_batch_no' => 'required|string|max:100',
-                'new_expiry_date' => 'required|date',
-                'supplier_id' => 'nullable|integer|exists:suppliers,id',
-            ]);
-            
-            $batch = MedicineBatch::create([
-                'medicine_id' => $detail->medicine_id,
-                'supplier_id' => $validated['supplier_id'] ?? null,
-                'batch_no' => strtoupper(trim($validated['new_batch_no'])),
-                'expiry_date' => $validated['new_expiry_date'],
-                'created_at' => now(),
-            ]);
-            $batchId = $batch->id;
-        } else {
-            $validated = $request->validate([
-                'batch_id' => 'required|integer|exists:medicine_batches,id',
-                'supplier_id' => 'nullable|integer|exists:suppliers,id',
-            ]);
-            $batchId = $validated['batch_id'];
-
-            if (!empty($validated['supplier_id'])) {
-                MedicineBatch::where('id', $batchId)->update([
-                    'supplier_id' => $validated['supplier_id'],
-                ]);
+            if (strtolower($order->ms_approval_status ?? '') === 'cancelled') {
+                return back()->with('error', 'Cannot receive a cancelled order.');
             }
-        }
 
-        $wardId = Auth::user()->ward_id ?? DB::table('wards')->value('id');
-        $userId = Auth::id() ?? 1;
+            // Concurrency check: prevent duplicate receipt
+            if (($detail->qty_received !== null && $detail->qty_received > 0) || str_contains($detail->remark ?? '', '[RECEIVED')) {
+                return back()->with('error', 'This order has already been received.');
+            }
+            
+            $maxAllowedQty = max(1, (int)$detail->qty_issued);
+            $validated = $request->validate([
+                'qty_received' => 'nullable|integer|min:1|max:' . $maxAllowedQty,
+                'batch_type' => 'nullable|string|in:new,existing',
+                'batch_id' => [
+                    'nullable',
+                    'required_if:batch_type,existing',
+                    \Illuminate\Validation\Rule::exists('medicine_batches', 'id')->where(function ($q) use ($detail) {
+                        $q->where('medicine_id', $detail->medicine_id);
+                    }),
+                ],
+                'new_batch_no' => 'nullable|required_if:batch_type,new|string|max:100',
+                'new_expiry_date' => 'nullable|required_if:batch_type,new|date',
+                'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            ]);
 
-        if ($detail->qty_issued > 0) {
+            $qtyReceived = !empty($validated['qty_received']) ? (int) $validated['qty_received'] : (int) $detail->qty_issued;
+            if ($qtyReceived <= 0) {
+                return back()->with('error', 'Invalid received quantity.');
+            }
+
+            $isNewBatch = ($request->input('batch_type') === 'new');
+
+            if ($isNewBatch) {
+                $batch = MedicineBatch::create([
+                    'medicine_id' => $detail->medicine_id,
+                    'supplier_id' => $validated['supplier_id'] ?? null,
+                    'batch_no' => strtoupper(trim($validated['new_batch_no'])),
+                    'expiry_date' => $validated['new_expiry_date'],
+                    'created_at' => now(),
+                ]);
+                $batchId = $batch->id;
+            } else {
+                $batchId = $validated['batch_id'] ?? MedicineBatch::where('medicine_id', $detail->medicine_id)->value('id');
+                if (!$batchId) {
+                    $batch = MedicineBatch::create([
+                        'medicine_id' => $detail->medicine_id,
+                        'batch_no' => 'BATCH-' . date('YmdHis'),
+                        'expiry_date' => now()->addYear()->toDateString(),
+                        'created_at' => now(),
+                    ]);
+                    $batchId = $batch->id;
+                }
+
+                if (!empty($validated['supplier_id'])) {
+                    MedicineBatch::where('id', $batchId)->update([
+                        'supplier_id' => $validated['supplier_id'],
+                    ]);
+                }
+            }
+
+            $wardId = Auth::user()->ward_id ?? DB::table('wards')->value('id');
+            $userId = Auth::id() ?? 1;
+
+            // Only create StockReceipt - NEVER manually insert into stock_ledger (MySQL trigger/observer handles ledger)
             StockReceipt::create([
                 'batch_id' => $batchId,
                 'ward_id' => $wardId,
-                'quantity_received' => $detail->qty_issued,
+                'quantity_received' => $qtyReceived,
                 'received_by' => $userId,
                 'date' => now(),
             ]);
-        }
 
-        $remarkStr = $detail->remark ?? '';
-        if (!empty($validated['supplier_id'])) {
-            $supplierModel = Supplier::find($validated['supplier_id']);
-            if ($supplierModel) {
-                $remarkStr = preg_replace('/\[SUPPLIER:.*?\]\s*/', '', $remarkStr);
-                $remarkStr = '[SUPPLIER:' . $supplierModel->supplier_name . '] ' . trim($remarkStr);
+            $remarkStr = $detail->remark ?? '';
+            if (!empty($validated['supplier_id'])) {
+                $supplierModel = Supplier::find($validated['supplier_id']);
+                if ($supplierModel) {
+                    $remarkStr = preg_replace('/\[SUPPLIER:.*?\]\s*/', '', $remarkStr);
+                    $remarkStr = '[SUPPLIER:' . $supplierModel->supplier_name . '] ' . trim($remarkStr);
+                }
             }
-        }
 
-        $detail->update(['remark' => trim('[RECEIVED_BY:' . (Auth::user()->name ?? 'Nurse') . '] ' . $remarkStr)]);
+            $detailUpdates = [
+                'remark' => trim('[RECEIVED_BY:' . (Auth::user()->name ?? 'Nurse') . '] ' . $remarkStr),
+            ];
 
-        return redirect()->back()->with('success', 'Stock received successfully.');
+            if (\Illuminate\Support\Facades\Schema::hasColumn('order_details', 'qty_received')) {
+                $detailUpdates['qty_received'] = $qtyReceived;
+            }
+            $detail->update($detailUpdates);
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'received_by')) {
+                $order->update([
+                    'received_by' => $userId,
+                    'received_date' => now(),
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Stock received successfully.');
+        });
     }
 
     /**
