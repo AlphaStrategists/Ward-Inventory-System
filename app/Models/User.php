@@ -16,10 +16,21 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $table = 'users';
+
     const UPDATED_AT = null;
 
-    public const ROLES = ['Doctor', 'Nurse', 'Pharmacist', 'Head Nurse'];
-    public const NURSE_ROLES = ['Nurse', 'Head Nurse'];
+    public const ROLES = [
+        'Doctor',
+        'MS',
+        'Nurse',
+        'Head Nurse',
+        'Pharmacist',
+    ];
+
+    public const NURSE_ROLES = [
+        'Nurse',
+        'Head Nurse',
+    ];
 
     protected $fillable = [
         'first_name',
@@ -28,7 +39,6 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
-        'role_id',
     ];
 
     protected $hidden = [
@@ -45,17 +55,22 @@ class User extends Authenticatable
         ];
     }
 
-    /** Lets views use $user->name even though the table has first_name and last_name. */
+    /**
+     * Allow views to use $user->name.
+     */
     protected function name(): Attribute
     {
-        return Attribute::get(fn () => trim($this->first_name . ' ' . $this->last_name) ?: ($this->attributes['name'] ?? ''));
+        return Attribute::get(
+            fn () => trim(
+                ($this->first_name ?? '') . ' ' .
+                ($this->last_name ?? '')
+            )
+        );
     }
 
-    public function roleRelation(): BelongsTo
-    {
-        return $this->belongsTo(Role::class, 'role_id');
-    }
-
+    /**
+     * Role is stored directly in users.role.
+     */
     public function getRoleAttribute(): ?string
     {
         return isset($this->attributes['role'])
@@ -63,27 +78,51 @@ class User extends Authenticatable
             : null;
     }
 
+    /**
+     * Find the matching role record using role_name.
+     * Does not require users.role_id.
+     */
+    public function roleRelation(): BelongsTo
+    {
+        return $this->belongsTo(
+            Role::class,
+            'role',
+            'role_name'
+        );
+    }
+
     public function generalTransactions(): HasMany
     {
-        return $this->hasMany(GeneralTransaction::class, 'recorded_by');
+        return $this->hasMany(
+            GeneralTransaction::class,
+            'recorded_by'
+        );
     }
 
     public function generalStockAdjustments(): HasMany
     {
-        return $this->hasMany(GeneralStockAdjustment::class, 'adjusted_by');
+        return $this->hasMany(
+            GeneralStockAdjustment::class,
+            'adjusted_by'
+        );
     }
 
     public function dispensationsIssued(): HasMany
     {
-        return $this->hasMany(Dispensation::class, 'issued_by');
+        return $this->hasMany(
+            Dispensation::class,
+            'issued_by'
+        );
     }
 
     public function dispensationsWitnessed(): HasMany
     {
-        return $this->hasMany(Dispensation::class, 'witnessed_by');
+        return $this->hasMany(
+            Dispensation::class,
+            'witnessed_by'
+        );
     }
 
-    /** is_admin only controls user management. */
     public function isAdmin(): bool
     {
         return (bool) $this->is_admin;
@@ -91,28 +130,50 @@ class User extends Authenticatable
 
     private static function normalize(string $value): string
     {
-        return strtolower(str_replace(['_', '-'], ' ', trim($value)));
+        return strtolower(
+            preg_replace('/[\s_-]+/', ' ', trim($value))
+        );
     }
 
+    /**
+     * Check whether the user has one of the requested roles.
+     */
     public function hasRole(string|array $roleName): bool
     {
         return $this->hasAnyRole((array) $roleName);
     }
 
-    /**
-     * True if the user's role matches any name in the list.
-     */
     public function hasAnyRole(array $roleNames): bool
     {
-        $roleName = $this->role ?? $this->roleRelation?->role_name;
-        if (! $roleName) {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        $current = self::normalize($this->role ?? '');
+
+        if ($current === '') {
             return false;
         }
 
-        $current = self::normalize($roleName);
-        $wanted  = array_map([self::class, 'normalize'], $roleNames);
+        // Doctor and MS represent the same application role.
+        if ($current === 'doctor') {
+            $current = 'ms';
+        }
 
-        if (in_array('nurse', $wanted, true) && $current === 'head nurse') {
+        $wanted = array_map(
+            function ($role) {
+                $role = self::normalize((string) $role);
+
+                return $role === 'doctor' ? 'ms' : $role;
+            },
+            $roleNames
+        );
+
+        // Head Nurse can perform Nurse-level actions.
+        if (
+            $current === 'head nurse' &&
+            in_array('nurse', $wanted, true)
+        ) {
             return true;
         }
 
@@ -121,6 +182,6 @@ class User extends Authenticatable
 
     public function isNurse(): bool
     {
-        return in_array($this->role, ['Nurse', 'Head Nurse']) || $this->hasRole(['Nurse', 'Head Nurse']);
+        return $this->hasRole(self::NURSE_ROLES);
     }
 }

@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
 
 use App\Http\Controllers\SurgicalConsumableController;
 use App\Http\Controllers\SurgicalConsumable2Controller;
@@ -70,11 +68,11 @@ Route::post('/logout', [AuthController::class, 'logout'])
 */
 
 Route::get(
-    '/nurse/surgical-consumable-1',
+    '/Nurse/surgical-consumable-1',
     [SurgicalConsumableController::class, 'index']
 )
-    ->defaults('role', 'nurse')
-    ->middleware(['auth', 'role:nurse'])
+    ->defaults('role', 'Nurse')
+    ->middleware(['auth', 'role:Nurse'])
     ->name('nurse.surgical-consumable-1');
 
 Route::get(
@@ -112,8 +110,8 @@ Route::get(
     '/nurse/surgical-consumable-2',
     [SurgicalConsumable2Controller::class, 'index']
 )
-    ->defaults('role', 'nurse')
-    ->middleware(['auth', 'role:nurse'])
+    ->defaults('role', 'Nurse')
+    ->middleware(['auth', 'role:Nurse'])
     ->name('nurse.surgical-consumable-2');
 
 Route::get(
@@ -162,8 +160,8 @@ Route::get(
     '/nurse/local-purchases',
     [LocalPurchaseController::class, 'index']
 )
-    ->defaults('role', 'nurse')
-    ->middleware(['auth', 'role:nurse'])
+    ->defaults('role', 'Nurse')
+    ->middleware(['auth', 'role:Nurse'])
     ->name('nurse.local-purchases');
 
 Route::get(
@@ -209,7 +207,8 @@ Route::get('/{role}', function ($role) {
         'Nurse',
         'Ms',
         'HeadNurse',
-        'Pharmacist'
+        'Pharmacist',
+        'Doctor'
     ];
 
     if (!in_array($role, $allowedRoles, true)) {
@@ -219,7 +218,7 @@ Route::get('/{role}', function ($role) {
     return redirect("/{$role}/surgical-consumable-1");
 
 })
-    ->where('role', 'Nurse|Ms|HeadNurse|Pharmacist')
+    ->where('role', 'Nurse|Ms|HeadNurse|Pharmacist|Doctor')
     ->middleware('auth');
 
 
@@ -247,7 +246,7 @@ Route::post(
     '/api/consumables',
     [SurgicalConsumableController::class, 'storeConsumable']
 )
-    ->middleware(['auth', 'role:Head Nurse'])
+    ->middleware(['auth', 'role:Admin'])
     ->name('api.sc1.consumables.store');
 
 Route::put(
@@ -261,7 +260,7 @@ Route::delete(
     '/api/consumables/{id}',
     [SurgicalConsumableController::class, 'destroyConsumable']
 )
-    ->middleware(['auth', 'role:Head Nurse'])
+    ->middleware(['auth', 'role:Admin'])
     ->name('api.sc1.consumables.destroy');
 
 
@@ -282,7 +281,7 @@ Route::post(
     '/api/requisitions',
     [SurgicalConsumableController::class, 'storeRequisition']
 )
-    ->middleware(['auth', 'role:HeadNurse'])
+    ->middleware(['auth', 'role:Nurse'])
     ->name('api.sc1.requisitions.store');
 
 Route::put(
@@ -394,21 +393,21 @@ Route::post(
     '/api/surgical-consumable-2/consumables',
     [SurgicalConsumable2Controller::class, 'storeConsumable']
 )
-    ->middleware(['auth', 'role:Head Nurse'])
+    ->middleware(['auth', 'role:Admin'])
     ->name('api.sc2.consumables.store');
 
 Route::put(
     '/api/surgical-consumable-2/consumables/{id}',
     [SurgicalConsumable2Controller::class, 'updateConsumable']
 )
-    ->middleware(['auth', 'role:Head Nurse'])
+    ->middleware(['auth', 'role:Admin'])
     ->name('api.sc2.consumables.update');
 
 Route::delete(
     '/api/surgical-consumable-2/consumables/{id}',
     [SurgicalConsumable2Controller::class, 'destroyConsumable']
 )
-    ->middleware(['auth', 'role:Head Nurse'])
+    ->middleware(['auth', 'role:Admin'])
     ->name('api.sc2.consumables.destroy');
 
 
@@ -555,21 +554,21 @@ Route::post(
     '/api/local-purchases/items',
     [LocalPurchaseController::class, 'storeItem']
 )
-    ->middleware(['auth', 'role:Head Nurse'])
+    ->middleware(['auth', 'role:Admin'])
     ->name('api.local.items.store');
 
 Route::put(
     '/api/local-purchases/items/{id}',
     [LocalPurchaseController::class, 'updateItem']
 )
-    ->middleware(['auth', 'role:Head Nurse'])
+    ->middleware(['auth', 'role:Admin'])
     ->name('api.local.items.update');
 
 Route::delete(
     '/api/local-purchases/items/{id}',
     [LocalPurchaseController::class, 'destroyItem']
 )
-    ->middleware(['auth', 'role:Head Nurse'])
+    ->middleware(['auth', 'role:Admin'])
     ->name('api.local.items.destroy');
 
 
@@ -625,7 +624,7 @@ Route::delete(
     '/api/local-purchases/requisitions/{id}',
     [LocalPurchaseController::class, 'destroyRequisition']
 )
-    ->middleware(['auth', 'role:nurse,admin'])
+    ->middleware(['auth', 'role:Nurse,admin'])
     ->name('api.local.requisitions.destroy');
 
 
@@ -646,14 +645,14 @@ Route::post(
     '/api/local-purchases/adjustments',
     [LocalPurchaseController::class, 'storeAdjustment']
 )
-    ->middleware(['auth', 'role:nurse,admin'])
+    ->middleware(['auth', 'role:Nurse,admin'])
     ->name('api.local.adjustments.store');
 
 Route::delete(
     '/api/local-purchases/adjustments/{id}',
     [LocalPurchaseController::class, 'destroyAdjustment']
 )
-    ->middleware(['auth', 'role:nurse,admin'])
+    ->middleware(['auth', 'role:Nurse,admin'])
     ->name('api.local.adjustments.destroy');
 
 
@@ -674,7 +673,7 @@ Route::post(
     '/api/local-purchases/daily-counts',
     [LocalPurchaseController::class, 'storeDailyCount']
 )
-    ->middleware(['auth', 'role:admin,nurse'])
+    ->middleware(['auth', 'role:admin,Nurse'])
     ->name('api.local.daily-counts.store');
 
 

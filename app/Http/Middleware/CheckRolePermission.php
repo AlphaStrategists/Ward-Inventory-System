@@ -9,28 +9,56 @@ use App\Models\Role;
 
 class CheckRolePermission
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string|null  $permission
-     */
-    public function handle(Request $request, Closure $next, ?string $permission = null): Response
-    {
-        if ($permission) {
-            $user = $request->user();
-            $hasPermission = false;
+    public function handle(
+        Request $request,
+        Closure $next,
+        ?string $permission = null
+    ): Response {
 
-            if ($user) {
-                $roleModel = $user->roleRelation ?: ($user->role ? Role::where('role_name', $user->role)->first() : null);
-                if ($roleModel) {
-                    $hasPermission = $roleModel->permissions()->where('permission_name', $permission)->exists();
-                }
-            }
+        if (!$permission) {
+            return $next($request);
+        }
 
-            if (!$hasPermission) {
-                abort(403, 'Unauthorized ward inventory action.');
-            }
+        $user = $request->user();
+
+        if (!$user) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        // Admin accounts have administrative access.
+        if ($user->isAdmin()) {
+            return $next($request);
+        }
+
+        // Read the role directly from users.role.
+        $userRole = trim((string) $user->role);
+
+        if ($userRole === '') {
+            abort(403, 'User role could not be determined.');
+        }
+
+        // Doctor and MS represent the same application role.
+        if (strcasecmp($userRole, 'Doctor') === 0) {
+            $userRole = 'MS';
+        }
+
+        // Find the corresponding role record.
+        $role = Role::whereRaw(
+            'LOWER(TRIM(role_name)) = ?',
+            [strtolower($userRole)]
+        )->first();
+
+        if (!$role) {
+            abort(403, 'User role is not configured for permissions.');
+        }
+
+        // Check the requested permission.
+        $hasPermission = $role->permissions()
+            ->where('permission_name', $permission)
+            ->exists();
+
+        if (!$hasPermission) {
+            abort(403, 'Unauthorized ward inventory action.');
         }
 
         return $next($request);

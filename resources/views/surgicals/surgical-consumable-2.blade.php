@@ -1114,6 +1114,23 @@
     <script>
         function surgicalConsumableApp() {
             return {
+                // Authenticated user supplied by the Laravel controller.
+                currentUserId: @json((int) ($currentUserId ?? auth()->id() ?? 0)),
+                currentUserName: @json((string) ($currentUserName ?? auth()->user()?->name ?? '')),
+
+                currentRole: @json(
+                    request()->attributes->get('active_role') ??
+                    (
+                        auth()->user()->is_admin
+                            ? 'admin'
+                            : (
+                                strtolower(trim(auth()->user()->role ?? '')) === 'doctor'
+                                    ? 'ms'
+                                    : strtolower(trim(auth()->user()->role ?? ''))
+                            )
+                    )
+                ),
+
                 csrfToken: '{{ csrf_token() }}',
                 isLeaving: false,
                 isPolling: false,
@@ -1188,25 +1205,50 @@
                     reason: ''
                 },
 
-                init() {
+                
+                async init() {
                     window.addEventListener('beforeunload', () => {
                         this.isLeaving = true;
                     });
 
+                    // Load records immediately when the page opens.
+                    this.isPolling = true;
+
+                    try {
+                        await Promise.all([
+                            this.fetchRequisitions(),
+                            this.fetchConsumables(),
+                            this.fetchDailyCounts()
+                        ]);
+                    } finally {
+                        this.isPolling = false;
+                    }
+
+                    // Continue checking for updates every 30 seconds.
                     setInterval(async () => {
-                        if (document.hidden || this.isLeaving || this.isPolling || this.isAnyModalOpen()) return;
+                        if (
+                            document.hidden ||
+                            this.isLeaving ||
+                            this.isPolling ||
+                            this.isAnyModalOpen()
+                        ) {
+                            return;
+                        }
+
                         this.isPolling = true;
+
                         try {
                             await Promise.all([
-                                this.fetchRequisitions(true),
-                                this.fetchConsumables(true),
-                                this.fetchDailyCounts(true),
+                                this.fetchRequisitions(),
+                                this.fetchConsumables(),
+                                this.fetchDailyCounts()
                             ]);
                         } finally {
                             this.isPolling = false;
                         }
                     }, 30000);
                 },
+
 
                 isAnyModalOpen() {
                     return this.showAddOrderModal ||
