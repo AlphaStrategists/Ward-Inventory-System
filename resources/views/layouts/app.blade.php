@@ -644,7 +644,7 @@
                 $isInventoryRoute = request()->is('inventory*') || request()->is('general-inventory*') || request()->routeIs('inventory.*', 'general-inventory.*');
                 $isOrdersRoute = request()->is('orders*') || request()->routeIs('orders.*');
                 $isPatientsRoute = request()->is('patients*') || request()->routeIs('patients.*');
-                $isMasterDataRoute = request()->is('form-types*') || request()->is('units*') || request()->is('suppliers*') || request()->routeIs('form-types.*', 'units.*', 'suppliers.*');
+                $isMasterDataRoute = request()->is('form-types*') || request()->is('units*') || request()->is('strength-units*') || request()->is('suppliers*') || request()->routeIs('form-types.*', 'units.*', 'strength-units.*', 'suppliers.*');
 
                 $showInventory = true;
                 $showOrders = true;
@@ -713,6 +713,16 @@
                                 <div>
                                     <div style="font-size: 0.85rem; line-height: 1.2;">Units</div>
                                     <small class="{{ request()->is('units*') || request()->routeIs('units.*') ? 'text-white-50' : 'text-muted' }}" style="font-size: 0.7rem;">Measurement units</small>
+                                </div>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1 opacity-25"></li>
+                        <li>
+                            <a class="dropdown-item rounded-3 py-2 px-3 d-flex align-items-center gap-2 fw-semibold {{ request()->is('strength-units*') || request()->routeIs('strength-units.*') ? 'active bg-primary text-white' : 'text-slate-700' }}" href="{{ route('strength-units.index') }}">
+                                <i class="fa-solid fa-flask-vial {{ request()->is('strength-units*') || request()->routeIs('strength-units.*') ? 'text-white' : 'text-primary' }}"></i>
+                                <div>
+                                    <div style="font-size: 0.85rem; line-height: 1.2;">Strength Units</div>
+                                    <small class="{{ request()->is('strength-units*') || request()->routeIs('strength-units.*') ? 'text-white-50' : 'text-muted' }}" style="font-size: 0.7rem;">Dosage concentration units</small>
                                 </div>
                             </a>
                         </li>

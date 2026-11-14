@@ -18,7 +18,8 @@ class Medicine extends Model
         'category_id',
         'unit_id',
         'form_id',
-        'strength',
+        'strength_value',
+        'strength_unit_id',
         'is_controlled',
         'min_level',
         'warning_limit',
@@ -29,6 +30,7 @@ class Medicine extends Model
     protected function casts(): array
     {
         return [
+            'strength_value' => 'float',
             'is_controlled' => 'boolean',
             'min_level' => 'integer',
             'warning_limit' => 'integer',
@@ -50,6 +52,23 @@ class Medicine extends Model
     public function form(): BelongsTo
     {
         return $this->belongsTo(MedicineForm::class, 'form_id');
+    }
+
+    public function strengthUnit(): BelongsTo
+    {
+        return $this->belongsTo(StrengthUnit::class, 'strength_unit_id');
+    }
+
+    public function getStrengthAttribute(): ?string
+    {
+        if ($this->strength_value === null) {
+            return $this->attributes['strength'] ?? null;
+        }
+
+        $formattedVal = rtrim(rtrim(number_format((float) $this->strength_value, 2, '.', ''), '0'), '.');
+        $unitName = $this->strengthUnit?->name ?? '';
+
+        return $formattedVal . $unitName;
     }
 
     public function batches(): HasMany

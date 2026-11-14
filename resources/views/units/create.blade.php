@@ -38,7 +38,7 @@
                             <i class="fa-solid fa-plus-circle me-2"></i>Create Measurement Unit
                         </h2>
                         <p class="text-white text-opacity-75 small mb-0">
-                            Enter a unique measurement unit name (e.g., mg, ml, g, Tablet, Capsule, Vial, Ampoule).
+                            Enter a unique packaging or counting unit name (e.g., Piece (Pcs), Bottle, Vial, Ampoule, Box, Pack, Roll, Kit).
                         </p>
                     </div>
                 </div>
@@ -55,7 +55,7 @@
                                name="unit_name"
                                id="unit_name"
                                value="{{ old('unit_name') }}"
-                               placeholder="e.g. mg, ml, g, Tablet, Vial, Ampoule, Bottle..."
+                               placeholder="e.g. Piece (Pcs), Bottle, Vial, Ampoule, Box, Pack, Roll, Kit..."
                                class="form-control @error('unit_name') is-invalid @enderror"
                                maxlength="50"
                                required
@@ -67,17 +67,17 @@
                         @enderror
                         <small class="text-muted d-block mt-1.5" style="font-size: 0.775rem;">
                             <i class="fa-solid fa-circle-info text-primary me-1"></i>
-                            This measurement unit will be selectable when adding or editing medicines in the ward inventory.
+                            This packaging unit will be selectable when adding or editing medicines in the ward inventory.
                         </small>
                     </div>
 
                     <!-- Quick Suggestions -->
                     <div class="bg-slate-50 border rounded-xl p-3 mb-4">
                         <div class="text-xs fw-bold text-slate-500 text-uppercase mb-2" style="letter-spacing: 0.05em;">
-                            Common Measurement Units (Click to fill)
+                            Standard Packaging Units (Click to fill)
                         </div>
                         <div class="d-flex flex-wrap gap-1.5">
-                            @foreach(['mg', 'ml', 'g', 'mcg', 'IU', 'Tablet', 'Capsule', 'Vial', 'Ampoule', 'Bottle', 'Tube', 'Sachet', 'Piece'] as $suggestion)
+                            @foreach(['Piece (Pcs)', 'Bottle', 'Vial', 'Ampoule', 'Box', 'Pack', 'Roll', 'Kit'] as $suggestion)
                                 <button type="button"
                                         class="btn btn-sm btn-white bg-white border text-slate-600 rounded-pill px-2.5 py-1 text-xs fw-semibold hover:bg-blue-50 hover:text-primary"
                                         onclick="document.getElementById('unit_name').value = '{{ $suggestion }}'; document.getElementById('unit_name').focus();">

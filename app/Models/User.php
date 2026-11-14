@@ -73,9 +73,22 @@ class User extends Authenticatable
      */
     public function getRoleAttribute(): ?string
     {
-        return isset($this->attributes['role'])
-            ? trim((string) $this->attributes['role'])
-            : null;
+        if (isset($this->attributes['role']) && trim((string) $this->attributes['role']) !== '') {
+            return trim((string) $this->attributes['role']);
+        }
+
+        if ($this->relationLoaded('roleRelation') || !empty($this->attributes['role_id'])) {
+            $relatedRole = $this->roleRelation?->role_name;
+            if ($relatedRole !== null && trim((string) $relatedRole) !== '') {
+                return trim((string) $relatedRole);
+            }
+        }
+
+        if (!empty($this->attributes['is_admin'])) {
+            return 'Admin';
+        }
+
+        return null;
     }
 
     /**

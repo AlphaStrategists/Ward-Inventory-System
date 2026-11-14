@@ -7,6 +7,7 @@ use App\Models\Medicine;
 use App\Models\Category;
 use App\Models\Unit;
 use App\Models\MedicineForm;
+use App\Models\StrengthUnit;
 use App\Models\MedicineBatch;
 use App\Models\Dispensation;
 use App\Models\Admission;
@@ -16,6 +17,7 @@ use App\Models\StockReceipt;
 use App\Models\Supplier;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class MedicineController extends Controller
 {
@@ -126,7 +128,9 @@ class MedicineController extends Controller
         }
 
         // Query medicines for this category without excluding medicines that do not have batches or stock_ledger records yet
-        $medicinesQuery = Medicine::with(['unit', 'form'])
+        StrengthUnit::ensureInitialized();
+
+        $medicinesQuery = Medicine::with(['unit', 'form', 'strengthUnit'])
             ->where(function ($q) use ($categoryIds, $categoryClean) {
                 if (!empty($categoryIds)) {
                     $q->whereIn('category_id', $categoryIds);
@@ -158,6 +162,7 @@ class MedicineController extends Controller
         $stockAdjustments = collect([]);
         $units = Unit::all();
         $medicineForms = MedicineForm::all();
+        $strengthUnits = \App\Models\StrengthUnit::orderBy('id')->get();
         $suppliers = \App\Models\Supplier::orderBy('supplier_name')->get();
 
         $admissions = collect([]);
@@ -165,7 +170,7 @@ class MedicineController extends Controller
         $rawUserRole = Auth::check() ? (Auth::user()->role ?? 'Nurse') : 'Nurse';
         $displayRole = in_array(strtolower(trim((string) $rawUserRole)), ['ms', 'doctor'], true) ? 'MS' : $rawUserRole;
 
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'strengthUnits', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
     }
 
     public function getDetails($category, $id)
@@ -362,6 +367,7 @@ class MedicineController extends Controller
         // $currentCategory is already resolved from resolveCategoryAndMedicines
         $units = Unit::all();
         $medicineForms = MedicineForm::all();
+        $strengthUnits = \App\Models\StrengthUnit::orderBy('id')->get();
         $suppliers = \App\Models\Supplier::orderBy('supplier_name')->get();
 
         $admissions = \App\Models\Admission::with('patient')->orderBy('admit_date', 'desc')->get();
@@ -384,7 +390,7 @@ class MedicineController extends Controller
         $rawUserRole = Auth::check() ? (Auth::user()->role ?? 'Nurse') : 'Nurse';
         $displayRole = in_array(strtolower(trim((string) $rawUserRole)), ['ms', 'doctor'], true) ? 'MS' : $rawUserRole;
 
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'strengthUnits', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
     }
 
     public function storeMedicine($category, Request $request)
@@ -395,7 +401,8 @@ class MedicineController extends Controller
             'category_id' => 'required|integer|exists:categories,id',
             'unit_id' => 'required|integer|exists:units,id',
             'form_id' => 'required|integer|exists:medicine_forms,id',
-            'strength' => 'nullable|string|max:50',
+            'strength_value' => 'nullable|numeric|min:0',
+            'strength_unit_id' => 'nullable|required_with:strength_value|integer|exists:strength_units,id',
             'min_level' => 'required|integer|min:0',
             'warning_limit' => 'required|integer|min:0',
             'units_per_pack' => 'required|integer|min:1',
@@ -427,8 +434,7 @@ class MedicineController extends Controller
         $isLiquid = $form && in_array(strtolower($form->form_name), ['syrup', 'drops', 'injection', 'iv-fluid']);
 
         if ($isLiquid && $stockInputType === 'unit') {
-            preg_match('/(\d+)/', $validated['strength'] ?? '', $matches);
-            $baseVolume = (int) ($matches[1] ?? 1);
+            $baseVolume = (int) ($validated['strength_value'] ?? 1);
             if ($baseVolume > 0) {
                 $initialStock = $initialStock * $baseVolume;
             }
@@ -602,7 +608,8 @@ class MedicineController extends Controller
             'name' => 'required|string|max:150',
             'form_id' => 'required|integer|exists:medicine_forms,id',
             'unit_id' => 'required|integer|exists:units,id',
-            'strength' => 'nullable|string|max:50',
+            'strength_value' => 'nullable|numeric|min:0',
+            'strength_unit_id' => 'nullable|required_with:strength_value|integer|exists:strength_units,id',
             'min_level' => 'required|integer|min:0',
             'warning_limit' => 'required|integer|min:0',
             'units_per_pack' => 'required|integer|min:1',

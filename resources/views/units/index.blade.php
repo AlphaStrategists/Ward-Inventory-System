@@ -15,7 +15,7 @@
                     </div>
                     <h1 class="h5 fw-bold text-slate-800 mb-0">Measurement Units</h1>
                 </div>
-                <p class="text-muted small mb-0 mt-1">Manage standardized measurement and dispensing units (e.g., mg, ml, g, Tablet, Vial, Ampoule) across hospital inventory.</p>
+                <p class="text-muted small mb-0 mt-1">Manage standardized inventory and packaging units (e.g., Piece (Pcs), Bottle, Vial, Ampoule, Box, Pack, Roll, Kit) across hospital inventory.</p>
             </div>
 
             <div class="d-flex align-items-center gap-2">
@@ -64,6 +64,12 @@
                     class="btn btn-sm btn-primary rounded-pill px-3.5 py-1 fw-semibold text-xs d-inline-flex align-items-center gap-1.5 shadow-2xs">
                     <i class="fa-solid fa-scale-balanced"></i>
                     <span>Units</span>
+                </a>
+
+                <a href="{{ route('strength-units.index') }}"
+                    class="btn btn-sm btn-light border text-slate-600 rounded-pill px-3.5 py-1 fw-semibold text-xs d-inline-flex align-items-center gap-1.5">
+                    <i class="fa-solid fa-flask-vial"></i>
+                    <span>Strength Units</span>
                 </a>
 
                 <a href="{{ route('suppliers.index') }}"

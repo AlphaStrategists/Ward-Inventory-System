@@ -66,6 +66,12 @@
                     <span>Units</span>
                 </a>
 
+                <a href="{{ route('strength-units.index') }}"
+                    class="btn btn-sm btn-light border text-slate-600 rounded-pill px-3.5 py-1 fw-semibold text-xs d-inline-flex align-items-center gap-1.5">
+                    <i class="fa-solid fa-flask-vial"></i>
+                    <span>Strength Units</span>
+                </a>
+
                 <a href="{{ route('suppliers.index') }}"
                     class="btn btn-sm btn-light border text-slate-600 rounded-pill px-3.5 py-1 fw-semibold text-xs d-inline-flex align-items-center gap-1.5">
                     <i class="fa-solid fa-truck-medical"></i>

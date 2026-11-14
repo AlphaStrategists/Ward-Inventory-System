@@ -20,6 +20,17 @@ class CheckRole
             return redirect()->route('login');
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | 2. Get the user's ORIGINAL database role
+        |--------------------------------------------------------------------------
+        |
+        | The User model supports:
+        |   - users.role
+        |   - users.role_id -> roles.role_name
+        |   - users.is_admin (System Admin flag)
+        |
+        */
         // 2. Admin flag takes priority over the stored role
         if ($user->is_admin) {
             $request->attributes->set('active_role', 'admin');
@@ -30,6 +41,14 @@ class CheckRole
         // 3. Get the original database role
         $originalRole = $user->role;
 
+        if ($originalRole === null || trim((string) $originalRole) === '') {
+            $originalRole = $user->roleRelation?->role_name;
+        }
+
+        if (($originalRole === null || trim((string) $originalRole) === '') && $user->is_admin) {
+            $originalRole = 'admin';
+        }
+
         if (
             $originalRole === null ||
             trim((string) $originalRole) === ''
@@ -39,9 +58,25 @@ class CheckRole
 
         $originalRole = strtolower(trim((string) $originalRole));
 
+        /*
+        |--------------------------------------------------------------------------
+        | 4. Convert ORIGINAL roles to SURGICAL roles
+        |--------------------------------------------------------------------------
+        |
+        | IMPORTANT:
+        | We are NOT changing the database role.
+        |
+        | Doctor / MS -> MS
+        | Nurse -> Nurse
+        | Pharmacist -> Pharmacist
+        | Admin -> Admin
+        | Head Nurse -> Head Nurse
+        |
+        */
         // 4. Map database roles to application roles
         $roleMap = [
             'doctor'      => 'ms',
+            'ms'          => 'ms',
             'ms'          => 'ms',
             'nurse'       => 'nurse',
             'pharmacist'  => 'pharmacist',
@@ -49,7 +84,7 @@ class CheckRole
             'head_nurse'  => 'head_nurse',
         ];
 
-        $userRole = $roleMap[$originalRole] ?? null;
+        $userRole = $roleMap[$originalRole] ?? ($user->is_admin ? 'admin' : null);
 
         if ($userRole === null) {
             abort(
@@ -77,6 +112,22 @@ class CheckRole
             }
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | 7. Admin flag bypass when 'admin' is in allowedRoles
+        |--------------------------------------------------------------------------
+        */
+        if ($user->is_admin && in_array('admin', $allowedRoles, true)) {
+            $request->attributes->set('active_role', 'admin');
+
+            return $next($request);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | 8. Head Nurse has Nurse permissions
+        |--------------------------------------------------------------------------
+        */
         // 6. Head Nurse can access Nurse routes
         if (
             $userRole === 'head_nurse' &&

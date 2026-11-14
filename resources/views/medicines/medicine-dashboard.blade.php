@@ -1152,10 +1152,18 @@
                                                 </select>
                                             </div>
 
-                                            <!-- Strength -->
+                                            <!-- Strength (Dynamic Value + Unit Dropdown) -->
                                             <div class="col-span-2">
                                                 <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
-                                                <input type="text" name="strength" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. 500mg">
+                                                <div class="flex gap-2">
+                                                    <input type="number" step="any" min="0" name="strength_value" class="w-2/3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. 500">
+                                                    <select name="strength_unit_id" class="w-1/3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 font-semibold">
+                                                        <option value="">Unit...</option>
+                                                        @foreach($strengthUnits ?? [] as $sUnit)
+                                                        <option value="{{ $sUnit->id }}">{{ $sUnit->name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
                                             </div>
 
                                             <!-- Min, Warning & Units per Pack -->
@@ -1307,10 +1315,18 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <!-- Strength -->
+                                    <!-- Strength (Dynamic Value + Unit Dropdown) -->
                                     <div class="col-span-2">
                                         <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
-                                        <input type="text" name="strength" value="{{ $medicine->strength }}" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                        <div class="flex gap-2">
+                                            <input type="number" step="any" min="0" name="strength_value" value="{{ $medicine->strength_value !== null ? rtrim(rtrim(number_format((float) $medicine->strength_value, 2, '.', ''), '0'), '.') : '' }}" class="w-2/3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. 500">
+                                            <select name="strength_unit_id" class="w-1/3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 font-semibold">
+                                                <option value="">Unit...</option>
+                                                @foreach($strengthUnits ?? [] as $sUnit)
+                                                <option value="{{ $sUnit->id }}" {{ (int)$medicine->strength_unit_id === (int)$sUnit->id ? 'selected' : '' }}>{{ $sUnit->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
                                     </div>
                                     <!-- Min, Warning & Units per Pack Stock -->
                                     <div class="col-span-2 grid grid-cols-3 gap-3">
