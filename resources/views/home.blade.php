@@ -2025,11 +2025,11 @@
                     </div>
 
                     <span class="leading-tight">
-                        <span class="block text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                            Hi,
+                        <span class="block max-w-[160px] truncate text-sm font-semibold text-slate-800">
+                            Hi, {{ trim((Auth::user()->first_name ?? '') . ' ' . (Auth::user()->last_name ?? '')) ?: (Auth::user()->name ?? 'User') }}
                         </span>
-                        <span class="block max-w-[140px] truncate text-sm font-semibold text-slate-800">
-                            {{ auth()->user()->name }}
+                        <span class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                            {{ Auth::user()->role ?? (Auth::user()->is_admin ? 'System Admin' : 'User') }}
                         </span>
                     </span>
 

@@ -211,16 +211,17 @@
                     <button @click="open = !open" @click.away="open = false" class="dropdown-toggle flex items-center gap-3 focus:outline-none hover:bg-slate-50 p-1.5 pr-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">
                         <div class="text-right hidden sm:block">
                             @php
-                                $headerRole = $displayRole ?? (auth()->user()->role ?? 'Nurse');
+                                $headerName = trim((Auth::user()->first_name ?? '') . ' ' . (Auth::user()->last_name ?? '')) ?: (Auth::user()->name ?? 'Guest User');
+                                $headerRole = $displayRole ?? (Auth::user()->role ?? (Auth::user()->is_admin ? 'System Admin' : 'User'));
                                 if (in_array(strtolower(trim((string) $headerRole)), ['ms', 'doctor'], true)) {
                                     $headerRole = 'MS';
                                 }
                             @endphp
-                            <div class="text-sm font-bold text-slate-700 leading-tight">{{ auth()->user()->name ?? 'Guest User' }}</div>
+                            <div class="text-sm font-bold text-slate-700 leading-tight">Hi, {{ $headerName }}</div>
                             <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ $headerRole }}</div>
                         </div>
                         <div class="w-9 h-9 rounded-full bg-blue-100 text-[#3B82F6] flex items-center justify-center font-bold text-sm border border-blue-200 shadow-sm">
-                            {{ substr(auth()->user()->name ?? 'U', 0, 1) }}
+                            {{ strtoupper(substr($headerName, 0, 1)) }}
                         </div>
                         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -438,7 +439,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
-                    @if(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'MS']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'MS'])))
+                    @if(auth()->check() && !auth()->user()->is_admin && auth()->user()->role !== 'Admin' && strtolower(trim((string) (auth()->user()->role ?? ''))) !== 'admin' && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'MS']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'MS'])))
                     <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -948,7 +949,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
-                    @if(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'MS']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'MS'])))
+                    @if(auth()->check() && !auth()->user()->is_admin && auth()->user()->role !== 'Admin' && strtolower(trim((string) (auth()->user()->role ?? ''))) !== 'admin' && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'MS']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'MS'])))
                     <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -1020,7 +1021,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
-                    @if(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'MS']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'MS'])))
+                    @if(auth()->check() && !auth()->user()->is_admin && auth()->user()->role !== 'Admin' && strtolower(trim((string) (auth()->user()->role ?? ''))) !== 'admin' && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'MS']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'MS'])))
                     <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>

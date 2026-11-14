@@ -41,6 +41,7 @@ class CheckRole
 
         // 4. Map database roles to application roles
         $roleMap = [
+            'admin'       => 'admin',
             'doctor'      => 'ms',
             'ms'          => 'ms',
             'nurse'       => 'nurse',

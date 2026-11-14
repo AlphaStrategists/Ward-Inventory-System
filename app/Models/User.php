@@ -39,6 +39,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'role_id',
+        'ward_id',
     ];
 
     protected $hidden = [
@@ -56,39 +58,52 @@ class User extends Authenticatable
     }
 
     /**
-     * Allow views to use $user->name.
+     * Allow views to use $user->name (combining first_name and last_name, with fallback to name/email).
      */
     protected function name(): Attribute
     {
         return Attribute::get(
-            fn () => trim(
-                ($this->first_name ?? '') . ' ' .
-                ($this->last_name ?? '')
-            )
+            function () {
+                $fullName = trim(
+                    ($this->first_name ?? '') . ' ' .
+                    ($this->last_name ?? '')
+                );
+
+                if ($fullName !== '') {
+                    return $fullName;
+                }
+
+                if (isset($this->attributes['name']) && trim((string) $this->attributes['name']) !== '') {
+                    return trim((string) $this->attributes['name']);
+                }
+
+                return $this->email ? explode('@', $this->email)[0] : 'User';
+            }
         );
     }
 
     /**
-     * Role is stored directly in users.role.
+     * Role is stored directly in users.role (with fallback to 'Admin' when is_admin is true).
      */
     public function getRoleAttribute(): ?string
     {
-        return isset($this->attributes['role'])
-            ? trim((string) $this->attributes['role'])
-            : null;
+        if (isset($this->attributes['role']) && trim((string) $this->attributes['role']) !== '') {
+            return trim((string) $this->attributes['role']);
+        }
+
+        if (!empty($this->attributes['is_admin'])) {
+            return 'Admin';
+        }
+
+        return null;
     }
 
     /**
-     * Find the matching role record using role_name.
-     * Does not require users.role_id.
+     * Relationship to Role model via role_id.
      */
     public function roleRelation(): BelongsTo
     {
-        return $this->belongsTo(
-            Role::class,
-            'role',
-            'role_name'
-        );
+        return $this->belongsTo(Role::class, 'role_id');
     }
 
     public function generalTransactions(): HasMany
