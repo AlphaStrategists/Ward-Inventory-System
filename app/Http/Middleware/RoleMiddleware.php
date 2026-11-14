@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
@@ -24,81 +23,79 @@ class RoleMiddleware
             ], 401);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Get the actual role from the database
-        |--------------------------------------------------------------------------
-        */
+        // Use the central role identification from User.php.
+        if ($user->isAdmin()) {
+            $request->attributes->set('active_role', 'admin');
+            return $next($request);
+        }
 
-        $databaseRole = DB::table('roles')
-            ->where('id', $user->role_id)
-            ->value('role_name');
+        $databaseRole = trim((string) $user->role);
 
-        if (!$databaseRole) {
+        if ($databaseRole === '') {
             return response()->json([
                 'success' => false,
                 'message' => 'User role could not be determined.',
             ], 403);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Database role -> Application role
-        |--------------------------------------------------------------------------
-        */
-
         $roleMap = [
-            'Admin'       => 'admin',
-            'Doctor'      => 'ms',
-            'Nurse'       => 'nurse',
-            'Pharmacist'  => 'pharmacist',
+            'doctor' => 'ms',
+            'ms' => 'ms',
+            'nurse' => 'nurse',
+            'head nurse' => 'head_nurse',
+            'head_nurse' => 'head_nurse',
+            'pharmacist' => 'pharmacist',
         ];
 
-        $activeRole = $roleMap[$databaseRole] ?? null;
+        $normalisedRole = strtolower(
+            str_replace('_', ' ', $databaseRole)
+        );
+
+        $activeRole = $roleMap[$normalisedRole] ?? null;
 
         if (!$activeRole) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid user role.',
+                'message' => 'Invalid user role: ' . $databaseRole,
             ], 403);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Save the application role for the current request
-        |--------------------------------------------------------------------------
-        */
+        $allowedRoles = [];
+
+        foreach ($roles as $role) {
+            foreach (explode(',', $role) as $allowedRole) {
+                $allowedRole = strtolower(trim($allowedRole));
+
+                if ($allowedRole === 'doctor') {
+                    $allowedRole = 'ms';
+                }
+
+                if ($allowedRole !== '') {
+                    $allowedRoles[] = $allowedRole;
+                }
+            }
+        }
+
+        // Head Nurse can access Nurse-level routes.
+        if (
+            $activeRole === 'head_nurse' &&
+            in_array('nurse', $allowedRoles, true)
+        ) {
+            $request->attributes->set('active_role', $activeRole);
+            return $next($request);
+        }
+
+        if (!in_array($activeRole, $allowedRoles, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. Your role is "' .
+                    $activeRole . '". Required role: ' .
+                    implode(', ', $allowedRoles),
+            ], 403);
+        }
 
         $request->attributes->set('active_role', $activeRole);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Admin can access all protected areas
-        |--------------------------------------------------------------------------
-        */
-
-        if ($activeRole === 'admin') {
-            return $next($request);
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Check requested role
-        |--------------------------------------------------------------------------
-        */
-
-        $allowedRoles = array_map(
-            fn ($role) => strtolower(trim($role)),
-            $roles
-        );
-
-        if (in_array($activeRole, $allowedRoles, true)) {
-            return $next($request);
-        }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'You do not have permission to access this page.',
-        ], 403);
+        return $next($request);
     }
 }

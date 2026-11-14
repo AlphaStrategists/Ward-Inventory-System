@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Middleware;
 
 use Closure;
@@ -14,79 +13,44 @@ class CheckRole
         ...$roles
     ): Response {
 
-        /*
-        |--------------------------------------------------------------------------
-        | 1. User must be logged in
-        |--------------------------------------------------------------------------
-        */
+        // 1. User must be logged in
         $user = $request->user();
 
         if (!$user) {
             return redirect()->route('login');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 2. Get the user's ORIGINAL database role
-        |--------------------------------------------------------------------------
-        |
-        | The User model supports both:
-        |   - users.role
-        |   - users.role_id -> roles.role_name
-        |
-        */
+        // 2. Admin flag takes priority over the stored role
+        if ($user->is_admin) {
+            $request->attributes->set('active_role', 'admin');
+
+            return $next($request);
+        }
+
+        // 3. Get the original database role
         $originalRole = $user->role;
 
         if (
             $originalRole === null ||
             trim((string) $originalRole) === ''
         ) {
-            abort(
-                403,
-                'Authenticated user role could not be determined.'
-            );
+            abort(403, 'Authenticated user role could not be determined.');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 3. Normalize original database role
-        |--------------------------------------------------------------------------
-        */
-        $originalRole = strtolower(
-            trim((string) $originalRole)
-        );
+        $originalRole = strtolower(trim((string) $originalRole));
 
-        /*
-        |--------------------------------------------------------------------------
-        | 4. Convert ORIGINAL roles to SURGICAL roles
-        |--------------------------------------------------------------------------
-        |
-        | IMPORTANT:
-        | We are NOT changing the database role.
-        |
-        | Doctor -> MS
-        | Nurse -> Nurse
-        | Pharmacist -> Pharmacist
-        | Admin -> Admin
-        | Head Nurse -> Head Nurse
-        |
-        */
+        // 4. Map database roles to application roles
         $roleMap = [
             'doctor'      => 'ms',
+            'ms'          => 'ms',
             'nurse'       => 'nurse',
             'pharmacist'  => 'pharmacist',
-            'admin'       => 'admin',
             'head nurse'  => 'head_nurse',
             'head_nurse'  => 'head_nurse',
         ];
 
         $userRole = $roleMap[$originalRole] ?? null;
 
-        /*
-        |--------------------------------------------------------------------------
-        | 5. Unknown role
-        |--------------------------------------------------------------------------
-        */
         if ($userRole === null) {
             abort(
                 403,
@@ -96,46 +60,24 @@ class CheckRole
             );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 6. Convert middleware roles
-        |--------------------------------------------------------------------------
-        |
-        | Example:
-        | role:ms
-        | role:nurse,admin
-        |
-        */
+        // 5. Normalize allowed middleware roles
         $allowedRoles = [];
 
         foreach ($roles as $role) {
-
             foreach (explode(',', $role) as $allowedRole) {
+                $allowedRole = strtolower(trim($allowedRole));
 
-                $allowedRole = strtolower(
-                    trim((string) $allowedRole)
-                );
-
-                if ($allowedRole === '') {
-                    continue;
-                }
-
-                /*
-                | Doctor can also be used as MS if needed.
-                */
                 if ($allowedRole === 'doctor') {
                     $allowedRole = 'ms';
                 }
 
-                $allowedRoles[] = $allowedRole;
+                if ($allowedRole !== '') {
+                    $allowedRoles[] = $allowedRole;
+                }
             }
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 7. Head Nurse has Nurse permissions
-        |--------------------------------------------------------------------------
-        */
+        // 6. Head Nurse can access Nurse routes
         if (
             $userRole === 'head_nurse' &&
             in_array('nurse', $allowedRoles, true)
@@ -145,11 +87,7 @@ class CheckRole
             return $next($request);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 8. Check permission
-        |--------------------------------------------------------------------------
-        */
+        // 7. Check permissions
         if (!in_array($userRole, $allowedRoles, true)) {
             abort(
                 403,
@@ -160,7 +98,6 @@ class CheckRole
             );
         }
 
-        // Make the mapped role available to controllers.
         $request->attributes->set('active_role', $userRole);
 
         return $next($request);
