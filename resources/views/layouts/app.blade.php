@@ -644,7 +644,7 @@
                 $isInventoryRoute = request()->is('inventory*') || request()->is('general-inventory*') || request()->routeIs('inventory.*', 'general-inventory.*');
                 $isOrdersRoute = request()->is('orders*') || request()->routeIs('orders.*');
                 $isPatientsRoute = request()->is('patients*') || request()->routeIs('patients.*');
-                $isMasterDataRoute = request()->is('form-types*') || request()->is('units*') || request()->is('suppliers*') || request()->routeIs('form-types.*', 'units.*', 'suppliers.*');
+                $isMasterDataRoute = request()->is('form-types*') || request()->is('units*') || request()->is('strength-units*') || request()->is('suppliers*') || request()->routeIs('form-types.*', 'units.*', 'strength-units.*', 'suppliers.*');
 
                 $showInventory = true;
                 $showOrders = true;
@@ -718,6 +718,16 @@
                         </li>
                         <li><hr class="dropdown-divider my-1 opacity-25"></li>
                         <li>
+                            <a class="dropdown-item rounded-3 py-2 px-3 d-flex align-items-center gap-2 fw-semibold {{ request()->is('strength-units*') || request()->routeIs('strength-units.*') ? 'active bg-primary text-white' : 'text-slate-700' }}" href="{{ route('strength-units.index') }}">
+                                <i class="fa-solid fa-flask-vial {{ request()->is('strength-units*') || request()->routeIs('strength-units.*') ? 'text-white' : 'text-primary' }}"></i>
+                                <div>
+                                    <div style="font-size: 0.85rem; line-height: 1.2;">Strength Units</div>
+                                    <small class="{{ request()->is('strength-units*') || request()->routeIs('strength-units.*') ? 'text-white-50' : 'text-muted' }}" style="font-size: 0.7rem;">Dosage concentration units</small>
+                                </div>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1 opacity-25"></li>
+                        <li>
                             <a class="dropdown-item rounded-3 py-2 px-3 d-flex align-items-center gap-2 fw-semibold {{ request()->is('suppliers*') || request()->routeIs('suppliers.*') ? 'active bg-primary text-white' : 'text-slate-700' }}" href="{{ route('suppliers.index') }}">
                                 <i class="fa-solid fa-truck-medical {{ request()->is('suppliers*') || request()->routeIs('suppliers.*') ? 'text-white' : 'text-primary' }}"></i>
                                 <div>
@@ -734,13 +744,16 @@
 
         <div class="d-flex align-items-center gap-3">
             @auth
+            @php
+                $navUserName = trim((Auth::user()->first_name ?? '') . ' ' . (Auth::user()->last_name ?? '')) ?: (Auth::user()->name ?? 'User');
+            @endphp
             <div class="d-flex align-items-center gap-2">
                 <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; font-size: 0.8rem;">
-                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                    {{ strtoupper(substr($navUserName, 0, 1)) }}
                 </div>
                 <div class="d-none d-lg-block text-start">
-                    <div class="fw-bold" style="font-size: 0.825rem; line-height: 1.1;">{{ auth()->user()->name }}</div>
-                    <small class="text-muted" style="font-size: 0.7rem;">{{ auth()->user()->role ?? 'Staff' }}</small>
+                    <div class="fw-bold" style="font-size: 0.825rem; line-height: 1.1;">Hi, {{ $navUserName }}</div>
+                    <small class="text-muted" style="font-size: 0.7rem;">{{ strtoupper(Auth::user()->role ?? 'USER') }}</small>
                 </div>
                 <form method="POST" action="{{ route('logout') }}" class="ms-1">
                     @csrf

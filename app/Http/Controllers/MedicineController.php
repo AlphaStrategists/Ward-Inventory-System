@@ -7,6 +7,7 @@ use App\Models\Medicine;
 use App\Models\Category;
 use App\Models\Unit;
 use App\Models\MedicineForm;
+use App\Models\StrengthUnit;
 use App\Models\MedicineBatch;
 use App\Models\Dispensation;
 use App\Models\Admission;
@@ -126,7 +127,7 @@ class MedicineController extends Controller
         }
 
         // Query medicines for this category without excluding medicines that do not have batches or stock_ledger records yet
-        $medicinesQuery = Medicine::with(['unit', 'form'])
+        $medicinesQuery = Medicine::with(['unit', 'form', 'strengthUnit'])
             ->where(function ($q) use ($categoryIds, $categoryClean) {
                 if (!empty($categoryIds)) {
                     $q->whereIn('category_id', $categoryIds);
@@ -158,14 +159,15 @@ class MedicineController extends Controller
         $stockAdjustments = collect([]);
         $units = Unit::all();
         $medicineForms = MedicineForm::all();
+        $strengthUnits = StrengthUnit::orderBy('id')->get();
         $suppliers = \App\Models\Supplier::orderBy('supplier_name')->get();
 
         $admissions = collect([]);
         $availableBatches = collect([]);
-        $rawUserRole = Auth::check() ? (Auth::user()->role ?? 'Nurse') : 'Nurse';
-        $displayRole = in_array(strtolower(trim((string) $rawUserRole)), ['ms', 'doctor'], true) ? 'MS' : $rawUserRole;
+        $rawUserRole = Auth::check() ? (Auth::user()->role ?? 'USER') : 'USER';
+        $displayRole = $rawUserRole;
 
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'strengthUnits', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
     }
 
     public function getDetails($category, $id)
@@ -326,21 +328,23 @@ class MedicineController extends Controller
         }
 
         // 6. Filter to keep only dispensations, and sort them DESCENDING (newest first)
+        $isSelectedLiquidMl = $selectedMedicine->isLiquidMl();
+        $dispenseUnitLabel = $isSelectedLiquidMl ? 'ml' : ($selectedMedicine->unit->unit_name ?? '');
         $patientAdministrations = $ledger->where('type', 'dispensation')
             ->sortBy([
                 ['timestamp', 'desc'],
                 ['id', 'desc']
             ])
             ->values()
-            ->map(function ($entry) use ($selectedMedicine) {
+            ->map(function ($entry) use ($dispenseUnitLabel) {
                 $admin = $entry->model;
                 return (object) [
                     'id' => $admin->id,
                     'date' => $admin->date ? \Carbon\Carbon::parse($admin->date)->format('d M Y') : 'N/A',
                     'bht_no' => $admin->admission->bht_no ?? 'N/A',
                     'patient_name' => $admin->admission->patient->patient_name ?? 'N/A',
-                    'qty_given' => $admin->qty_given . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
-                    'balance' => $admin->dynamic_balance . ' ' . ($selectedMedicine->unit->unit_name ?? ''),
+                    'qty_given' => $admin->qty_given . ' ' . $dispenseUnitLabel,
+                    'balance' => $admin->dynamic_balance . ' ' . $dispenseUnitLabel,
                     'dynamic_balance' => $admin->dynamic_balance, // Raw number for the UI
                     'sister_initials' => $admin->issuedBy->name ?? 'N/A',
                     'remark' => $admin->dosage ?? '',
@@ -362,6 +366,7 @@ class MedicineController extends Controller
         // $currentCategory is already resolved from resolveCategoryAndMedicines
         $units = Unit::all();
         $medicineForms = MedicineForm::all();
+        $strengthUnits = StrengthUnit::orderBy('id')->get();
         $suppliers = \App\Models\Supplier::orderBy('supplier_name')->get();
 
         $admissions = \App\Models\Admission::with('patient')->orderBy('admit_date', 'desc')->get();
@@ -381,10 +386,10 @@ class MedicineController extends Controller
                 return $batch->available_qty > 0;
             });
 
-        $rawUserRole = Auth::check() ? (Auth::user()->role ?? 'Nurse') : 'Nurse';
-        $displayRole = in_array(strtolower(trim((string) $rawUserRole)), ['ms', 'doctor'], true) ? 'MS' : $rawUserRole;
+        $rawUserRole = Auth::check() ? (Auth::user()->role ?? 'USER') : 'USER';
+        $displayRole = $rawUserRole;
 
-        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
+        return view('medicines.medicine-dashboard', compact('category', 'medicines', 'selectedMedicine', 'pharmacyOrders', 'patientAdministrations', 'stockAdjustments', 'currentCategory', 'units', 'medicineForms', 'strengthUnits', 'suppliers', 'admissions', 'availableBatches', 'displayRole'));
     }
 
     public function storeMedicine($category, Request $request)
@@ -395,7 +400,8 @@ class MedicineController extends Controller
             'category_id' => 'required|integer|exists:categories,id',
             'unit_id' => 'required|integer|exists:units,id',
             'form_id' => 'required|integer|exists:medicine_forms,id',
-            'strength' => 'nullable|string|max:50',
+            'strength_value' => 'nullable|numeric|min:0',
+            'strength_unit_id' => 'nullable|required_with:strength_value|integer|exists:strength_units,id',
             'min_level' => 'required|integer|min:0',
             'warning_limit' => 'required|integer|min:0',
             'units_per_pack' => 'required|integer|min:1',
@@ -424,11 +430,12 @@ class MedicineController extends Controller
         $expiryDate = $validated['expiry_date'] ?? null;
         $stockInputType = $validated['stock_input_type'] ?? 'unit';
         $form = \App\Models\MedicineForm::find($validated['form_id']);
-        $isLiquid = $form && in_array(strtolower($form->form_name), ['syrup', 'drops', 'injection', 'iv-fluid']);
+        $strengthUnit = !empty($validated['strength_unit_id']) ? \App\Models\StrengthUnit::find($validated['strength_unit_id']) : null;
+        $isLiquid = ($form && in_array(strtolower($form->form_name), ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']))
+            || ($strengthUnit && strtolower(trim($strengthUnit->name)) === 'ml');
 
         if ($isLiquid && $stockInputType === 'unit') {
-            preg_match('/(\d+)/', $validated['strength'] ?? '', $matches);
-            $baseVolume = (int) ($matches[1] ?? 1);
+            $baseVolume = (int) round((float) ($validated['strength_value'] ?? 1));
             if ($baseVolume > 0) {
                 $initialStock = $initialStock * $baseVolume;
             }
@@ -602,7 +609,8 @@ class MedicineController extends Controller
             'name' => 'required|string|max:150',
             'form_id' => 'required|integer|exists:medicine_forms,id',
             'unit_id' => 'required|integer|exists:units,id',
-            'strength' => 'nullable|string|max:50',
+            'strength_value' => 'nullable|numeric|min:0',
+            'strength_unit_id' => 'nullable|required_with:strength_value|integer|exists:strength_units,id',
             'min_level' => 'required|integer|min:0',
             'warning_limit' => 'required|integer|min:0',
             'units_per_pack' => 'required|integer|min:1',
@@ -799,16 +807,24 @@ class MedicineController extends Controller
             ]);
             
             $detail->update(['qty_requested' => $validated['qty_requested']]);
-            $order->update([
+            $orderUpdates = [
                 'ms_approval_status' => 'Approved',
                 'approved_by' => Auth::id() ?? 1,
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'approved_at')) {
+                $orderUpdates['approved_at'] = now();
+            }
+            $order->update($orderUpdates);
             return redirect()->back()->with('success', 'Order approved successfully.');
         } else {
-            $order->update([
+            $orderUpdates = [
                 'ms_approval_status' => 'Rejected',
                 'approved_by' => Auth::id() ?? 1,
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'approved_at')) {
+                $orderUpdates['approved_at'] = now();
+            }
+            $order->update($orderUpdates);
             return redirect()->back()->with('success', 'Order rejected successfully.');
         }
     }
@@ -822,14 +838,12 @@ class MedicineController extends Controller
         }
         
         $validated = $request->validate([
-            'qty_issued' => 'required|integer|min:1',
+            'qty_issued' => 'required|numeric|min:1|max:' . $detail->qty_requested,
+        ], [
+            'qty_issued.max' => 'Issued quantity cannot exceed the requested/approved quantity (' . $detail->qty_requested . ').',
         ]);
         
-        $qtyIssued = $validated['qty_issued'];
-
-        if ($qtyIssued > $detail->qty_requested) {
-            return redirect()->back()->with('error', 'Issued quantity cannot exceed requested quantity.');
-        }
+        $qtyIssued = (int) $validated['qty_issued'];
 
         DB::transaction(function () use ($detail, $qtyIssued) {
             $detail->update([
@@ -920,7 +934,6 @@ class MedicineController extends Controller
                 ],
                 'new_batch_no' => 'nullable|required_if:batch_type,new|string|max:100',
                 'new_expiry_date' => 'nullable|required_if:batch_type,new|date',
-                'supplier_id' => 'nullable|integer|exists:suppliers,id',
             ]);
 
             $qtyReceived = !empty($validated['qty_received']) ? (int) $validated['qty_received'] : (int) $detail->qty_issued;
@@ -928,12 +941,25 @@ class MedicineController extends Controller
                 return back()->with('error', 'Invalid received quantity.');
             }
 
+            // Inherit supplier_id directly from the original order record
+            $orderSupplierId = $order->supplier_id ?? $detail->supplier_id ?? null;
+            if (!$orderSupplierId && preg_match('/\[SUPPLIER:(.*?)\]/', $detail->remark ?? '', $supMatches)) {
+                $supplierName = trim($supMatches[1]);
+                $orderSupplierId = Supplier::whereRaw('LOWER(TRIM(supplier_name)) = ?', [strtolower($supplierName)])->value('id');
+            }
+            if (!$orderSupplierId) {
+                $orderSupplierId = MedicineBatch::where('medicine_id', $detail->medicine_id)
+                    ->whereNotNull('supplier_id')
+                    ->orderByDesc('id')
+                    ->value('id');
+            }
+
             $isNewBatch = ($request->input('batch_type') === 'new');
 
             if ($isNewBatch) {
                 $batch = MedicineBatch::create([
                     'medicine_id' => $detail->medicine_id,
-                    'supplier_id' => $validated['supplier_id'] ?? null,
+                    'supplier_id' => $orderSupplierId,
                     'batch_no' => strtoupper(trim($validated['new_batch_no'])),
                     'expiry_date' => $validated['new_expiry_date'],
                     'created_at' => now(),
@@ -944,16 +970,15 @@ class MedicineController extends Controller
                 if (!$batchId) {
                     $batch = MedicineBatch::create([
                         'medicine_id' => $detail->medicine_id,
+                        'supplier_id' => $orderSupplierId,
                         'batch_no' => 'BATCH-' . date('YmdHis'),
                         'expiry_date' => now()->addYear()->toDateString(),
                         'created_at' => now(),
                     ]);
                     $batchId = $batch->id;
-                }
-
-                if (!empty($validated['supplier_id'])) {
-                    MedicineBatch::where('id', $batchId)->update([
-                        'supplier_id' => $validated['supplier_id'],
+                } elseif ($orderSupplierId) {
+                    MedicineBatch::where('id', $batchId)->whereNull('supplier_id')->update([
+                        'supplier_id' => $orderSupplierId,
                     ]);
                 }
             }
@@ -961,23 +986,25 @@ class MedicineController extends Controller
             $wardId = Auth::user()->ward_id ?? DB::table('wards')->value('id');
             $userId = Auth::id() ?? 1;
 
+            $medicine = Medicine::with(['strengthUnit', 'form', 'unit'])->find($detail->medicine_id);
+            $ledgerQtyReceived = $qtyReceived;
+            if ($medicine && $medicine->isLiquidMl()) {
+                $bottleVolume = $medicine->getBottleVolumeMl();
+                if ($bottleVolume > 0) {
+                    $ledgerQtyReceived = $qtyReceived * $bottleVolume;
+                }
+            }
+
             // Only create StockReceipt - NEVER manually insert into stock_ledger (MySQL trigger/observer handles ledger)
             StockReceipt::create([
                 'batch_id' => $batchId,
                 'ward_id' => $wardId,
-                'quantity_received' => $qtyReceived,
+                'quantity_received' => $ledgerQtyReceived,
                 'received_by' => $userId,
                 'date' => now(),
             ]);
 
             $remarkStr = $detail->remark ?? '';
-            if (!empty($validated['supplier_id'])) {
-                $supplierModel = Supplier::find($validated['supplier_id']);
-                if ($supplierModel) {
-                    $remarkStr = preg_replace('/\[SUPPLIER:.*?\]\s*/', '', $remarkStr);
-                    $remarkStr = '[SUPPLIER:' . $supplierModel->supplier_name . '] ' . trim($remarkStr);
-                }
-            }
 
             $detailUpdates = [
                 'remark' => trim('[RECEIVED_BY:' . (Auth::user()->name ?? 'Nurse') . '] ' . $remarkStr),

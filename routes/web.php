@@ -18,6 +18,7 @@ use App\Http\Controllers\GeneralTransactionController;
 use App\Http\Controllers\FormTypeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\StrengthUnitController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UnitController;
 
@@ -919,6 +920,11 @@ Route::middleware(['auth'])->group(function () {
             'units',
             UnitController::class
         );
+
+        Route::resource(
+            'strength-units',
+            StrengthUnitController::class
+        )->except(['create', 'show', 'edit']);
 
         Route::resource(
             'suppliers',
