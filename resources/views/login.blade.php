@@ -69,7 +69,7 @@
 
                     <p class="mt-4 text-sm leading-6 text-blue-50">
                         Sign in to manage medicines, surgical items, general
-                        inventory, suppliers and stock — all from one
+                        inventory, patients and stock — all from one
                         centralized platform.
                     </p>
                 </div>
@@ -81,7 +81,7 @@
                     </li>
                     <li class="flex items-center gap-3">
                         <i class="fa-solid fa-circle-check"></i>
-                        Supplier & purchasing insights
+                        Fast workflows and efficient operations
                     </li>
                     <li class="flex items-center gap-3">
                         <i class="fa-solid fa-circle-check"></i>

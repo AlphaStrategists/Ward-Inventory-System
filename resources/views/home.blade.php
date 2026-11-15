@@ -1609,7 +1609,7 @@
                 <!-- Description -->
                 <p class="max-w-2xl text-lg leading-8 text-blue-50 sm:text-xl">
                     A smart and efficient system to manage medicines,
-                    surgical items, general inventory, suppliers and
+                    surgical items, general inventory, patients and
                     hospital stock from one centralized platform.
                 </p>
 
