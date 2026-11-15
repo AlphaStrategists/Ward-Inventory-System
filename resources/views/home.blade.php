@@ -2026,18 +2026,6 @@ $roleId = (int) auth()->user()->role_id;
                     </div>
                     @endif
 
-
-                    <!-- Reports -->
-                    <a
-                        href="{{ route('test'   ) }}"
-                        class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
-
-                        <i class="fa-solid fa-chart-column mr-1.5"></i>
-                        Help
-
-                    </a>
-
-
                     <!-- Account -->
 
                     <div class="ml-2">
@@ -2124,12 +2112,12 @@ $roleId = (int) auth()->user()->role_id;
                 <!-- =================================================
                  INVENTORY CARDS
             ================================================== -->
-                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-6">
 
 
                     <!-- Medicine Card -->
                     <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
+                        class="group lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
@@ -2217,7 +2205,7 @@ $roleId = (int) auth()->user()->role_id;
 
                     <!-- Surgical Items Card -->
                     <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
+                        class="group lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
@@ -2276,7 +2264,7 @@ $roleId = (int) auth()->user()->role_id;
 
                     <!-- General Items Card -->
                     <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
+                        class="group lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
@@ -2311,7 +2299,7 @@ $roleId = (int) auth()->user()->role_id;
 
                     <!-- Patients Card -->
                     <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
+                        class="group lg:col-span-2 lg:col-start-2 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
@@ -2345,7 +2333,7 @@ $roleId = (int) auth()->user()->role_id;
 
                     <!-- Orders Card -->
                     <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
+                        class="group lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
@@ -2376,42 +2364,6 @@ $roleId = (int) auth()->user()->role_id;
                         </a>
 
                     </div>
-
-
-                    <!-- Reports Card -->
-                    <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
-
-                        <div
-                            class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
-
-                            <i class="fa-solid fa-chart-pie"></i>
-
-                        </div>
-
-                        <h3 class="mt-6 text-xl font-bold text-slate-900">
-                            Reports
-                        </h3>
-
-                        <p class="mt-3 leading-7 text-slate-500">
-
-                            Generate reports and obtain useful insights
-                            about hospital inventory and stock.
-
-                        </p>
-
-                        <a
-                            href="{{ route('test') }}"
-                            class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
-
-                            View Reports
-
-                            <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
-
-                        </a>
-
-                    </div>
-
                 </div>
 
             </div>
