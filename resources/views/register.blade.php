@@ -81,7 +81,7 @@
                     </li>
                     <li class="flex items-center gap-3">
                         <i class="fa-solid fa-circle-check"></i>
-                        Supplier & purchasing insights
+                        Fast workflows and efficient operations
                     </li>
                     <li class="flex items-center gap-3">
                         <i class="fa-solid fa-circle-check"></i>
