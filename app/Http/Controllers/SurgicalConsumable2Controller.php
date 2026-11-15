@@ -10,7 +10,30 @@ use App\Services\WardDatabaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class SurgicalConsumable2Controller extends Controller{
+class SurgicalConsumable2Controller extends Controller
+{
+    private const MODULE = 'surgical_consumable_2';
+    private const CATEGORY_NAME = 'Controlled Narcotics';
+
+    /** Resolve the category by its stable name, never by an assumed numeric ID. */
+    private function categoryId(): int
+    {
+        $id = DB::table('categories')->where('name', self::CATEGORY_NAME)->value('id');
+        if (!$id) {
+            throw new \RuntimeException('The Controlled Narcotics category is missing. Run the latest migration.');
+        }
+        return (int) $id;
+    }
+
+    /** Return only an order owned by this inventory module. */
+    private function moduleOrder(int $id)
+    {
+        $order = DB::table('orders')->where('id', $id)->where('module', self::MODULE)->first();
+        if (!$order) {
+            abort(404, 'Requisition not found in Surgical Consumables 2.');
+        }
+        return $order;
+    }
     /**
      * Fallback default consumables 1
      */
@@ -23,11 +46,6 @@ class SurgicalConsumable2Controller extends Controller{
         ['name' => 'POVIDONE IODINE 500ML', 'balance' => 12, 'unit' => 'Bottle'],
         ['name' => 'ADHESIVE PLASTER 5CM', 'balance' => 25, 'unit' => 'Roll'],
     ];
-
-    /**
-     * Category ID for Surgical Consumable 2
-     */
-    protected $categoryId = 2;
 
     /**
      * Render the Surgical Consumable 2 front-end view.
@@ -68,32 +86,9 @@ class SurgicalConsumable2Controller extends Controller{
      */
     public function getConsumables()
     {
-        $items = DB::table('general_items')
-            ->where('category_id', $this->categoryId)
-            ->orderBy('name')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'id' => (int) $item->id,
-                    'name' => $item->name,
-                    'balance' => (int) ($item->balance ?? 0),
-                    'unit' => $item->unit ?? 'Box',
-                ];
-            })
-            ->values();
-
-        if ($items->isEmpty()) {
-            $items = collect($this->defaultConsumables)->map(function ($item, $index) {
-                return [
-                    'id' => $index + 1,
-                    'name' => $item['name'],
-                    'balance' => (int) $item['balance'],
-                    'unit' => $item['unit'],
-                ];
-            });
-        }
-
-        return response()->json($items);
+        return response()->json(
+            WardDatabaseService::getCategoryItems($this->categoryId(), [])
+        );
     }
 
     /**
@@ -108,7 +103,7 @@ class SurgicalConsumable2Controller extends Controller{
         ]);
 
         $item = WardDatabaseService::storeItem(
-            $this->categoryId,
+            $this->categoryId(),
             $validated['name'],
             $validated['balance'],
             $validated['unit']
@@ -130,6 +125,7 @@ class SurgicalConsumable2Controller extends Controller{
             'name' => 'required|string|max:150',
         ]);
 
+        abort_unless(DB::table('general_items')->where('id', $id)->where('category_id', $this->categoryId())->exists(), 404);
         WardDatabaseService::updateItem($id, $validated['name']);
 
         return response()->json([
@@ -143,6 +139,7 @@ class SurgicalConsumable2Controller extends Controller{
      */
     public function destroyConsumable($id)
     {
+        abort_unless(DB::table('general_items')->where('id', $id)->where('category_id', $this->categoryId())->exists(), 404);
         WardDatabaseService::deleteItem($id);
 
         return response()->json([
@@ -215,7 +212,7 @@ class SurgicalConsumable2Controller extends Controller{
         $unit = DB::table('units')->where('unit_name', $unitName)->first();
         $unitId = $unit ? $unit->id : 1;
 
-        $med = DB::table('medicines')->where('name', $name)->first();
+        $med = DB::table('medicines')->where('name', $name)->where('category_id', $categoryId)->first();
         if ($med) {
             return $med->id;
         }
@@ -306,7 +303,7 @@ class SurgicalConsumable2Controller extends Controller{
     private function getCurrentBalance(string $itemName): int
     {
         $item = DB::table('general_items')
-            ->where('category_id', $this->categoryId)
+            ->where('category_id', $this->categoryId())
             ->where('name', strtoupper(trim($itemName)))
             ->first();
 
@@ -398,6 +395,7 @@ class SurgicalConsumable2Controller extends Controller{
                 ->leftJoin('users as requester', 'orders.requested_by', '=', 'requester.id')
                 ->leftJoin('users as approver', 'orders.approved_by', '=', 'approver.id')
                 ->where('orders.ward_id', 1)
+                ->where('orders.module', self::MODULE)
                 ->orderByDesc('orders.id')
                 ->select(
                     'orders.*',
@@ -430,21 +428,8 @@ class SurgicalConsumable2Controller extends Controller{
 
             foreach ($orders as $order) {
                $meta = json_decode($order->remark, true) ?: [];
-
-                // SC2 records are identified by module.
-                // Keep category_id only as a fallback for older records.
-                $module = $meta['module'] ?? null;
-
-                if ($module !== null) {
-                    if ($module !== 'surgical_consumable_2') {
-                        continue;
-                    }
-                } else {
-                    $categoryId = (int) ($meta['category_id'] ?? $this->categoryId);
-
-                    if ($categoryId !== (int) $this->categoryId) {
-                        continue;
-                    }
+                if (($order->module ?? null) !== self::MODULE) {
+                    continue;
                 }
 
                 $details = DB::table('order_details')
@@ -580,6 +565,7 @@ return response()->json($results);
 
     $validated = $request->validate([
         'date' => 'required|date',
+        'req_no' => 'required|string|max:50|unique:orders,req_no',
         'items' => 'required|array|min:1',
         'items.*.name' => 'required|string|max:150',
         'items.*.requested_qty_num' => 'required|integer|min:1',
@@ -599,7 +585,7 @@ return response()->json($results);
          * SC2 currently uses the surgical consumable records
          * stored under category_id = 1.
          */
-        $consumableCategoryId = 1;
+        $consumableCategoryId = $this->categoryId();
 
         $this->ensureGeneralItem(
             $name,
@@ -607,12 +593,7 @@ return response()->json($results);
             $unit
         );
 
-        $currentBalance = DB::table('general_items')
-            ->where('category_id', $consumableCategoryId)
-            ->where('name', $name)
-            ->value('balance');
-
-        $currentBalance = (int) ($currentBalance ?? 0);
+        $currentBalance = $this->getCurrentBalance($name);
 
         $items[] = [
             'name' => $name,
@@ -625,17 +606,14 @@ return response()->json($results);
         ];
     }
 
-    $reqNo = sprintf(
-        'REQ-SC2-%s-%04d',
-        date('YmdHis'),
-        random_int(1000, 9999)
-    );
+    $reqNo = trim($validated['req_no']);
 
     DB::beginTransaction();
 
     try {
         $orderId = DB::table('orders')->insertGetId([
             'ward_id' => 1,
+            'module' => self::MODULE,
             'req_no' => $reqNo,
             'date' => $orderDate,
             'requested_by' => $actor['id'],
@@ -684,6 +662,7 @@ return response()->json($results);
 
         DB::table('orders')
             ->where('id', $orderId)
+            ->where('module', self::MODULE)
             ->update([
                 'remark' => json_encode($meta)
             ]);
@@ -736,7 +715,7 @@ return response()->json($results);
             'remark' => 'nullable|string|max:1000',
         ]);
 
-        $order = DB::table('orders')->where('id', $id)->first();
+        $order = DB::table('orders')->where('id', $id)->where('module', self::MODULE)->first();
 
         if (!$order) {
             return response()->json([
@@ -773,8 +752,8 @@ return response()->json($results);
                     continue;
                 }
 
-                $this->ensureGeneralItem($name, $this->categoryId, $unit);
-                $medicineId = $this->ensureMedicineRecord($name, $this->categoryId, $unit);
+                $this->ensureGeneralItem($name, $this->categoryId(), $unit);
+                $medicineId = $this->ensureMedicineRecord($name, $this->categoryId(), $unit);
 
                 $detailId = isset($inputItem['id'])
                     ? (int) $inputItem['id']
@@ -848,6 +827,7 @@ return response()->json($results);
 
             DB::table('orders')
                 ->where('id', $id)
+                ->where('module', self::MODULE)
                 ->update([
                     'ms_approval_status' => 'Approved',
                     'approved_by' => $actor['id'],
@@ -898,7 +878,7 @@ return response()->json($results);
             'reason' => 'required|string|max:1000',
         ]);
 
-        $order = DB::table('orders')->where('id', $id)->first();
+        $order = DB::table('orders')->where('id', $id)->where('module', self::MODULE)->first();
 
         if (!$order) {
             return response()->json([
@@ -923,6 +903,7 @@ return response()->json($results);
 
         DB::table('orders')
             ->where('id', $id)
+            ->where('module', self::MODULE)
             ->update([
                 'ms_approval_status' => 'Rejected',
                 'remark' => json_encode($meta),
@@ -966,6 +947,7 @@ return response()->json($results);
         try {
             $order = DB::table('orders')
                 ->where('id', $id)
+                ->where('module', self::MODULE)
                 ->lockForUpdate()
                 ->first();
 
@@ -1052,7 +1034,7 @@ return response()->json($results);
 
                 $generalItemId = $this->ensureGeneralItem(
                     $medicine->name,
-                    $this->categoryId,
+                    $this->categoryId(),
                     $unit
                 );
 
@@ -1091,6 +1073,7 @@ return response()->json($results);
 
             DB::table('orders')
                 ->where('id', $id)
+                ->where('module', self::MODULE)
                 ->update([
                     'remark' => json_encode($meta),
                 ]);
@@ -1163,6 +1146,7 @@ return response()->json($results);
 
         $order = DB::table('orders')
             ->where('id', $id)
+            ->where('module', self::MODULE)
             ->first();
 
         if (!$order) {
@@ -1198,6 +1182,7 @@ return response()->json($results);
 
             DB::table('orders')
                 ->where('id', $id)
+                ->where('module', self::MODULE)
                 ->delete();
         });
 
@@ -1218,7 +1203,7 @@ return response()->json($results);
     public function getAdjustments()
     {
         return response()->json(
-            WardDatabaseService::getAdjustments($this->categoryId, [])
+            WardDatabaseService::getAdjustments($this->categoryId(), [])
         );
     }
 
@@ -1243,7 +1228,7 @@ return response()->json($results);
 
         try {
             $transId = WardDatabaseService::storeAdjustment(
-            $this->categoryId,
+            $this->categoryId(),
             $validated['item_name'],
             $validated['type'],
             $amount,
@@ -1291,7 +1276,7 @@ return response()->json($results);
         $fallback = [];
 
         return response()->json(
-            WardDatabaseService::getDailyCounts($this->categoryId, $fallback)
+            WardDatabaseService::getDailyCounts($this->categoryId(), $fallback)
         );
     }
 
@@ -1316,7 +1301,7 @@ return response()->json($results);
             $sistersName = trim($actor['name']);
 
             $result = WardDatabaseService::storeDailyCount(
-                self::CATEGORY_ID,
+                $this->categoryId(),
                 $validated['item_name'],
                 (int) $validated['qty_given'],
                 $sistersName,
