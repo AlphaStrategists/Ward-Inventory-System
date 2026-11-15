@@ -17,9 +17,10 @@
     "dependencies": {
         "@fortawesome/fontawesome-free": "^7.3.1",
         "alpinejs": "^3.15.12",
-        "bootstrap": "^5.3.8"
+        "bootstrap": "^5.3.8",
+        "sweetalert2": "^11.26.25"
     },
     "allowScripts": {
-        "esbuild@0.28.1": true
+        "esbuild@0.28.2": true
     }
 }
