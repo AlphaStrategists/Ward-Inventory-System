@@ -22,12 +22,11 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'password' => 'required|string|confirmed',
-            'role' => 'required|in:Doctor,Nurse,Pharmacist,Head Nurse',
+            'role_id' => 'required|integer|in:2,3,4|exists:roles,id',
             'email' => 'required|string|email|max:255|unique:users,email'
         ]);
 
@@ -36,13 +35,12 @@ class UserController extends Controller
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'role' => $validated['role'],
+            'role_id' => (int) $validated['role_id'],
             'is_admin' => 0,
         ]);
 
         return redirect()->route('login')
             ->with('success', 'User created successfully.');
-        
     }
 
     public function show($email)
