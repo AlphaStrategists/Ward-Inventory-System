@@ -39,9 +39,10 @@ class CheckRole
             if ($userRole === null) {
                 $roleIdMap = [
                     1 => 'admin',
-                    2 => 'ms',
+                    2 => 'doctor',
                     3 => 'nurse',
                     4 => 'pharmacist',
+                    5 => 'head_nurse',
                 ];
 
                 $userRole = $roleIdMap[(int) ($user->role_id ?? 0)] ?? null;
