@@ -18,6 +18,7 @@ class Order extends Model
         'requested_by',
         'ms_approval_status',
         'approved_by',
+        'approved_at',
         'remark',
         'issued_by',
         'issued_date',
@@ -29,6 +30,7 @@ class Order extends Model
     {
         return [
             'date' => 'datetime',
+            'approved_at' => 'datetime',
             'issued_date' => 'datetime',
             'received_date' => 'datetime',
         ];
