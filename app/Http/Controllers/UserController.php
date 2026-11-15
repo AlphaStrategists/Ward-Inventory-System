@@ -22,12 +22,12 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'password' => 'required|string|confirmed',
             'role_id' => 'required|integer|in:2,3,4,5|exists:roles,id',
+
             'email' => 'required|string|email|max:255|unique:users,email'
         ]);
 
@@ -42,7 +42,6 @@ class UserController extends Controller
 
         return redirect()->route('login')
             ->with('success', 'User created successfully.');
-        
     }
 
     public function show($email)

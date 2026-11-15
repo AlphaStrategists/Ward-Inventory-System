@@ -189,17 +189,14 @@
                                 <option value="" disabled {{ old('role_id') ? '' : 'selected' }}>
                                     Select a role
                                 </option>
-                                <option value="Doctor" {{ old('role_id') === '2' ? 'selected' : '' }}>
+                                <option value="2" {{ (string) old('role_id') === '2' ? 'selected' : '' }}>
                                     Doctor
                                 </option>
-                                <option value="3" {{ old('role_id') === '3' ? 'selected' : '' }}>
+                                <option value="3" {{ (string) old('role_id') === '3' ? 'selected' : '' }}>
                                     Nurse
                                 </option>
-                                <option value="4" {{ old('role_id') === '4' ? 'selected' : '' }}>
+                                <option value="4" {{ (string) old('role_id') === '4' ? 'selected' : '' }}>
                                     Pharmacist
-                                </option>
-                                <option value="5" {{ old('role_id') === '5' ? 'selected' : '' }}>
-                                    Head Nurse
                                 </option>
                             </select>
                             <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
