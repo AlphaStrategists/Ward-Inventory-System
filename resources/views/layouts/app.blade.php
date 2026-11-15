@@ -24,6 +24,25 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
+        .user-dropdown-toggle {
+            --bs-btn-border-color: transparent;
+            --bs-btn-focus-box-shadow: none;
+            border: 1px solid transparent;
+        }
+
+        .user-dropdown-toggle:hover,
+        .user-dropdown-toggle:focus,
+        .user-dropdown-toggle:focus-visible,
+        .user-dropdown-toggle.show {
+            border-color: #e2e8f0 !important;
+            outline: none;
+            box-shadow: none;
+        }
+
+        .user-dropdown-toggle::after {
+            display: none;
+        }
+
         :root {
             --bs-font-sans-serif: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             --primary-blue: #2563eb;
@@ -640,32 +659,32 @@
             <div class="vr mx-2 text-muted opacity-25 d-none d-md-block" style="height: 28px;"></div>
 
             @php
-                $isHomeOrDashboard = request()->is('home*') || request()->is('dashboard*') || request()->is('/') || request()->routeIs('home', 'dashboard');
-                $isInventoryRoute = request()->is('inventory*') || request()->is('general-inventory*') || request()->routeIs('inventory.*', 'general-inventory.*');
-                $isOrdersRoute = request()->is('orders*') || request()->routeIs('orders.*');
-                $isPatientsRoute = request()->is('patients*') || request()->routeIs('patients.*');
-                $isMasterDataRoute = request()->is('form-types*') || request()->is('units*') || request()->is('strength-units*') || request()->is('suppliers*') || request()->routeIs('form-types.*', 'units.*', 'strength-units.*', 'suppliers.*');
+            $isHomeOrDashboard = request()->is('home*') || request()->is('dashboard*') || request()->is('/') || request()->routeIs('home', 'dashboard');
+            $isInventoryRoute = request()->is('inventory*') || request()->is('general-inventory*') || request()->routeIs('inventory.*', 'general-inventory.*');
+            $isOrdersRoute = request()->is('orders*') || request()->routeIs('orders.*');
+            $isPatientsRoute = request()->is('patients*') || request()->routeIs('patients.*');
+            $isMasterDataRoute = request()->is('form-types*') || request()->is('units*') || request()->is('strength-units*') || request()->is('suppliers*') || request()->routeIs('form-types.*', 'units.*', 'strength-units.*', 'suppliers.*');
 
-                $showInventory = true;
-                $showOrders = true;
-                $showPatients = true;
+            $showInventory = true;
+            $showOrders = true;
+            $showPatients = true;
 
-                if (!$isHomeOrDashboard) {
-                    if ($isInventoryRoute) {
-                        $showOrders = false;
-                        $showPatients = false;
-                    } elseif ($isOrdersRoute) {
-                        $showInventory = false;
-                        $showPatients = false;
-                    } elseif ($isPatientsRoute) {
-                        $showInventory = false;
-                        $showOrders = false;
-                    } elseif ($isMasterDataRoute) {
-                        $showInventory = false;
-                        $showOrders = false;
-                        $showPatients = false;
-                    }
-                }
+            if (!$isHomeOrDashboard) {
+            if ($isInventoryRoute) {
+            $showOrders = false;
+            $showPatients = false;
+            } elseif ($isOrdersRoute) {
+            $showInventory = false;
+            $showPatients = false;
+            } elseif ($isPatientsRoute) {
+            $showInventory = false;
+            $showOrders = false;
+            } elseif ($isMasterDataRoute) {
+            $showInventory = false;
+            $showOrders = false;
+            $showPatients = false;
+            }
+            }
             @endphp
 
             <!-- Main Navigation Links -->
@@ -706,7 +725,9 @@
                                 </div>
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider my-1 opacity-25"></li>
+                        <li>
+                            <hr class="dropdown-divider my-1 opacity-25">
+                        </li>
                         <li>
                             <a class="dropdown-item rounded-3 py-2 px-3 d-flex align-items-center gap-2 fw-semibold {{ request()->is('units*') || request()->routeIs('units.*') ? 'active bg-primary text-white' : 'text-slate-700' }}" href="{{ route('units.index') }}">
                                 <i class="fa-solid fa-scale-balanced {{ request()->is('units*') || request()->routeIs('units.*') ? 'text-white' : 'text-primary' }}"></i>
@@ -716,7 +737,9 @@
                                 </div>
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider my-1 opacity-25"></li>
+                        <li>
+                            <hr class="dropdown-divider my-1 opacity-25">
+                        </li>
                         <li>
                             <a class="dropdown-item rounded-3 py-2 px-3 d-flex align-items-center gap-2 fw-semibold {{ request()->is('strength-units*') || request()->routeIs('strength-units.*') ? 'active bg-primary text-white' : 'text-slate-700' }}" href="{{ route('strength-units.index') }}">
                                 <i class="fa-solid fa-flask-vial {{ request()->is('strength-units*') || request()->routeIs('strength-units.*') ? 'text-white' : 'text-primary' }}"></i>
@@ -726,7 +749,9 @@
                                 </div>
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider my-1 opacity-25"></li>
+                        <li>
+                            <hr class="dropdown-divider my-1 opacity-25">
+                        </li>
                         <li>
                             <a class="dropdown-item rounded-3 py-2 px-3 d-flex align-items-center gap-2 fw-semibold {{ request()->is('suppliers*') || request()->routeIs('suppliers.*') ? 'active bg-primary text-white' : 'text-slate-700' }}" href="{{ route('suppliers.index') }}">
                                 <i class="fa-solid fa-truck-medical {{ request()->is('suppliers*') || request()->routeIs('suppliers.*') ? 'text-white' : 'text-primary' }}"></i>
@@ -745,25 +770,40 @@
         <div class="d-flex align-items-center gap-3">
             @auth
             @php
-                $navUserName = trim((Auth::user()->first_name ?? '') . ' ' . (Auth::user()->last_name ?? '')) ?: (Auth::user()->name ?? 'User');
+            $navUserName = trim((Auth::user()->first_name ?? '') . ' ' . (Auth::user()->last_name ?? '')) ?: (Auth::user()->name ?? 'Guest User');
             @endphp
-            <div class="d-flex align-items-center gap-2">
-                <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; font-size: 0.8rem;">
-                    {{ strtoupper(substr($navUserName, 0, 1)) }}
+            <div class="dropdown">
+                <button type="button"
+                    class="user-dropdown-toggle btn d-flex align-items-center gap-3 p-1 pe-2 rounded-3"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                    <div class="text-end d-none d-sm-block">
+                        <div class="fw-bold" style="font-size: 0.875rem; line-height: 1.2; color: #334155;">Hi, {{ $navUserName }}</div>
+                        <div class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.05em; color: #94a3b8;">{{ strtoupper(Auth::user()->role ?? 'USER') }}</div>
+                    </div>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm"
+                        style="width: 36px; height: 36px; font-size: 0.875rem; background: #dbeafe; color: #3B82F6; border: 1px solid #bfdbfe;">
+                        {{ strtoupper(substr($navUserName, 0, 1)) }}
+                    </div>
+                    <i class="bi bi-chevron-down" style="font-size: 0.8rem; color: #94a3b8;"></i>
+                </button>
+
+                <div class="dropdown-menu dropdown-menu-end shadow border py-2 mt-2 rounded-3" style="width: 14rem;">
+                    <div class="px-3 py-2 border-bottom mb-1">
+                        <p class="fw-bold text-uppercase mb-1" style="font-size: 0.75rem; letter-spacing: 0.05em; color: #94a3b8;">Signed in as</p>
+                        <p class="fw-semibold mb-0 text-truncate" style="font-size: 0.875rem; color: #334155;">{{ Auth::user()->email ?? 'user@example.com' }}</p>
+                    </div>
+                    <form method="POST" action="{{ route('logout') }}" class="m-0 p-0">
+                        @csrf
+                        <button type="submit" class="dropdown-item d-flex align-items-center gap-2 fw-semibold text-danger px-3 py-2" style="font-size: 0.875rem;">
+                            <i class="bi bi-box-arrow-right"></i>
+                            Logout
+                        </button>
+                    </form>
                 </div>
-                <div class="d-none d-lg-block text-start">
-                    <div class="fw-bold" style="font-size: 0.825rem; line-height: 1.1;">Hi, {{ $navUserName }}</div>
-                    <small class="text-muted" style="font-size: 0.7rem;">{{ strtoupper(Auth::user()->role ?? 'USER') }}</small>
-                </div>
-                <form method="POST" action="{{ route('logout') }}" class="ms-1">
-                    @csrf
-                    <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill" title="Logout">
-                        <i class="bi bi-box-arrow-right"></i>
-                    </button>
-                </form>
             </div>
             @endauth
         </div>
+
     </header>
 
     <!-- Flash Messages -->
@@ -807,16 +847,16 @@
 
     <!-- Auto-dismiss success alert messages after 3 seconds -->
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const successAlerts = document.querySelectorAll('.alert-success');
-            successAlerts.forEach(function (alert) {
+            successAlerts.forEach(function(alert) {
                 if (!alert.dataset.dismissScheduled) {
                     alert.dataset.dismissScheduled = 'true';
-                    setTimeout(function () {
+                    setTimeout(function() {
                         alert.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
                         alert.style.opacity = '0';
                         alert.style.transform = 'translateY(-10px)';
-                        setTimeout(function () {
+                        setTimeout(function() {
                             if (alert.parentNode) {
                                 alert.remove();
                             }
