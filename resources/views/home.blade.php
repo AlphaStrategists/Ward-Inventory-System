@@ -2426,39 +2426,39 @@
     </footer>
 
 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script>
-        function confirmLogout() {
-            Swal.fire({
-                title: 'Logout Confirmation',
-                text: 'Are you sure you want to log out of your account?',
-                icon: 'warning',
+<script>
+    function confirmLogout() {
+        Swal.fire({
+            title: 'Logout Confirmation',
+            text: 'Are you sure you want to log out of your account?',
+            icon: 'warning',
 
-                showCancelButton: true,
+            showCancelButton: true,
 
-                confirmButtonColor: '#dc2626',
-                cancelButtonColor: '#64748b',
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
 
-                confirmButtonText: 'Yes, Logout',
-                cancelButtonText: 'Cancel',
+            confirmButtonText: 'Yes, Logout',
+            cancelButtonText: 'Cancel',
 
-                reverseButtons: true,
-                focusCancel: true,
+            reverseButtons: true,
+            focusCancel: true,
 
-                customClass: {
-                    popup: 'rounded-2xl',
-                    title: 'text-xl font-bold',
-                    confirmButton: 'rounded-lg px-5 py-2.5 font-semibold',
-                    cancelButton: 'rounded-lg px-5 py-2.5 font-semibold'
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    document.getElementById('logout-form').submit();
-                }
-            });
-        }
-    </script>
+            customClass: {
+                popup: 'rounded-2xl',
+                title: 'text-xl font-bold',
+                confirmButton: 'rounded-lg px-5 py-2.5 font-semibold',
+                cancelButton: 'rounded-lg px-5 py-2.5 font-semibold'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('logout-form').submit();
+            }
+        });
+    }
+</script>
 
 
 </body>
