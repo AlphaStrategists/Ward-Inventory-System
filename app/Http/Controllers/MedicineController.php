@@ -431,10 +431,11 @@ class MedicineController extends Controller
         $stockInputType = $validated['stock_input_type'] ?? 'unit';
         $form = \App\Models\MedicineForm::find($validated['form_id']);
         $strengthUnit = !empty($validated['strength_unit_id']) ? \App\Models\StrengthUnit::find($validated['strength_unit_id']) : null;
-        $isLiquid = ($form && in_array(strtolower($form->form_name), ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']))
-            || ($strengthUnit && strtolower(trim($strengthUnit->name)) === 'ml');
+        $formNameLower = strtolower(trim((string) ($form->form_name ?? '')));
+        $strengthUnitLower = strtolower(trim((string) ($strengthUnit->name ?? '')));
+        $isLiquidMl = in_array($formNameLower, ['syrup', 'drops', 'solution', 'suspension'], true) && $strengthUnitLower === 'ml';
 
-        if ($isLiquid && $stockInputType === 'unit') {
+        if ($isLiquidMl && $stockInputType === 'unit') {
             $baseVolume = (int) round((float) ($validated['strength_value'] ?? 1));
             if ($baseVolume > 0) {
                 $initialStock = $initialStock * $baseVolume;

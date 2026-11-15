@@ -74,6 +74,10 @@ class Medicine extends Model
     public function isLiquidMl(): bool
     {
         $unitName = strtolower(trim((string) ($this->strengthUnit?->name ?? '')));
+        $formName = strtolower(trim((string) ($this->form?->form_name ?? '')));
+        if (in_array($formName, ['injection', 'iv-fluid', 'tablet', 'capsule', 'pill'], true)) {
+            return false;
+        }
         if ($unitName === 'ml') {
             return true;
         }
@@ -108,5 +112,10 @@ class Medicine extends Model
     public function getStockAttribute()
     {
         return \App\Models\StockLedger::whereIn('batch_id', $this->batches()->pluck('id'))->sum('quantity');
+    }
+
+    public function getCurrentStockAttribute()
+    {
+        return $this->attributes['stock'] ?? $this->stock;
     }
 }

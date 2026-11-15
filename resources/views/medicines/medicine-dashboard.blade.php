@@ -161,16 +161,16 @@
                             @if($medicine->isLiquidMl())
                             @php
                             $baseVol = $medicine->getBottleVolumeMl();
-                            $bottles = $baseVol > 0 ? (int) floor($medicine->stock / $baseVol) : 0;
-                            $remainingMl = $baseVol > 0 ? ($medicine->stock % $baseVol) : 0;
+                            $bottles = $baseVol > 0 ? (int) floor($medicine->current_stock / $baseVol) : 0;
+                            $remainingMl = $baseVol > 0 ? ($medicine->current_stock % $baseVol) : 0;
                             @endphp
                             @if($remainingMl > 0)
-                            {{ $bottles }} Bottle(s) & {{ $remainingMl }}ml (Total: {{ $medicine->stock }}ml)
+                            {{ $bottles }} Bottle(s) & {{ $remainingMl }}ml (Total: {{ $medicine->current_stock }}ml)
                             @else
-                            {{ $bottles }} Bottle(s) (Total: {{ $medicine->stock }}ml)
+                            {{ $bottles }} Bottle(s) (Total: {{ $medicine->current_stock }}ml)
                             @endif
                             @else
-                            {{ $medicine->stock }} {{ $medicine->form->form_name ?? $medicine->unit->unit_name ?? '' }}
+                            {{ $medicine->current_stock }} {{ $medicine->unit->unit_name ?? $medicine->unit ?? '' }}
                             @endif
                         </span>
                     </div>
@@ -328,16 +328,16 @@
                         @if($selectedMedicine->isLiquidMl())
                         @php
                         $baseVolume = $selectedMedicine->getBottleVolumeMl();
-                        $bottleCount = $baseVolume > 0 ? (int) floor($stock / $baseVolume) : 0;
-                        $remainingMl = $baseVolume > 0 ? ($stock % $baseVolume) : 0;
+                        $bottleCount = $baseVolume > 0 ? (int) floor($selectedMedicine->current_stock / $baseVolume) : 0;
+                        $remainingMl = $baseVolume > 0 ? ($selectedMedicine->current_stock % $baseVolume) : 0;
                         @endphp
                         @if($remainingMl > 0)
-                        {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s) & {{ $remainingMl }}ml</span> <span class="text-sm text-slate-500 font-semibold ml-1">(Total: {{ $stock }}ml)</span>
+                        {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s) & {{ $remainingMl }}ml</span> <span class="text-sm text-slate-500 font-semibold ml-1">(Total: {{ $selectedMedicine->current_stock }}ml)</span>
                         @else
-                        {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s)</span> <span class="text-sm text-slate-500 font-semibold ml-1">(Total: {{ $stock }}ml)</span>
+                        {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s)</span> <span class="text-sm text-slate-500 font-semibold ml-1">(Total: {{ $selectedMedicine->current_stock }}ml)</span>
                         @endif
                         @else
-                        {{ $stock }} <span class="text-lg font-bold">{{ $selectedMedicine->form->form_name ?? $selectedMedicine->unit->unit_name ?? 'Unit' }}</span>
+                        {{ $selectedMedicine->current_stock }} <span class="text-lg font-bold">{{ $selectedMedicine->unit->unit_name ?? $selectedMedicine->unit ?? 'Unit' }}</span>
                         @endif
                         @else
                         0 <span class="text-lg font-bold">units</span>
@@ -532,15 +532,15 @@
 
                                 $isCreatorNurse = auth()->check() 
                                     && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse') || in_array(strtolower(auth()->user()->role ?? ''), ['nurse', 'head nurse'], true))
-                                    && (int)($order->requested_by ?? 0) === (int)auth()->id();
-                                $isPending = strtolower($order->ms_approval_status ?? '') === 'pending';
+                                    && (int)($order?->requested_by ?? 0) === (int)auth()->id();
+                                $isPending = strtolower($order?->ms_approval_status ?? '') === 'pending';
 
                                 // Issuing officer details
                                 $issName = null;
                                 $issDate = null;
-                                if ($order->issuedBy) {
-                                    $issName = $order->issuedBy->name;
-                                    $issDate = $order->issued_date ? \Carbon\Carbon::parse($order->issued_date)->format('M d, Y h:i A') : null;
+                                if ($order && $order->issuedBy) {
+                                    $issName = $order->issuedBy?->name;
+                                    $issDate = $order?->issued_date ? \Carbon\Carbon::parse($order->issued_date)->format('M d, Y h:i A') : null;
                                 } elseif (preg_match('/\[ISSUED_BY:(.*?)\]/', $detail->remark ?? '', $issMatches)) {
                                     $issName = $issMatches[1] ?? 'N/A';
                                 }
@@ -548,21 +548,21 @@
                                 // Receiving officer details
                                 $rxName = null;
                                 $rxDate = null;
-                                if ($order->receivedBy) {
-                                    $rxName = $order->receivedBy->name;
-                                    $rxDate = $order->received_date ? \Carbon\Carbon::parse($order->received_date)->format('M d, Y h:i A') : null;
+                                if ($order && $order->receivedBy) {
+                                    $rxName = $order->receivedBy?->name;
+                                    $rxDate = $order?->received_date ? \Carbon\Carbon::parse($order->received_date)->format('M d, Y h:i A') : null;
                                 } elseif (preg_match('/\[RECEIVED_BY:(.*?)\]/', $detail->remark ?? '', $rxMatches)) {
                                     $rxName = $rxMatches[1] ?? '';
                                 }
                                 $isReceived = ($detail->qty_received !== null && $detail->qty_received > 0) || !empty($rxName) || str_contains($detail->remark ?? '', '[RECEIVED');
                                 $displayReceivedQty = $detail->qty_received ?? ($detail->qty_issued > 0 && $isReceived ? $detail->qty_issued : null);
                             @endphp
-                            <tr x-show="(searchQuery === '' || '{{ strtolower($order->req_no ?? '') }}'.includes(searchQuery.toLowerCase())) && (searchDate === '' || '{{ $order->date ? \Carbon\Carbon::parse($order->date)->format('Y-m-d') : '' }}' === searchDate)" class="hover:bg-slate-50/60 transition-colors group">
+                            <tr x-show="(searchQuery === '' || '{{ strtolower($order?->req_no ?? '') }}'.includes(searchQuery.toLowerCase())) && (searchDate === '' || '{{ $order?->date ? \Carbon\Carbon::parse($order->date)->format('Y-m-d') : '' }}' === searchDate)" class="hover:bg-slate-50/60 transition-colors group">
                                 @if($isInjection)
                                     {{-- 1. Date --}}
                                     <td class="px-6 py-4 font-semibold text-slate-700">
-                                        {{ $order->date ? \Carbon\Carbon::parse($order->date)->format('M d, Y') : 'N/A' }} <br>
-                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $order->date ? \Carbon\Carbon::parse($order->date)->format('h:i A') : 'N/A' }}</small>
+                                        {{ $order?->date ? \Carbon\Carbon::parse($order->date)->format('M d, Y') : 'N/A' }} <br>
+                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $order?->date ? \Carbon\Carbon::parse($order->date)->format('h:i A') : 'N/A' }}</small>
                                     </td>
                                     {{-- 2. Drug Name --}}
                                     <td class="px-6 py-4 font-bold text-slate-800">
@@ -570,7 +570,7 @@
                                     </td>
                                     {{-- 3. Requested Quantity --}}
                                     <td class="px-6 py-4 font-bold text-slate-800">
-                                        @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order->ms_approval_status === 'Pending')
+                                        @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order?->ms_approval_status === 'Pending')
                                         <form id="approve-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.approve', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
                                             @csrf @method('PATCH')
                                         </form>
@@ -589,7 +589,7 @@
                                     {{-- 4. Confirm Signature for Request --}}
                                     <td class="px-6 py-4 font-semibold text-slate-700">
                                         <div class="flex flex-col gap-0.5">
-                                            <span class="text-slate-800">{{ $order->requester->name ?? 'N/A' }}</span>
+                                            <span class="text-slate-800">{{ $order?->requester?->name ?? 'N/A' }}</span>
                                             <span class="text-[10px] text-slate-400 font-normal">Nurse Signature Verified</span>
                                         </div>
                                     </td>
@@ -597,17 +597,17 @@
                                     <td class="px-6 py-4">
                                         <div class="flex flex-col items-start gap-2">
                                             <div class="flex flex-col items-start gap-1">
-                                                <span class="{{ $order->ms_approval_status === 'Approved' ? 'bg-[#DCFCE7] text-[#16A34A]' : ($order->ms_approval_status === 'Rejected' ? 'bg-red-100 text-red-700' : ($order->ms_approval_status === 'Cancelled' ? 'bg-slate-100 text-slate-500' : 'bg-yellow-100 text-yellow-700')) }} font-bold px-3 py-1 rounded-full text-[11px]">
-                                                    {{ $order->ms_approval_status ?? 'Pending' }}
+                                                <span class="{{ $order?->ms_approval_status === 'Approved' ? 'bg-[#DCFCE7] text-[#16A34A]' : ($order?->ms_approval_status === 'Rejected' ? 'bg-red-100 text-red-700' : ($order?->ms_approval_status === 'Cancelled' ? 'bg-slate-100 text-slate-500' : 'bg-yellow-100 text-yellow-700')) }} font-bold px-3 py-1 rounded-full text-[11px]">
+                                                    {{ $order?->ms_approval_status ?? 'Pending' }}
                                                 </span>
-                                                @if($order->approver)
-                                                <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver->name }}</span>
+                                                @if($order?->approver)
+                                                <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver?->name }}</span>
                                                 @endif
-                                                @if($order->approved_at)
+                                                @if($order?->approved_at)
                                                 <div class="text-[10px] text-slate-400 mt-0.5">{{ \Carbon\Carbon::parse($order->approved_at)->format('M d, Y h:i A') }}</div>
                                                 @endif
                                             </div>
-                                            @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order->ms_approval_status === 'Pending')
+                                            @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order?->ms_approval_status === 'Pending')
                                             <div class="flex gap-1.5 mt-1">
                                                 <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Approve" class="bg-[#16A34A] hover:bg-green-700 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Approve</button>
                                                 <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Reject" class="bg-red-500 hover:bg-red-600 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Reject</button>
@@ -639,13 +639,13 @@
                                                 <span class="text-[10px] text-slate-400">{{ $issDate ?: 'Issued' }}</span>
                                             </div>
                                         @else
-                                            @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
+                                            @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'pharmacist' && $order?->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
                                             <form id="issue-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.issue', ['category' => $category, 'id' => $detail->id]) }}" method="POST" class="flex items-center gap-1.5">
                                                 @csrf @method('PATCH')
                                                 <input type="number" name="qty_issued" value="{{ $detail->qty_requested }}" min="1" max="{{ $detail->qty_requested }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
                                                 <button type="submit" class="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs px-2.5 py-1 rounded font-semibold transition-colors shadow-sm">Issue</button>
                                             </form>
-                                            @elseif($order->ms_approval_status === 'Cancelled')
+                                            @elseif($order?->ms_approval_status === 'Cancelled')
                                             <span class="text-slate-400 font-medium text-xs">Cancelled</span>
                                             @else
                                             <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
@@ -661,12 +661,12 @@
                                                 @if($rxDate) <span class="text-[9px] text-slate-400">{{ $rxDate }}</span> @endif
                                             </div>
                                         @else
-                                            @if($order->ms_approval_status === 'Cancelled')
+                                            @if($order?->ms_approval_status === 'Cancelled')
                                             <span class="text-slate-400 font-medium text-xs">Cancelled</span>
                                             @elseif($detail->qty_issued == 0)
                                             <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
                                             @elseif(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse')))
-                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; receiveModalSupplierName = '{{ addslashes($rowSupplierName ?: ($order->supplier->supplier_name ?? $order->supplier->name ?? 'N/A')) }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
+                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; receiveModalSupplierName = '{{ addslashes($rowSupplierName ?: ($order?->supplier?->supplier_name ?? $order?->supplier?->name ?? 'N/A')) }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                             @else
                                             <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
                                             @endif
@@ -677,7 +677,7 @@
                                         @if($isCreatorNurse && $isPending)
                                         <div class="flex items-center justify-center gap-1.5">
                                             <button type="button" 
-                                                @click="editOrderData = { detailId: '{{ $detail->id }}', reqNo: '{{ $order->req_no }}', date: '{{ $order->date ? \Carbon\Carbon::parse($order->date)->format('Y-m-d') : '' }}', qtyRequested: {{ $actualRequested }}, unitsPerPack: {{ $unitsPerPack }}, supplierId: '{{ $batchWithSupplier?->supplier_id ?? '' }}' }; openEditOrderModal = true"
+                                                @click="editOrderData = { detailId: '{{ $detail->id }}', reqNo: '{{ $order?->req_no }}', date: '{{ $order?->date ? \Carbon\Carbon::parse($order->date)->format('Y-m-d') : '' }}', qtyRequested: {{ $actualRequested }}, unitsPerPack: {{ $unitsPerPack }}, supplierId: '{{ $batchWithSupplier?->supplier_id ?? '' }}' }; openEditOrderModal = true"
                                                 class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-[#3B82F6] border border-blue-200 text-xs px-2 py-1 rounded-lg font-semibold transition-colors shadow-xs active:scale-95 cursor-pointer"
                                                 title="Edit Order">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -704,8 +704,8 @@
                                 @elseif($isInjectionAntibiotics)
                                     {{-- 1. Date --}}
                                     <td class="px-6 py-4 font-semibold text-slate-700">
-                                        {{ $order->date ? \Carbon\Carbon::parse($order->date)->format('M d, Y') : 'N/A' }} <br>
-                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $order->date ? \Carbon\Carbon::parse($order->date)->format('h:i A') : 'N/A' }}</small>
+                                        {{ $order?->date ? \Carbon\Carbon::parse($order->date)->format('M d, Y') : 'N/A' }} <br>
+                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $order?->date ? \Carbon\Carbon::parse($order->date)->format('h:i A') : 'N/A' }}</small>
                                     </td>
                                     {{-- 2. Name of Drug --}}
                                     <td class="px-6 py-4 font-bold text-slate-800">
@@ -725,7 +725,7 @@
                                     </td>
                                     {{-- 4. Required Quantity --}}
                                     <td class="px-6 py-4 font-bold text-slate-800">
-                                        @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order->ms_approval_status === 'Pending')
+                                        @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order?->ms_approval_status === 'Pending')
                                         <form id="approve-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.approve', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
                                             @csrf @method('PATCH')
                                         </form>
@@ -744,7 +744,7 @@
                                     {{-- 5. Confirm Signature for Request --}}
                                     <td class="px-6 py-4 font-semibold text-slate-700">
                                         <div class="flex flex-col gap-0.5">
-                                            <span class="text-slate-800">{{ $order->requester->name ?? 'N/A' }}</span>
+                                            <span class="text-slate-800">{{ $order?->requester?->name ?? 'N/A' }}</span>
                                             <span class="text-[10px] text-slate-400 font-normal">Nurse Signature Verified</span>
                                         </div>
                                     </td>
@@ -772,12 +772,12 @@
                                                 @if($rxName) <span class="text-[10px] text-slate-500 font-medium">{{ $rxName }}</span> @endif
                                             </div>
                                         @else
-                                            @if($order->ms_approval_status === 'Cancelled')
+                                            @if($order?->ms_approval_status === 'Cancelled')
                                             <span class="text-slate-400 font-medium text-xs">Cancelled</span>
                                             @elseif($detail->qty_issued == 0)
                                             <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
                                             @elseif(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse')))
-                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; receiveModalSupplierName = '{{ addslashes($rowSupplierName ?: ($order->supplier->supplier_name ?? $order->supplier->name ?? 'N/A')) }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
+                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; receiveModalSupplierName = '{{ addslashes($rowSupplierName ?: ($order?->supplier?->supplier_name ?? $order?->supplier?->name ?? 'N/A')) }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                             @else
                                             <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
                                             @endif
@@ -788,7 +788,7 @@
                                         @if($isCreatorNurse && $isPending)
                                         <div class="flex items-center justify-center gap-1.5">
                                             <button type="button" 
-                                                @click="editOrderData = { detailId: '{{ $detail->id }}', reqNo: '{{ $order->req_no }}', date: '{{ $order->date ? \Carbon\Carbon::parse($order->date)->format('Y-m-d') : '' }}', qtyRequested: {{ $actualRequested }}, unitsPerPack: {{ $unitsPerPack }}, supplierId: '{{ $batchWithSupplier?->supplier_id ?? '' }}' }; openEditOrderModal = true"
+                                                @click="editOrderData = { detailId: '{{ $detail->id }}', reqNo: '{{ $order?->req_no }}', date: '{{ $order?->date ? \Carbon\Carbon::parse($order->date)->format('Y-m-d') : '' }}', qtyRequested: {{ $actualRequested }}, unitsPerPack: {{ $unitsPerPack }}, supplierId: '{{ $batchWithSupplier?->supplier_id ?? '' }}' }; openEditOrderModal = true"
                                                 class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-[#3B82F6] border border-blue-200 text-xs px-2 py-1 rounded-lg font-semibold transition-colors shadow-xs active:scale-95 cursor-pointer"
                                                 title="Edit Order">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -815,11 +815,11 @@
                                 @else
                                     {{-- General Categories --}}
                                     <td class="px-6 py-4 font-semibold text-slate-700">
-                                        {{ $order->date ? \Carbon\Carbon::parse($order->date)->format('M d, Y') : 'N/A' }} <br>
-                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $order->date ? \Carbon\Carbon::parse($order->date)->format('h:i A') : 'N/A' }}</small>
+                                        {{ $order?->date ? \Carbon\Carbon::parse($order->date)->format('M d, Y') : 'N/A' }} <br>
+                                        <small class="text-slate-400"><i class="fa fa-clock-o"></i> {{ $order?->date ? \Carbon\Carbon::parse($order->date)->format('h:i A') : 'N/A' }}</small>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $order->req_no ?? 'N/A' }}</span>
+                                        <span class="text-[#3B82F6] font-semibold bg-[#EFF6FF] px-2.5 py-1 rounded-md">{{ $order?->req_no ?? 'N/A' }}</span>
                                     </td>
                                     <td class="px-6 py-4 font-medium text-slate-700">
                                         @if($rowSupplierName)
@@ -832,7 +832,7 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 font-bold text-slate-800">
-                                        @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order->ms_approval_status === 'Pending')
+                                        @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order?->ms_approval_status === 'Pending')
                                         <form id="approve-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.approve', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
                                             @csrf @method('PATCH')
                                         </form>
@@ -848,21 +848,21 @@
                                         @endif
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $order->requester->name ?? 'N/A' }}</td>
+                                    <td class="px-6 py-4 font-semibold text-slate-700">{{ $order?->requester?->name ?? 'N/A' }}</td>
                                     <td class="px-6 py-4">
                                         <div class="flex flex-col items-start gap-2">
                                             <div class="flex flex-col items-start gap-1">
-                                                <span class="{{ $order->ms_approval_status === 'Approved' ? 'bg-[#DCFCE7] text-[#16A34A]' : ($order->ms_approval_status === 'Rejected' ? 'bg-red-100 text-red-700' : ($order->ms_approval_status === 'Cancelled' ? 'bg-slate-100 text-slate-500' : 'bg-yellow-100 text-yellow-700')) }} font-bold px-3 py-1 rounded-full text-[11px]">
-                                                    {{ $order->ms_approval_status ?? 'Pending' }}
+                                                <span class="{{ $order?->ms_approval_status === 'Approved' ? 'bg-[#DCFCE7] text-[#16A34A]' : ($order?->ms_approval_status === 'Rejected' ? 'bg-red-100 text-red-700' : ($order?->ms_approval_status === 'Cancelled' ? 'bg-slate-100 text-slate-500' : 'bg-yellow-100 text-yellow-700')) }} font-bold px-3 py-1 rounded-full text-[11px]">
+                                                    {{ $order?->ms_approval_status ?? 'Pending' }}
                                                 </span>
-                                                @if($order->approver)
-                                                <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver->name }}</span>
+                                                @if($order?->approver)
+                                                <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver?->name }}</span>
                                                 @endif
-                                                @if($order->approved_at)
+                                                @if($order?->approved_at)
                                                 <div class="text-[10px] text-slate-400 mt-0.5">{{ \Carbon\Carbon::parse($order->approved_at)->format('M d, Y h:i A') }}</div>
                                                 @endif
                                             </div>
-                                            @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order->ms_approval_status === 'Pending')
+                                            @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order?->ms_approval_status === 'Pending')
                                             <div class="flex gap-1.5 mt-1">
                                                 <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Approve" class="bg-[#16A34A] hover:bg-green-700 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Approve</button>
                                                 <button type="submit" form="approve-form-{{$detail->id}}" name="action" value="Reject" class="bg-red-500 hover:bg-red-600 text-white text-[11px] px-2.5 py-1.5 rounded font-semibold transition-colors shadow-sm">Reject</button>
@@ -871,7 +871,7 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 font-bold text-slate-800">
-                                        @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
+                                        @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'pharmacist' && $order?->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
                                         <form id="issue-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.issue', ['category' => $category, 'id' => $detail->id]) }}" method="POST">
                                             @csrf @method('PATCH')
                                         </form>
@@ -907,9 +907,9 @@
                                                 <span class="text-[10px] text-slate-400">{{ $issDate ?: 'Issued' }}</span>
                                             </div>
                                         @else
-                                            @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
+                                            @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'pharmacist' && $order?->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
                                             <button type="submit" form="issue-form-{{$detail->id}}" class="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Issue Batch</button>
-                                            @elseif($order->ms_approval_status === 'Cancelled')
+                                            @elseif($order?->ms_approval_status === 'Cancelled')
                                             <span class="text-slate-400 font-medium text-xs">Cancelled</span>
                                             @else
                                             <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
@@ -924,12 +924,12 @@
                                                 @if($rxDate) <span class="text-[9px] text-slate-400">{{ $rxDate }}</span> @endif
                                             </div>
                                         @else
-                                            @if($order->ms_approval_status === 'Cancelled')
+                                            @if($order?->ms_approval_status === 'Cancelled')
                                             <span class="text-slate-400 font-medium text-xs">Cancelled</span>
                                             @elseif($detail->qty_issued == 0)
                                             <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
                                             @elseif(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse')))
-                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; receiveModalSupplierName = '{{ addslashes($rowSupplierName ?: ($order->supplier->supplier_name ?? $order->supplier->name ?? 'N/A')) }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
+                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; receiveModalSupplierName = '{{ addslashes($rowSupplierName ?: ($order?->supplier?->supplier_name ?? $order?->supplier?->name ?? 'N/A')) }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                             @else
                                             <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
                                             @endif
@@ -939,7 +939,7 @@
                                         @if($isCreatorNurse && $isPending)
                                         <div class="flex items-center justify-center gap-1.5">
                                             <button type="button" 
-                                                @click="editOrderData = { detailId: '{{ $detail->id }}', reqNo: '{{ $order->req_no }}', date: '{{ $order->date ? \Carbon\Carbon::parse($order->date)->format('Y-m-d') : '' }}', qtyRequested: {{ $actualRequested }}, unitsPerPack: {{ $unitsPerPack }}, supplierId: '{{ $batchWithSupplier?->supplier_id ?? '' }}' }; openEditOrderModal = true"
+                                                @click="editOrderData = { detailId: '{{ $detail->id }}', reqNo: '{{ $order?->req_no }}', date: '{{ $order?->date ? \Carbon\Carbon::parse($order->date)->format('Y-m-d') : '' }}', qtyRequested: {{ $actualRequested }}, unitsPerPack: {{ $unitsPerPack }}, supplierId: '{{ $batchWithSupplier?->supplier_id ?? '' }}' }; openEditOrderModal = true"
                                                 class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-[#3B82F6] border border-blue-200 text-xs px-2 py-1 rounded-lg font-semibold transition-colors shadow-xs active:scale-95 cursor-pointer"
                                                 title="Edit Order">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1167,7 +1167,7 @@
 
                                         <input type="hidden" name="category_id" value="{{ $currentCategory->id ?? '' }}">
 
-                                        <div class="grid grid-cols-2 gap-5" x-data="{ formName: '', get isLiquid() { return ['syrup', 'drops', 'injection', 'iv-fluid'].includes(this.formName.toLowerCase()); }, isBulk: false, packCount: 1, unitsPerPack: 1 }" x-effect="if (isBulk) { initialStock = packCount * unitsPerPack; }">
+                                        <div class="grid grid-cols-2 gap-5" x-data="{ formName: '', get isLiquid() { return ['syrup', 'drops', 'solution', 'suspension'].includes(this.formName.toLowerCase()); }, isBulk: false, packCount: 1, unitsPerPack: 1 }" x-effect="if (isBulk) { initialStock = packCount * unitsPerPack; }">
                                             <!-- Item Code -->
                                             <div>
                                                 <label class="block text-sm font-semibold text-slate-700 mb-1.5">Item Code <span class="text-red-500">*</span></label>
@@ -1203,12 +1203,15 @@
                                             </div>
 
                                             <!-- Strength -->
-                                            <div class="col-span-2">
-                                                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
-                                                <div class="flex items-center gap-2">
-                                                    <input type="number" step="any" min="0" name="strength_value" value="{{ old('strength_value') }}" placeholder="e.g. 500" class="w-2/3 bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
-                                                    <select name="strength_unit_id" class="w-1/3 bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
-                                                        <option value="">Unit</option>
+                                            <div class="col-span-2 grid grid-cols-3 gap-2">
+                                                <div class="col-span-2">
+                                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
+                                                    <input type="number" step="any" min="0" name="strength_value" value="{{ old('strength_value') }}" placeholder="e.g. 500" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength Unit</label>
+                                                    <select name="strength_unit_id" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
+                                                        <option value="">Strength Unit</option>
                                                         @foreach($strengthUnits ?? [] as $sUnit)
                                                             <option value="{{ $sUnit->id }}" {{ (old('strength_unit_id') == $sUnit->id) ? 'selected' : '' }}>{{ $sUnit->name }}</option>
                                                         @endforeach
@@ -1366,12 +1369,15 @@
                                         </select>
                                     </div>
                                     <!-- Strength -->
-                                    <div class="col-span-2">
-                                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
-                                        <div class="flex items-center gap-2">
-                                            <input type="number" step="any" min="0" name="strength_value" value="{{ old('strength_value', $medicine->strength_value !== null ? rtrim(rtrim(number_format((float) $medicine->strength_value, 2, '.', ''), '0'), '.') : '') }}" placeholder="e.g. 500" class="w-2/3 bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
-                                            <select name="strength_unit_id" class="w-1/3 bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
-                                                <option value="">Unit</option>
+                                    <div class="col-span-2 grid grid-cols-3 gap-2">
+                                        <div class="col-span-2">
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
+                                            <input type="number" step="any" min="0" name="strength_value" value="{{ old('strength_value', $medicine->strength_value !== null ? rtrim(rtrim(number_format((float) $medicine->strength_value, 2, '.', ''), '0'), '.') : '') }}" placeholder="e.g. 500" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength Unit</label>
+                                            <select name="strength_unit_id" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
+                                                <option value="">Strength Unit</option>
                                                 @foreach($strengthUnits ?? [] as $sUnit)
                                                     <option value="{{ $sUnit->id }}" {{ (old('strength_unit_id', $medicine->strength_unit_id ?? '') == $sUnit->id) ? 'selected' : '' }}>{{ $sUnit->name }}</option>
                                                 @endforeach
@@ -1885,7 +1891,7 @@
                                 <div class="mb-4">
                                     <label class="block text-sm font-medium text-slate-700 mb-1">Supplier</label>
                                     <div class="p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-medium" x-text="receiveModalSupplierName || 'N/A'">
-                                        {{ $order->supplier->name ?? ($rowSupplierName ?? 'N/A') }}
+                                        {{ ($order ?? null)?->supplier?->name ?? ($rowSupplierName ?? 'N/A') }}
                                     </div>
                                 </div>
 
