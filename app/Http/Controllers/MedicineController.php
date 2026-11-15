@@ -237,11 +237,10 @@ class MedicineController extends Controller
         /** @var \App\Models\User $user */
         $wardId = Auth::user()->ward_id ?? DB::table('wards')->value('id');
 
-        if ($wardId && $medicines->isNotEmpty()) {
+        if ($medicines->isNotEmpty()) {
             $stocks = DB::table('stock_ledger')
                 ->join('medicine_batches', 'stock_ledger.batch_id', '=', 'medicine_batches.id')
                 ->whereIn('medicine_batches.medicine_id', $medicines->pluck('id'))
-                ->where('stock_ledger.ward_id', $wardId)
                 ->groupBy('medicine_batches.medicine_id')
                 ->select('medicine_batches.medicine_id', DB::raw('SUM(stock_ledger.quantity) as total_stock'))
                 ->pluck('total_stock', 'medicine_id');
@@ -262,12 +261,19 @@ class MedicineController extends Controller
             ->get();
 
         // 1. Fetch all transactions (dispensations, receipts, adjustments) and map them for the ledger
-        $dispensations = Dispensation::with(['admission.patient', 'issuedBy', 'batch'])
+        $ledgerOrderMap = DB::table('stock_ledger')
+            ->join('medicine_batches', 'stock_ledger.batch_id', '=', 'medicine_batches.id')
+            ->where('medicine_batches.medicine_id', $selectedMedicine->id)
+            ->select('stock_ledger.id', 'stock_ledger.source_table', 'stock_ledger.source_id')
+            ->get()
+            ->keyBy(fn ($row) => $row->source_table . ':' . $row->source_id);
+
+        $dispensations = Dispensation::with(['admission.patient', 'issuedBy', 'batch.medicine.unit', 'batch.medicine.strengthUnit'])
             ->whereHas('batch', function($q) use ($selectedMedicine) {
                 $q->where('medicine_id', $selectedMedicine->id);
             })
             ->get()
-            ->map(function ($item) {
+            ->map(function ($item) use ($ledgerOrderMap) {
                 $dateOnly = $item->date ? \Carbon\Carbon::parse($item->date)->format('Y-m-d') : now()->format('Y-m-d');
                 $time = $item->usage_time ?: '00:00:00';
                 try {
@@ -275,9 +281,12 @@ class MedicineController extends Controller
                 } catch (\Throwable $e) {
                     $datetime = \Carbon\Carbon::parse($dateOnly);
                 }
+                $seqKey = 'dispensations:' . $item->id;
                 
                 return (object) [
                     'type' => 'dispensation',
+                    'type_priority' => 2,
+                    'ledger_seq' => isset($ledgerOrderMap[$seqKey]) ? (int) $ledgerOrderMap[$seqKey]->id : PHP_INT_MAX,
                     'timestamp' => $datetime->timestamp,
                     'id' => $item->id,
                     'model' => $item,
@@ -289,9 +298,12 @@ class MedicineController extends Controller
                 $q->where('medicine_id', $selectedMedicine->id);
             })
             ->get()
-            ->map(function ($item) {
+            ->map(function ($item) use ($ledgerOrderMap) {
+                $seqKey = 'stock_receipts:' . $item->id;
                 return (object) [
                     'type' => 'receipt',
+                    'type_priority' => 0,
+                    'ledger_seq' => isset($ledgerOrderMap[$seqKey]) ? (int) $ledgerOrderMap[$seqKey]->id : 0,
                     'timestamp' => \Carbon\Carbon::parse($item->date)->timestamp,
                     'id' => $item->id,
                     'model' => $item,
@@ -304,9 +316,12 @@ class MedicineController extends Controller
                 $q->where('medicine_id', $selectedMedicine->id);
             })
             ->get()
-            ->map(function ($item) {
+            ->map(function ($item) use ($ledgerOrderMap) {
+                $seqKey = 'medicine_stock_adjustments:' . $item->id;
                 return (object) [
                     'type' => 'adjustment',
+                    'type_priority' => 1,
+                    'ledger_seq' => isset($ledgerOrderMap[$seqKey]) ? (int) $ledgerOrderMap[$seqKey]->id : PHP_INT_MAX,
                     'timestamp' => \Carbon\Carbon::parse($item->created_at)->timestamp,
                     'id' => $item->id,
                     'model' => $item,
@@ -314,8 +329,10 @@ class MedicineController extends Controller
                 ];
             });
 
-        // 2. Merge them into one collection and sort them ASCENDING by date/time and ID
-        $ledger = $dispensations->concat($receipts)->concat($adjustments)->sortBy([
+        // 2. Merge them into one collection and sort them ASCENDING by ledger sequence, type priority, date/time and ID
+        $ledger = $receipts->concat($adjustments)->concat($dispensations)->sortBy([
+            ['ledger_seq', 'asc'],
+            ['type_priority', 'asc'],
             ['timestamp', 'asc'],
             ['id', 'asc']
         ])->values();
@@ -329,14 +346,15 @@ class MedicineController extends Controller
 
         // 6. Filter to keep only dispensations, and sort them DESCENDING (newest first)
         $isSelectedLiquidMl = $selectedMedicine->isLiquidMl();
-        $dispenseUnitLabel = $isSelectedLiquidMl ? 'ml' : ($selectedMedicine->unit->unit_name ?? '');
+        $dispenseUnitLabel = $isSelectedLiquidMl ? 'ml' : ($selectedMedicine->unit->unit_name ?? $selectedMedicine->unit ?? '');
         $patientAdministrations = $ledger->where('type', 'dispensation')
             ->sortBy([
+                ['ledger_seq', 'desc'],
                 ['timestamp', 'desc'],
                 ['id', 'desc']
             ])
             ->values()
-            ->map(function ($entry) use ($dispenseUnitLabel) {
+            ->map(function ($entry) use ($dispenseUnitLabel, $selectedMedicine) {
                 $admin = $entry->model;
                 return (object) [
                     'id' => $admin->id,
@@ -344,6 +362,8 @@ class MedicineController extends Controller
                     'bht_no' => $admin->admission->bht_no ?? 'N/A',
                     'patient_name' => $admin->admission->patient->patient_name ?? 'N/A',
                     'qty_given' => $admin->qty_given . ' ' . $dispenseUnitLabel,
+                    'raw_qty_given' => $admin->qty_given,
+                    'medicine' => $admin->batch?->medicine ?? $selectedMedicine,
                     'balance' => $admin->dynamic_balance . ' ' . $dispenseUnitLabel,
                     'dynamic_balance' => $admin->dynamic_balance, // Raw number for the UI
                     'sister_initials' => $admin->issuedBy->name ?? 'N/A',
@@ -355,6 +375,7 @@ class MedicineController extends Controller
         // Fetch Stock Adjustments from ledger to maintain dynamic_balance
         $stockAdjustments = $ledger->where('type', 'adjustment')
             ->sortBy([
+                ['ledger_seq', 'desc'],
                 ['timestamp', 'desc'],
                 ['id', 'desc']
             ])
@@ -556,8 +577,37 @@ class MedicineController extends Controller
         // Ensure usage_time is saved exactly as requested
         $validated['usage_time'] = $request->usage_time;
 
-        Dispensation::create($validated);
+        DB::transaction(function () use ($validated, $batch, $medicine) {
+            $dispensation = Dispensation::create($validated);
 
+            // Ensure the stock_ledger deduction uses the same ward_id as the batch receipt
+            $batchWardId = DB::table('stock_receipts')
+                ->where('batch_id', $batch->id)
+                ->value('ward_id')
+                ?? (Auth::user()->ward_id ?? DB::table('wards')->value('id') ?? 1);
+
+            \App\Models\StockLedger::updateOrCreate(
+                [
+                    'source_table' => 'dispensations',
+                    'source_id' => $dispensation->id,
+                ],
+                [
+                    'batch_id' => $batch->id,
+                    'ward_id' => $batchWardId,
+                    'transaction_type' => 'DISPENSATION',
+                    'quantity' => -((int) $validated['qty_given']),
+                    'recorded_by' => $validated['issued_by'],
+                    'created_at' => $validated['date'] ?? now(),
+                ]
+            );
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('medicine_batches', 'current_stock')) {
+                $batch->decrement('current_stock', (int) $validated['qty_given']);
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('medicines', 'current_stock')) {
+                $medicine->decrement('current_stock', (int) $validated['qty_given']);
+            }
+        });
 
         return redirect()->back()->with('success', 'Administration recorded successfully.');
     }

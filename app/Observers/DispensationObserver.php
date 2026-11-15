@@ -14,10 +14,30 @@ class DispensationObserver
      */
     public function created(Dispensation $dispensation): void
     {
-        $wardId = $dispensation->admission ? $dispensation->admission->ward_id : null;
+        $wardId = DB::table('stock_receipts')
+            ->where('batch_id', $dispensation->batch_id)
+            ->value('ward_id');
+
+        if (!$wardId) {
+            $wardId = DB::table('stock_ledger')
+                ->where('batch_id', $dispensation->batch_id)
+                ->value('ward_id');
+        }
+
+        if (!$wardId && $dispensation->issued_by) {
+            $wardId = DB::table('users')
+                ->where('id', $dispensation->issued_by)
+                ->value('ward_id');
+        }
+
+        if (!$wardId) {
+            $wardId = $dispensation->admission ? $dispensation->admission->ward_id : null;
+        }
+
         if (!$wardId && $dispensation->admission_id) {
             $wardId = DB::table('admissions')->where('id', $dispensation->admission_id)->value('ward_id');
         }
+
         if (!$wardId) {
             $wardId = DB::table('wards')->value('id') ?? 1;
         }

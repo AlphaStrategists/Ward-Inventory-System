@@ -1021,15 +1021,19 @@
                                     <input type="text" class="bg-white border border-slate-200 text-slate-700 text-xs rounded focus:ring-blue-500 focus:border-blue-500 block w-full p-1.5 outline-none" placeholder="Enter Patient Name..." value="{{ $admin->patient_name ?? '' }}">
                                 </td>
                                 @endif
-                                <td class="px-6 py-4 font-bold text-slate-800">{{ $admin->qty_given }}</td>
-                                <td class="px-6 py-4 font-bold {{ (int) $admin->dynamic_balance < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
+                                <td class="px-6 py-4 font-bold text-slate-800">
+                                    @php
+                                        $adminMedicine = $admin->medicine ?? $selectedMedicine;
+                                        $adminStrengthVal = ($adminMedicine && $adminMedicine->strength_value !== null)
+                                            ? rtrim(rtrim(number_format((float) $adminMedicine->strength_value, 2, '.', ''), '0'), '.')
+                                            : null;
+                                        $adminStrengthUnit = $adminMedicine?->strengthUnit?->name ?? '';
+                                    @endphp
+                                    {{ $admin->qty_given }}@if($adminStrengthVal !== null && $adminStrengthVal !== '' && !($adminMedicine && $adminMedicine->isLiquidMl())) <span class="text-slate-500 font-semibold">({{ $adminStrengthVal }}{{ $adminStrengthUnit ? ' ' . $adminStrengthUnit : '' }})</span>@endif
+                                </td>
+                                <td class="px-6 py-4 font-bold {{ (int) $admin->dynamic_balance <= (int) ($selectedMedicine->min_level ?? 10) ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
                                     @php
                                     $isLiquidMl = isset($selectedMedicine) && $selectedMedicine->isLiquidMl();
-                                    $isLiquid = $isLiquidMl;
-                                    if (!$isLiquid && isset($selectedMedicine) && $selectedMedicine->form) {
-                                        $formName = strtolower($selectedMedicine->form->form_name);
-                                        $isLiquid = in_array($formName, ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']);
-                                    }
                                     @endphp
                                     @if($isLiquidMl)
                                         @php
@@ -1040,7 +1044,7 @@
                                         @endphp
                                         {{ $balBottles }} Bottle(s){{ $balRemMl > 0 ? ' & ' . $balRemMl . 'ml' : '' }} <span class="text-xs font-normal text-slate-500">(Total: {{ $balVal }}ml)</span>
                                     @else
-                                        {{ $admin->dynamic_balance }} {{ $isLiquid ? 'ml' : ($selectedMedicine->unit->unit_name ?? '') }}
+                                        {{ $admin->dynamic_balance }} {{ $selectedMedicine->unit->unit_name ?? $selectedMedicine->unit ?? '' }}
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 font-semibold text-slate-700">{{ $admin->sister_initials }}</td>
@@ -1105,14 +1109,9 @@
                                 <td class="px-6 py-4 font-bold {{ $adj->quantity < 0 ? 'text-red-600' : 'text-green-600' }}">
                                     {{ $adj->quantity > 0 ? '+' : '' }}{{ $adj->quantity }}
                                 </td>
-                                <td class="px-6 py-4 font-bold {{ (int) ($adj->dynamic_balance ?? 0) < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
+                                <td class="px-6 py-4 font-bold {{ (int) ($adj->dynamic_balance ?? 0) <= (int) ($selectedMedicine->min_level ?? 10) ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
                                     @php
                                     $isLiquidMl = isset($selectedMedicine) && $selectedMedicine->isLiquidMl();
-                                    $isLiquid = $isLiquidMl;
-                                    if (!$isLiquid && isset($selectedMedicine) && $selectedMedicine->form) {
-                                        $formName = strtolower($selectedMedicine->form->form_name);
-                                        $isLiquid = in_array($formName, ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']);
-                                    }
                                     @endphp
                                     @if($isLiquidMl)
                                         @php
@@ -1123,7 +1122,7 @@
                                         @endphp
                                         {{ $balBottles }} Bottle(s){{ $balRemMl > 0 ? ' & ' . $balRemMl . 'ml' : '' }} <span class="text-xs font-normal text-slate-500">(Total: {{ $balVal }}ml)</span>
                                     @else
-                                        {{ $adj->dynamic_balance ?? 0 }} {{ $isLiquid ? 'ml' : ($selectedMedicine->unit->unit_name ?? '') }}
+                                        {{ $adj->dynamic_balance ?? 0 }} {{ $selectedMedicine->unit->unit_name ?? $selectedMedicine->unit ?? '' }}
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-slate-500 font-medium">{{ $adj->reason }}</td>
