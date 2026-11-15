@@ -157,12 +157,6 @@
                             <label for="password" class="block text-sm font-medium text-slate-700">
                                 Password
                             </label>
-                            <a
-                                href="{{ route('test') }}"
-                                class="text-xs font-semibold hover:underline"
-                                style="color: var(--color-primary);">
-                                Forgot password?
-                            </a>
                         </div>
                         <div class="relative">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
