@@ -28,11 +28,6 @@ use App\Http\Controllers\UnitController;
 | HOME / PORTAL
 |--------------------------------------------------------------------------
 */
-
-Route::get('/', function () {
-    return view('login');
-});
-
 Route::get('/home', function () {
     return view('home');
 })->name('home');
@@ -44,7 +39,7 @@ Route::get('/home', function () {
 |--------------------------------------------------------------------------
 */
 
-Route::get('/login', [AuthController::class, 'showLoginForm'])
+Route::get('/', [AuthController::class, 'showLoginForm'])
     ->name('login');
 
 Route::post('/login', [AuthController::class, 'login'])
