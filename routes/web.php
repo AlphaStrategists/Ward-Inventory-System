@@ -28,11 +28,6 @@ use App\Http\Controllers\UnitController;
 | HOME / PORTAL
 |--------------------------------------------------------------------------
 */
-
-Route::get('/', function () {
-    return view('login');
-});
-
 Route::get('/home', function () {
     return view('home');
 })->name('home');
