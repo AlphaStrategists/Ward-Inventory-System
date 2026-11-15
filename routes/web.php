@@ -39,7 +39,7 @@ Route::get('/home', function () {
 |--------------------------------------------------------------------------
 */
 
-Route::get('/login', [AuthController::class, 'showLoginForm'])
+Route::get('/', [AuthController::class, 'showLoginForm'])
     ->name('login');
 
 Route::post('/login', [AuthController::class, 'login'])
