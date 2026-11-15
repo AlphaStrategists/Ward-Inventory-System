@@ -81,7 +81,7 @@
                     </li>
                     <li class="flex items-center gap-3">
                         <i class="fa-solid fa-circle-check"></i>
-                        Supplier & purchasing insights
+                        Fast workflows and efficient operations
                     </li>
                     <li class="flex items-center gap-3">
                         <i class="fa-solid fa-circle-check"></i>
@@ -173,7 +173,7 @@
 
                     <!-- Role / Position -->
                     <div>
-                        <label for="role" class="mb-1.5 block text-sm font-medium text-slate-700">
+                        <label for="role_id" class="mb-1.5 block text-sm font-medium text-slate-700">
                             Role
                         </label>
                         <div class="relative">
@@ -181,22 +181,29 @@
                                 <i class="fa-solid fa-user-tag"></i>
                             </span>
                             <select
-                                id="role"
-                                name="role"
+                                id="role_id"
+                                name="role_id"
                                 required
                                 class="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm text-slate-800 outline-none transition focus:border-transparent focus:ring-2"
                                 style="--tw-ring-color: var(--color-primary);">
-                                <option value="" disabled {{ old('role') ? '' : 'selected' }}>
+                                <option value="" disabled {{ old('role_id') ? '' : 'selected' }}>
                                     Select a role
                                 </option>
-                                <option value="nurse" {{ old('role') === 'nurse' ? 'selected' : '' }}>
+                                <option value="2" {{ (string) old('role_id') === '2' ? 'selected' : '' }}>
+                                    Doctor
+                                </option>
+                                <option value="3" {{ (string) old('role_id') === '3' ? 'selected' : '' }}>
                                     Nurse
+                                </option>
+                                <option value="4" {{ (string) old('role_id') === '4' ? 'selected' : '' }}>
+                                    Pharmacist
+                                </option>
                             </select>
                             <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
                                 <i class="fa-solid fa-chevron-down text-xs"></i>
                             </span>
                         </div>
-                        @error('role')
+                        @error('role_id')
                         <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
                         @enderror
                     </div>

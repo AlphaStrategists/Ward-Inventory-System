@@ -1521,6 +1521,67 @@
 
 <body class="bg-slate-50 text-slate-800">
 
+    @php
+    /*
+    |--------------------------------------------------------------------------
+    | ORIGINAL DATABASE ROLE
+    |--------------------------------------------------------------------------
+    |
+    | These are the original roles stored in the database.
+    | They are NOT changed.
+    |
+    */
+    $originalRole = auth()->check()
+    ? trim((string) auth()->user()->role)
+    : null;
+
+    /*
+    |--------------------------------------------------------------------------
+    | SURGICAL INVENTORY ROLE MAPPING
+    |--------------------------------------------------------------------------
+    |
+    | Doctor is treated as MS only for the surgical inventory navigation.
+    | The database value remains "Doctor".
+    |
+    */
+    $surgicalRoleMap = [
+    'Admin' => 'admin',
+    'Doctor' => 'ms',
+    'Nurse' => 'nurse',
+    'Pharmacist' => 'pharmacist',
+    'Head Nurse' => 'head_nurse',
+    ];
+
+    /*
+|--------------------------------------------------------------------------
+| SURGICAL INVENTORY ROLE MAPPING
+|--------------------------------------------------------------------------
+*/
+
+$roleId = (int) auth()->user()->role_id;
+
+        $surgicalRoleMap = [
+            1 => 'admin',
+            2 => 'ms',
+            3 => 'nurse',
+            4 => 'pharmacist',
+        ];
+
+        $surgicalRole = $surgicalRoleMap[$roleId] ?? null;
+
+        $hasSurgicalAccess = in_array(
+            $surgicalRole,
+            ['admin', 'ms', 'nurse', 'pharmacist'],
+            true
+        );
+
+    $hasSurgicalAccess = in_array(
+    $surgicalRole,
+    ['admin', 'ms', 'nurse', 'pharmacist'],
+    true
+    );
+    @endphp
+
     <header class="relative min-h-[460px] overflow-hidden">
 
         <!-- Background Image -->
@@ -1569,28 +1630,22 @@
                 <!-- Description -->
                 <p class="max-w-2xl text-lg leading-8 text-blue-50 sm:text-xl">
                     A smart and efficient system to manage medicines,
-                    surgical items, general inventory, suppliers and
+                    surgical items, general inventory, patients and
                     hospital stock from one centralized platform.
                 </p>
 
 
                 <!-- Hero Buttons -->
-                <div class="mt-8 flex flex-wrap gap-4">
-
+                <div class="mt-8 flex flex-wrap">
+                    <!-- Create a new user -->
+                    @if (auth()->check() && auth()->user()->is_admin)
                     <a
-                        href="{{ route('dashboard') }}"
-                        class="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 font-semibold text-[#003af8] shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50">
-                        <i class="fa-solid fa-gauge-high"></i>
-                        Go to Dashboard
+                        href="{{ route('createUser') }}"
+                        class="inline-flex items-center gap-2 rounded-xl border border-white/60 bg-white/10 px-6 py-3.5 font-semibold text-white backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white/20">
+                        <i class="fa-solid fa-user-pen"></i>
+                        Create new User
                     </a>
-
-                    <a
-                        href="{{ route('test') }}"
-                        class="inline-flex items-center gap-2 rounded-xl border border-white/60 bg-white/10 px-6 py-3.5 font-semibold text-white backdrop-blur-sm transition hover:bg-white/20">
-                        <i class="fa-solid fa-boxes-stacked"></i>
-                        View Inventory
-                    </a>
-
+                    @endif
                 </div>
 
             </div>
@@ -1605,14 +1660,14 @@
 ========================================================== -->
     <nav class="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
 
-        <div class="mx-auto max-w-7xl px-6 lg:px-8">
+        <div class="w-full px-6 lg:px-8">
 
             <div class="flex h-18 items-center justify-between">
 
                 <!-- Brand -->
                 <a
                     href="{{ route('home') }}"
-                    class="flex items-center gap-3">
+                    class="flex items-center gap-3 ml-69">
 
                     <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1894f2] text-white shadow-md">
                         <i class="fa-solid fa-plus text-lg"></i>
@@ -1644,16 +1699,6 @@
                         Home
                     </a>
 
-
-                    <!-- Dashboard -->
-                    <a
-                        href="{{ route('dashboard') }}"
-                        class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
-                        <i class="fa-solid fa-gauge mr-1.5"></i>
-                        Dashboard
-                    </a>
-
-
                     <!-- Inventory -->
                     <div class="group relative">
 
@@ -1672,48 +1717,174 @@
                         <div
                             class="invisible absolute right-0 top-full mt-2 w-60 translate-y-2 rounded-xl border border-slate-100 bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
 
+                            <div class="group/item relative">
+
+                                <a href="{{ route('inventory.index', ['category' => 'narcotics']) }}"
+                                    class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                        <i class="fa-solid fa-pills"></i>
+                                    </span>
+
+                                    <span class="flex-1">
+                                        <span class="block font-semibold">Medicines</span>
+                                        <span class="text-xs text-slate-400">Drugs & batches</span>
+                                    </span>
+
+                                    <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+                                </a>
+
+                                {{-- Category submenu: opens to the right on hover --}}
+                                <div class="invisible absolute left-full top-0 z-20 w-48 pl-2 opacity-0 transition duration-200 group-hover/item:visible group-hover/item:opacity-100">
+                                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                        <a href="{{ route('inventory.index', ['category' => 'narcotics']) }}"
+                                            class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-syringe text-slate-400"></i>
+                                            Narcotics
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'bulk']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-boxes-stacked text-slate-400"></i>
+                                            Bulk
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'syrups']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-bottle-droplet text-slate-400"></i>
+                                            Syrup
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'antibiotics']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-capsules text-slate-400"></i>
+                                            Antibiotics
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'oral-antibiotics']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-tablets text-slate-400"></i>
+                                            Oral Antibiotics
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'OralCountable']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-pills text-slate-400"></i>
+                                            Oral Countable
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'iv-fluids']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-droplet text-slate-400"></i>
+                                            IV Fluids
+                                        </a>
+
+                                    </div>
+                                </div>
+
+                            </div>
+
+
+                            <!-- Surgical Items -->
+                            <div class="group/item relative">
+
+                                <button
+                                    type="button"
+                                    class="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                        <i class="fa-solid fa-kit-medical"></i>
+                                    </span>
+
+                                    <span class="flex-1 text-left">
+                                        <span class="block font-semibold">
+                                            Surgical Items
+                                        </span>
+                                        <span class="text-xs text-slate-400">
+                                            Surgical inventory
+                                        </span>
+                                    </span>
+
+                                    <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+
+                                </button>
+
+                                <div class="invisible absolute left-full top-0 z-30 w-64 pl-2 opacity-0 transition duration-200 group-hover/item:visible group-hover/item:opacity-100">
+
+                                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                        @php
+                                        $surgicalRole = $surgicalRole ?? null;
+                                        @endphp
+
+                                        <a href="{{ $surgicalRole ? route($surgicalRole . '.surgical-consumable-1') : route('login') }}"
+                                            class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-kit-medical text-slate-400"></i>
+                                            Surgical Consumables 1
+                                        </a>
+
+                                        <a href="{{ $surgicalRole ? route($surgicalRole . '.surgical-consumable-2') : route('login') }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-boxes-stacked text-slate-400"></i>
+                                            Surgical Consumables 2
+                                        </a>
+
+                                        <a href="{{ $surgicalRole ? route($surgicalRole . '.local-purchases') : route('login') }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-cart-shopping text-slate-400"></i>
+                                            Local Purchases
+                                        </a>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+
+                            <!-- injections-->
+                            <div class="group/item relative">
+
+                                <button
+                                    type="button"
+                                    class="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                        <i class="fa-solid fa-syringe"></i>
+                                    </span>
+
+                                    <span class="flex-1 text-left">
+                                        <span class="block font-semibold">
+                                            Injections
+                                        </span>
+                                        <span class="text-xs text-slate-400">
+                                            Injection Antibiotics
+                                        </span>
+                                    </span>
+
+                                    <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+
+                                </button>
+
+                                <div class="invisible absolute left-full top-0 z-30 w-64 pl-2 opacity-0 transition duration-200 group-hover/item:visible group-hover/item:opacity-100">
+
+                                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                        @php
+                                        $surgicalRole = $surgicalRole ?? null;
+                                        @endphp
+
+                                        <a href="{{ route('inventory.index', ['category' => 'injections']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-syringe text-slate-400"></i>
+                                            Injection
+                                        </a>
+                                        <a href="{{ route('inventory.index', ['category' => 'injectionantibiotics']) }}"
+                                            class="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                            <i class="fa-solid fa-shield-virus text-slate-400"></i>
+                                            Injection Antibiotics
+                                        </a>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
                             <a
-                                href="{{ route('test') }}"
-                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
-
-                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
-                                    <i class="fa-solid fa-pills"></i>
-                                </span>
-
-                                <span>
-                                    <span class="block font-semibold">
-                                        Drugs
-                                    </span>
-                                    <span class="text-xs text-slate-400">
-                                        Medicines & batches
-                                    </span>
-                                </span>
-
-                            </a>
-
-
-                            <a
-                                href="{{ route('test') }}"
-                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
-
-                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
-                                    <i class="fa-solid fa-kit-medical"></i>
-                                </span>
-
-                                <span>
-                                    <span class="block font-semibold">
-                                        Surgical Items
-                                    </span>
-                                    <span class="text-xs text-slate-400">
-                                        Surgical inventory
-                                    </span>
-                                </span>
-
-                            </a>
-
-
-                            <a
-                                href="{{ route('test') }}"
+                                href="{{ route('general-inventory.index') }}"
                                 class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
                                 <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
@@ -1736,70 +1907,166 @@
                     </div>
 
 
-                    <!-- Suppliers -->
+                    <!-- Orders -->
                     <a
-                        href="{{ route('test') }}"
+                        href="{{ route('orders.index') }}"
                         class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
-                        <i class="fa-solid fa-truck mr-1.5"></i>
-                        Suppliers
+                        <i class="fa-solid fa-cart-shopping mr-1.5"></i>
+                        Orders
 
                     </a>
 
-
-                    <!-- Reports -->
+                    <!-- Patients -->
                     <a
-                        href="{{ route('test'   ) }}"
+                        href="{{ route('patients.index') }}"
                         class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
-                        <i class="fa-solid fa-chart-column mr-1.5"></i>
-                        Reports
+                        <i class="fa-solid fa-bed mr-1.5"></i>
+                        Patients
 
                     </a>
 
-
-                    <!-- Account -->
-                    <div class="group relative ml-2">
+                    @if(auth()->check() && (auth()->user()->is_admin || strtolower(trim((string) (auth()->user()->role ?? ''))) === 'admin' || auth()->user()->hasRole('Admin')))
+                    <!-- Master Data -->
+                    <div class="group relative">
 
                         <button
-                            class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-[#1894f2]">
+                            class="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
-                            <i class="fa-solid fa-circle-user text-lg"></i>
-                            Account
-                            <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                            <i class="fa-solid fa-database mr-1.5"></i>
+                            Master Data
+
+                            <i class="fa-solid fa-chevron-down ml-2 text-[10px]"></i>
 
                         </button>
 
-
+                        <!-- Dropdown -->
                         <div
-                            class="invisible absolute right-0 top-full mt-2 w-48 translate-y-2 rounded-xl border border-slate-100 bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                            class="invisible absolute right-0 top-full mt-2 w-60 translate-y-2 rounded-xl border border-slate-100 bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
 
                             <a
-                                href="{{ route('login') }}"
-                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-[#1894f2]">
+                                href="{{ route('form-types.index') }}"
+                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
-                                <i class="fa-solid fa-user"></i>
-                                Profile
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                    <i class="fa-solid fa-capsules"></i>
+                                </span>
+
+                                <span>
+                                    <span class="block font-semibold">
+                                        Form Types
+                                    </span>
+                                    <span class="text-xs text-slate-400">
+                                        Medicine dosage forms
+                                    </span>
+                                </span>
 
                             </a>
 
-                            <div class="my-1 border-t border-slate-100"></div>
+                            <a
+                                href="{{ route('units.index') }}"
+                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button
-                                    type="submit"
-                                    class="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-red-500 hover:bg-red-50">
-                                    <i class="fa-solid fa-right-from-bracket"></i>
-                                    Logout
-                                </button>
-                            </form>
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                    <i class="fa-solid fa-scale-balanced"></i>
+                                </span>
+
+                                <span>
+                                    <span class="block font-semibold">
+                                        Units
+                                    </span>
+                                    <span class="text-xs text-slate-400">
+                                        Measurement units
+                                    </span>
+                                </span>
+
+                            </a>
+
+                            <a
+                                href="{{ route('strength-units.index') }}"
+                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                    <i class="fa-solid fa-flask-vial"></i>
+                                </span>
+
+                                <span>
+                                    <span class="block font-semibold">
+                                        Strength Units
+                                    </span>
+                                    <span class="text-xs text-slate-400">
+                                        Dosage concentration units
+                                    </span>
+                                </span>
+
+                            </a>
+
+                            <a
+                                href="{{ route('suppliers.index') }}"
+                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                    <i class="fa-solid fa-truck-medical"></i>
+                                </span>
+
+                                <span>
+                                    <span class="block font-semibold">
+                                        Suppliers
+                                    </span>
+                                    <span class="text-xs text-slate-400">
+                                        Pharmaceutical vendors
+                                    </span>
+                                </span>
+
+                            </a>
 
                         </div>
 
                     </div>
+                    @endif
+
+                    <!-- Account -->
+
+                    <div class="ml-2">
+                        <form method="POST" action="{{ route('logout') }}" id="logout-form">
+                            @csrf
+
+                            <button
+                                type="button"
+                                onclick="confirmLogout()"
+                                title="Log out"
+                                class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-red-600/20 transition hover:bg-red-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 active:scale-95">
+
+                                <i class="fa-solid fa-right-from-bracket"></i>
+                                <span>Logout</span>
+                            </button>
+                        </form>
+                    </div>
+
 
                 </div>
+                @auth
+                <div class="hidden items-center gap-2 rounded-xl border-slate-200 bg-slate-50 px-3 py-1.5 lg:flex"
+                    title="{{ auth()->user()->email ?? '' }}">
+
+                    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#a9adb0] text-white">
+
+                        <i class="fa-regular fa-user"></i>
+
+                    </div>
+
+                    <span class="leading-tight">
+                        <span class="block max-w-[160px] truncate text-sm font-semibold text-slate-800">
+                            Hi, {{ trim((Auth::user()->first_name ?? '') . ' ' . (Auth::user()->last_name ?? '')) ?: (Auth::user()->name ?? 'User') }}
+                        </span>
+                        <span class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                            {{ strtoupper(Auth::user()->role ?? 'USER') }}
+                        </span>
+                    </span>
+
+                </div>
+                @endauth
 
             </div>
 
@@ -1845,12 +2112,12 @@
                 <!-- =================================================
                  INVENTORY CARDS
             ================================================== -->
-                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-6">
 
 
-                    <!-- Drugs Card -->
+                    <!-- Medicine Card -->
                     <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
+                        class="group lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
@@ -1860,7 +2127,7 @@
                         </div>
 
                         <h3 class="mt-6 text-xl font-bold text-slate-900">
-                            Drugs
+                            Medicines
                         </h3>
 
                         <p class="mt-3 leading-7 text-slate-500">
@@ -1870,22 +2137,75 @@
 
                         </p>
 
-                        <a
-                            href="{{ route('test') }}"
-                            class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
+                        <div class="group/menu relative mt-5 inline-block">
 
-                            Manage Drugs
+                            <div
+                                class="inline-flex items-center font-semibold text-[#1894f2] transition group-hover/menu:text-[#003af8]">
+                                Manage Medicines
+                                <i class="fa-solid fa-chevron-down ml-2 text-xs transition group-hover/menu:rotate-180"></i>
+                            </div>
 
-                            <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
+                            {{-- pt-2 keeps the hover area connected so the menu doesn't vanish when the cursor moves down --}}
+                            <div
+                                class="invisible absolute left-0 top-full z-10 w-56 pt-2 opacity-0 transition duration-200 group-hover/menu:visible group-hover/menu:opacity-100">
+                                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                    <a href="{{ route('inventory.index', ['category' => 'narcotics']) }}"
+                                        class="flex items-center px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-syringe mr-3 text-slate-400"></i>
+                                        Narcotics
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'bulk']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-boxes-stacked mr-3 text-slate-400"></i>
+                                        Bulk
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'syrups']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-bottle-droplet mr-3 text-slate-400"></i>
+                                        Syrup
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'antibiotics']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-capsules mr-3 text-slate-400"></i>
+                                        Antibiotics
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'oral-antibiotics']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-tablets mr-3 text-slate-400"></i>
+                                        Oral Antibiotics
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'OralCountable']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-pills mr-3 text-slate-400"></i>
+                                        Oral Countable
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'iv-fluids']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-droplet mr-3 text-slate-400"></i>
+                                        IV Fluids
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'injections']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-syringe mr-3 text-slate-400"></i>
+                                        Injection
+                                    </a>
+                                    <a href="{{ route('inventory.index', ['category' => 'injectionantibiotics']) }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-shield-virus mr-3 text-slate-400"></i>
+                                        Injection Antibiotics
+                                    </a>
+                                </div>
+                            </div>
 
-                        </a>
+                        </div>
+
 
                     </div>
 
 
                     <!-- Surgical Items Card -->
                     <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
+                        class="group lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
@@ -1900,27 +2220,51 @@
 
                         <p class="mt-3 leading-7 text-slate-500">
 
-                            Monitor surgical equipment and medical
-                            consumables with an organized inventory system.
+                            Monitor surgical equipment with an organized inventory system.
 
                         </p>
 
-                        <a
-                            href="{{ route('test') }}"
-                            class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
+                        <div class="group/menu relative mt-5 inline-block">
 
-                            Manage Surgical Items
+                            <div
+                                class="inline-flex items-center font-semibold text-[#1894f2] transition group-hover/menu:text-[#003af8]">
+                                Manage Surgicals Items
+                                <i class="fa-solid fa-chevron-down ml-2 text-xs transition group-hover/menu:rotate-180"></i>
+                            </div>
 
-                            <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
+                            {{-- pt-2 keeps the hover area connected so the menu doesn't vanish when the cursor moves down --}}
+                            <div
+                                class="invisible absolute left-0 top-full z-10 w-56 pt-2 opacity-0 transition duration-200 group-hover/menu:visible group-hover/menu:opacity-100">
+                                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                    @php
+                                    $surgicalRole = $surgicalRole ?? null;
+                                    @endphp
+                                    <a href="{{ $surgicalRole ? route($surgicalRole . '.surgical-consumable-1') : route('login') }}"
+                                        class="flex items-center px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-kit-medical mr-3 text-slate-400"></i>
+                                        Surgical Consumables 1
+                                    </a>
+                                    <a href="{{ $surgicalRole ? route($surgicalRole . '.surgical-consumable-2') : route('login') }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-boxes-stacked mr-3 text-slate-400"></i>
+                                        Surgical Consumables 2
+                                    </a>
+                                    <a href="{{ $surgicalRole ? route($surgicalRole . '.local-purchases') : route('login') }}"
+                                        class="flex items-center border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-[#1894f2]">
+                                        <i class="fa-solid fa-cart-shopping mr-3 text-slate-400"></i>
+                                        Local Purchases
+                                    </a>
+                                </div>
+                            </div>
 
-                        </a>
+                        </div>
 
                     </div>
 
 
                     <!-- General Items Card -->
                     <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
+                        class="group lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
@@ -1941,7 +2285,7 @@
                         </p>
 
                         <a
-                            href="{{ route('test') }}"
+                            href="{{ route('general-inventory.index') }}"
                             class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
 
                             Manage Inventory
@@ -1953,33 +2297,33 @@
                     </div>
 
 
-                    <!-- Suppliers Card -->
+                    <!-- Patients Card -->
                     <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
+                        class="group lg:col-span-2 lg:col-start-2 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
 
-                            <i class="fa-solid fa-truck"></i>
+                            <i class="fa-solid fa-bed"></i>
 
                         </div>
 
                         <h3 class="mt-6 text-xl font-bold text-slate-900">
-                            Suppliers
+                            Patients
                         </h3>
 
                         <p class="mt-3 leading-7 text-slate-500">
 
-                            Manage supplier information and monitor
-                            inventory purchasing activities.
+                            Manage patient information and monitor
+                            their medical records.
 
                         </p>
 
                         <a
-                            href="{{ route('test') }}"
+                            href="{{ route('patients.index') }}"
                             class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
 
-                            View Suppliers
+                            View Patients
 
                             <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
 
@@ -1987,76 +2331,39 @@
 
                     </div>
 
-
-                    <!-- Stock Card -->
+                    <!-- Orders Card -->
                     <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
+                        class="group lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
 
                         <div
                             class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
 
-                            <i class="fa-solid fa-warehouse"></i>
+                            <i class="fa-solid fa-cart-shopping"></i>
 
                         </div>
 
                         <h3 class="mt-6 text-xl font-bold text-slate-900">
-                            Stock Management
+                            Order Management
                         </h3>
 
                         <p class="mt-3 leading-7 text-slate-500">
 
-                            Monitor available stock and quickly identify
-                            low-stock inventory items.
+                            Track outgoing orders and quickly review pending,
+                            processing, and completed requests.
 
                         </p>
 
                         <a
-                            href="{{ route('test') }}"
+                            href="{{ route('orders.index') }}"
                             class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
 
-                            Check Stock
+                            View Orders
 
                             <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
 
                         </a>
 
                     </div>
-
-
-                    <!-- Reports Card -->
-                    <div
-                        class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
-
-                        <div
-                            class="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-xl text-[#1894f2] transition group-hover:bg-[#1894f2] group-hover:text-white">
-
-                            <i class="fa-solid fa-chart-pie"></i>
-
-                        </div>
-
-                        <h3 class="mt-6 text-xl font-bold text-slate-900">
-                            Reports
-                        </h3>
-
-                        <p class="mt-3 leading-7 text-slate-500">
-
-                            Generate reports and obtain useful insights
-                            about hospital inventory and stock.
-
-                        </p>
-
-                        <a
-                            href="{{ route('test') }}"
-                            class="mt-5 inline-flex items-center font-semibold text-[#1894f2] transition group-hover:text-[#003af8]">
-
-                            View Reports
-
-                            <i class="fa-solid fa-arrow-right ml-2 text-sm transition group-hover:translate-x-1"></i>
-
-                        </a>
-
-                    </div>
-
                 </div>
 
             </div>
@@ -2109,7 +2416,42 @@
         </div>
 
     </footer>
-    ```
+
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    function confirmLogout() {
+        Swal.fire({
+            title: 'Logout Confirmation',
+            text: 'Are you sure you want to log out of your account?',
+            icon: 'warning',
+
+            showCancelButton: true,
+
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+
+            confirmButtonText: 'Yes, Logout',
+            cancelButtonText: 'Cancel',
+
+            reverseButtons: true,
+            focusCancel: true,
+
+            customClass: {
+                popup: 'rounded-2xl',
+                title: 'text-xl font-bold',
+                confirmButton: 'rounded-lg px-5 py-2.5 font-semibold',
+                cancelButton: 'rounded-lg px-5 py-2.5 font-semibold'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('logout-form').submit();
+            }
+        });
+    }
+</script>
+
 
 </body>
 

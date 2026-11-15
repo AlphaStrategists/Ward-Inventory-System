@@ -43,7 +43,7 @@
     <!-- =========================================================
          LOGIN SECTION
     ========================================================== -->
-    <main class="relative flex min-h-[calc(100vh-73px)] items-center justify-center overflow-hidden px-8 py-16">
+    <main class="relative flex min-h-[calc(100vh-150px)] items-center justify-center overflow-hidden px-8 py-16">
 
         <!-- Soft background accent, echoing the hero gradient on the home page -->
         <div class="pointer-events-none absolute inset-0">
@@ -69,7 +69,7 @@
 
                     <p class="mt-4 text-sm leading-6 text-blue-50">
                         Sign in to manage medicines, surgical items, general
-                        inventory, suppliers and stock — all from one
+                        inventory, patients and stock — all from one
                         centralized platform.
                     </p>
                 </div>
@@ -81,7 +81,7 @@
                     </li>
                     <li class="flex items-center gap-3">
                         <i class="fa-solid fa-circle-check"></i>
-                        Supplier & purchasing insights
+                        Fast workflows and efficients operations
                     </li>
                     <li class="flex items-center gap-3">
                         <i class="fa-solid fa-circle-check"></i>
@@ -157,12 +157,6 @@
                             <label for="password" class="block text-sm font-medium text-slate-700">
                                 Password
                             </label>
-                            <a
-                                href="{{ route('test') }}"
-                                class="text-xs font-semibold hover:underline"
-                                style="color: var(--color-primary);">
-                                Forgot password?
-                            </a>
                         </div>
                         <div class="relative">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
@@ -191,30 +185,7 @@
                         <i class="fa-solid fa-right-to-bracket"></i>
                         Sign In
                     </button>
-                </form>
-
-                <!-- Create a new user -->
-                @if (auth()->check() && auth()->user()->is_admin)
-                <div class="mt-8 border-t border-slate-100 pt-6 text-center">
-                    <p class="text-sm" style="color: var(--color-secondary);">
-                        Don't have an account?
-                        <a
-                            href="{{ route('createUser') }}"
-                            class="font-semibold hover:underline"
-                            style="color: var(--color-accent);">
-                            Create a new account
-                        </a>
-                    </p>
-                </div>
-                @endif
-
-                <div class="mt-4 text-center">
-                    <a href="{{ route('home') }}" class="text-xs hover:underline" style="color: var(--color-secondary)">
-                        <i class="fa-solid fa-arrow-left mr-1"></i>
-                        Back to home
-                    </a>
-                </div>
-
+                </form> 
             </div>
         </div>
     </main>
