@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Middleware;
 
 use Closure;
@@ -7,70 +8,61 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
-    public function handle(
-        Request $request,
-        Closure $next,
-        ...$roles
-    ): Response {
-
-        // 1. User must be logged in
+    public function handle(Request $request, Closure $next, ...$roles): Response
+    {
         $user = $request->user();
 
         if (!$user) {
             return redirect()->route('login');
         }
 
-        // 2. Admin flag takes priority over the stored role
-        if ($user->is_admin) {
-            $request->attributes->set('active_role', 'admin');
+        // Resolve the user's role from the admin flag, role text, or role_id.
+        // Existing users may have NULL in the `role` column.
+        if ((bool) $user->is_admin) {
+            $userRole = 'admin';
+        } else {
+            $originalRole = strtolower(trim((string) ($user->role ?? '')));
 
-            return $next($request);
+            $roleMap = [
+                'admin' => 'admin',
+                'doctor' => 'ms',
+                'ms' => 'ms',
+                'nurse' => 'nurse',
+                'pharmacist' => 'pharmacist',
+                'head nurse' => 'head_nurse',
+                'head_nurse' => 'head_nurse',
+                'headnurse' => 'head_nurse',
+            ];
+
+            $userRole = $roleMap[$originalRole] ?? null;
+
+            if ($userRole === null) {
+                $roleIdMap = [
+                    1 => 'admin',
+                    2 => 'ms',
+                    3 => 'nurse',
+                    4 => 'pharmacist',
+                ];
+
+                $userRole = $roleIdMap[(int) ($user->role_id ?? 0)] ?? null;
+            }
         }
 
-        // 3. Get the original database role
-        $originalRole = $user->role;
-
-        if (
-            $originalRole === null ||
-            trim((string) $originalRole) === ''
-        ) {
+        if ($userRole === null) {
             abort(403, 'Authenticated user role could not be determined.');
         }
 
-        $originalRole = strtolower(trim((string) $originalRole));
-
-        // 4. Map database roles to application roles
-        $roleMap = [
-            'admin'       => 'admin',
-            'doctor'      => 'ms',
-            'ms'          => 'ms',
-            'nurse'       => 'nurse',
-            'pharmacist'  => 'pharmacist',
-            'head nurse'  => 'head_nurse',
-            'head_nurse'  => 'head_nurse',
-        ];
-
-        $userRole = $roleMap[$originalRole] ?? null;
-
-        if ($userRole === null) {
-            abort(
-                403,
-                'Authenticated user role "' .
-                $originalRole .
-                '" is not recognized by the system.'
-            );
-        }
-
-        // 5. Normalize allowed middleware roles
         $allowedRoles = [];
 
         foreach ($roles as $role) {
             foreach (explode(',', $role) as $allowedRole) {
                 $allowedRole = strtolower(trim($allowedRole));
 
-                if ($allowedRole === 'doctor') {
-                    $allowedRole = 'ms';
-                }
+                $allowedRole = match ($allowedRole) {
+                    'doctor' => 'ms',
+                    'head nurse', 'headnurse' => 'head_nurse',
+                    default => $allowedRole,
+                };
 
                 if ($allowedRole !== '') {
                     $allowedRoles[] = $allowedRole;
@@ -78,24 +70,15 @@ class CheckRole
             }
         }
 
-        // 6. Head Nurse can access Nurse routes
-        if (
-            $userRole === 'head_nurse' &&
-            in_array('nurse', $allowedRoles, true)
-        ) {
-            $request->attributes->set('active_role', $userRole);
+        // Head Nurse inherits Nurse access only when Nurse is explicitly allowed.
+        $isAllowed = in_array($userRole, $allowedRoles, true)
+            || ($userRole === 'head_nurse' && in_array('nurse', $allowedRoles, true));
 
-            return $next($request);
-        }
-
-        // 7. Check permissions
-        if (!in_array($userRole, $allowedRoles, true)) {
+        if (!$isAllowed) {
             abort(
                 403,
-                'Unauthorized. Your role is "' .
-                $userRole .
-                '". Required role: ' .
-                implode(', ', $allowedRoles)
+                'Unauthorized. Your role is "' . $userRole .
+                '". Required role: ' . implode(', ', $allowedRoles)
             );
         }
 

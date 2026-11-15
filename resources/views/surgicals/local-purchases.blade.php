@@ -84,7 +84,7 @@
                             @click="openAddConsumableModal()"
                             class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-2">
                             <i class="fa-solid fa-plus"></i>
-                            Add Local Purchase Item
+                            Add Surgical
                         </button>
                     </template>
                 </div>
@@ -275,7 +275,7 @@
                             <h3 class="text-lg font-extrabold text-slate-900">Local Purchase Requisitions Log</h3>
                         </div>
 
-                        <template x-if="currentRole === 'nurse' || currentRole === 'admin'">
+                        <template x-if="currentRole === 'nurse' || currentRole === 'head_nurse'">
                             <button
                                 @click="openAddOrderModal()"
                                 class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm">
@@ -290,7 +290,7 @@
                             <thead>
                                 <tr class="bg-slate-50/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
                                     <th class="py-4 px-5">Date</th>
-                                    <th class="py-4 px-5">Balance</th>
+                                    <th class="py-4 px-5">Req. No.</th>
                                     <th class="py-4 px-5">Quantity Requested</th>
                                     <th class="py-4 px-5">Requested By</th>
                                     <th class="py-4 px-5">MS Approval</th>
@@ -307,12 +307,11 @@
                                         <!-- DATE -->
                                         <td class="py-4 px-5 whitespace-nowrap">
                                             <div class="font-bold text-slate-900" x-text="formatDateTime(log.date)"></div>
-                                            <div class="mt-1 inline-flex px-2 py-0.5 rounded bg-blue-50 text-blue-600 font-mono text-[10px] font-bold" x-text="log.req_no"></div>
                                         </td>
 
-                                        <!-- BALANCE -->
+                                        <!-- MANUALLY ENTERED REQUISITION NUMBER -->
                                         <td class="py-4 px-5 whitespace-nowrap">
-                                            <span class="inline-flex px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-bold" x-text="log.balance || '—'"></span>
+                                            <span class="inline-flex px-2 py-0.5 rounded bg-blue-50 text-blue-600 font-mono text-[10px] font-bold" x-text="log.req_no || '—'"></span>
                                         </td>
 
                                         <!-- REQUESTED QUANTITY -->
@@ -342,7 +341,7 @@
                                                         Pending
                                                     </span>
                                                     <div class="text-[10px] text-slate-400 mt-1">Waiting for MS</div>
-                                                    <template x-if="currentRole === 'ms' || currentRole === 'admin'">
+                                                    <template x-if="currentRole === 'ms'">
                                                         <button
                                                             type="button"
                                                             @click="openMsApprovalModal(log)"
@@ -483,7 +482,7 @@
                             </p>
                         </div>
 
-                        <template x-if="currentRole === 'nurse' || currentRole === 'admin'">
+                        <template x-if="currentRole === 'nurse' || currentRole === 'head_nurse'">
                             <button
                                 @click="openDailyCountModal()"
                                 class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm">
@@ -549,7 +548,7 @@
                             <h3 class="text-lg font-extrabold text-slate-900">Stock Adjustments Log</h3>
                             <p class="text-xs text-slate-500 mt-1">Existing ward stock adjustment records.</p>
                         </div>
-                        <template x-if="currentRole === 'nurse' || currentRole === 'admin'">
+                        <template x-if="currentRole === 'nurse' || currentRole === 'head_nurse'">
                             <button @click="openAdjustmentModal()" class="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold">
                                 <i class="fa-solid fa-sliders mr-1"></i> New Adjustment
                             </button>
@@ -593,11 +592,11 @@
     <!-- ================================================================ -->
     <!-- ADD ORDER MODAL -->
     <!-- ================================================================ -->
-    <div x-show="showAddOrderModal" x-cloak class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-        <div @click.outside="showAddOrderModal = false" class="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
-            <div class="p-6 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+    <div x-show="showAddOrderModal" x-cloak class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div @click.outside="showAddOrderModal = false" class="w-full max-w-3xl bg-white rounded-[22px] shadow-2xl overflow-hidden">
+            <div class="px-8 py-6 bg-white border-b border-slate-100 flex items-center justify-between">
                 <div>
-                    <h3 class="text-lg font-extrabold text-slate-900">Add Order</h3>
+                    <h3 class="text-2xl font-bold text-slate-900">Add Order</h3>
                     <p class="text-xs text-slate-500 mt-1">Create a new local purchase request for MS approval.</p>
                 </div>
                 <button @click="showAddOrderModal = false" class="w-9 h-9 rounded-xl hover:bg-slate-200 text-slate-500">
@@ -605,34 +604,38 @@
                 </button>
             </div>
 
-            <form @submit.prevent="submitNewOrder()" class="p-6 space-y-5">
+            <form @submit.prevent="submitNewOrder()" class="px-8 py-7 space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
-                            <label class="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">Order Date & Time *</label>
+                            <label class="text-sm font-semibold text-slate-700">Order Date & Time *</label>
                             <span class="text-[9px] font-extrabold text-emerald-600 uppercase">● Live</span>
                         </div>
                         <input
                             type="datetime-local"
                             x-model="newOrder.date"
                             required
-                            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+                            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
                         <p class="text-[10px] text-slate-400 mt-1">Current date/time is filled automatically. You may change it manually.</p>
                     </div>
 
                     <div>
-                        <label class="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1.5">Requested By</label>
-                        <div class="w-full px-3.5 py-3 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-2">
-                            <i class="fa-solid fa-user-nurse text-teal-600"></i>
-                            <span x-text="currentUserName || '—'"></span>
-                        </div>
-                        <p class="text-[10px] text-slate-400 mt-1">Automatically taken from the authenticated nurse.</p>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Req. No. *</label>
+                        <input
+                            type="text"
+                            x-model.trim="newOrder.req_no"
+                            maxlength="50"
+                            autocomplete="off"
+                            placeholder="E.G. REQ-123"
+                            required
+                            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+                        <p class="text-[10px] text-slate-400 mt-1">Enter the requisition number manually. It must be unique.</p>
                     </div>
                 </div>
 
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <label class="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">Quantity Requested *</label>
+                        <label class="text-sm font-semibold text-slate-700">Quantity Requested *</label>
                         <button type="button" @click="addOrderItemRow()" class="px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold">
                             <i class="fa-solid fa-plus mr-1"></i>Add Item
                         </button>
@@ -687,9 +690,9 @@
                     </div>
                 </div>
 
-                <div class="pt-4 border-t border-slate-100 flex justify-end gap-3">
-                    <button type="button" @click="showAddOrderModal = false" class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
-                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">
+                <div class="px-8 py-5 -mx-8 -mb-7 mt-2 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                    <button type="button" @click="showAddOrderModal = false" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">
                         <i class="fa-solid fa-paper-plane mr-1"></i>Submit Order
                     </button>
                 </div>
@@ -1065,33 +1068,33 @@
     <!-- ================================================================ -->
     <!-- ADD CONSUMABLE MODAL -->
     <!-- ================================================================ -->
-    <div x-show="showAddConsumableModal" x-cloak class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-        <div @click.outside="showAddConsumableModal = false" class="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+    <div x-show="showAddConsumableModal" x-cloak class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div @click.outside="showAddConsumableModal = false" class="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden my-6">
+            <div class="px-8 pt-7 pb-5 border-b border-slate-100 flex items-center justify-between">
                 <div>
-                    <h3 class="text-lg font-extrabold text-slate-900">Add Local Purchase Item</h3>
-                    <p class="text-xs text-slate-500 mt-1">Register a new local purchase item.</p>
+                    <h3 class="text-lg font-extrabold text-slate-900">Add Surgical</h3>
+                    <p class="text-xs text-slate-500 mt-1">Register a new surgical inventory item.</p>
                 </div>
                 <button @click="showAddConsumableModal = false" class="w-9 h-9 rounded-xl hover:bg-slate-100 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <form @submit.prevent="submitNewConsumable()" class="p-6 space-y-4">
+            <form @submit.prevent="submitNewConsumable()" class="px-8 py-6 space-y-5">
                 <div>
-                    <label class="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1.5">Item Name *</label>
-                    <input type="text" x-model="newConsumable.name" required class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-500" placeholder="e.g. SURGICAL GLOVES 7.5">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Surgical Item Name <span class="text-red-500">*</span></label>
+                    <input type="text" x-model="newConsumable.name" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" placeholder="e.g. Surgical Gloves 7.5">
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                        <label class="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1.5">Opening Balance *</label>
-                        <input type="number" min="0" x-model="newConsumable.balance" required class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-500">
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Initial Stock <span class="text-red-500">*</span></label>
+                        <input type="number" min="0" step="1" x-model.number="newConsumable.balance" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1.5">Unit *</label>
-                        <input type="text" x-model="newConsumable.unit" required class="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-500" placeholder="Box">
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Unit <span class="text-red-500">*</span></label>
+                        <input type="text" x-model.trim="newConsumable.unit" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" placeholder="e.g. Box, Pack, Piece">
                     </div>
                 </div>
-                <div class="pt-4 border-t border-slate-100 flex justify-end gap-3">
-                    <button type="button" @click="showAddConsumableModal = false" class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">Cancel</button>
-                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">Add Item</button>
+                <div class="px-8 py-5 -mx-8 -mb-6 mt-2 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                    <button type="button" @click="showAddConsumableModal = false" class="px-6 py-3 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="px-7 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">Save Surgical Item</button>
                 </div>
             </form>
         </div>
@@ -1163,6 +1166,7 @@
 
                 newOrder: {
                     date: '',
+                    req_no: '',
                     items: []
                 },
 
@@ -1389,6 +1393,11 @@
                 },
 
                 async submitNewOrder() {
+                    if (!this.newOrder.req_no || !this.newOrder.req_no.trim()) {
+                        this.showToast('Please enter a requisition number.', 'error');
+                        return;
+                    }
+
                     if (!this.newOrder.items.length) {
                         this.showToast('Please add at least one item.', 'error');
                         return;
@@ -1401,6 +1410,7 @@
 
                     const payload = {
                         date: this.newOrder.date,
+                        req_no: this.newOrder.req_no.trim(),
                         items: this.newOrder.items.map(item => ({
                             name: item.name,
                             requested_qty_num: Number(item.requested_qty_num),

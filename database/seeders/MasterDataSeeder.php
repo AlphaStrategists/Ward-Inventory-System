@@ -38,7 +38,7 @@ class MasterDataSeeder extends Seeder
 
         // 4. Roles (Ensuring 4 canonical roles exist)
         $adminRole = Role::firstOrCreate(['role_name' => 'Admin']);
-        $doctorRole = Role::firstOrCreate(['role_name' => 'Doctor']);
+        $doctorRole = Role::firstOrCreate(['role_name' => 'MS']);
         $nurseRole = Role::firstOrCreate(['role_name' => 'Nurse']);
         $pharmacistRole = Role::firstOrCreate(['role_name' => 'Pharmacist']);
 

@@ -69,7 +69,7 @@ Route::post('/logout', [AuthController::class, 'logout'])
 */
 
 Route::get(
-    '/Nurse/surgical-consumable-1',
+    '/nurse/surgical-consumable-1',
     [SurgicalConsumableController::class, 'index']
 )
     ->defaults('role', 'Nurse')
@@ -289,14 +289,14 @@ Route::put(
     '/api/requisitions/{id}/approve',
     [SurgicalConsumableController::class, 'approveRequisition']
 )
-    ->middleware(['auth', 'role:HeadNurse, Ms'])
+    ->middleware(['auth', 'role:Ms'])
     ->name('api.sc1.requisitions.approve');
 
 Route::put(
     '/api/requisitions/{id}/reject',
     [SurgicalConsumableController::class, 'rejectRequisition']
 )
-    ->middleware(['auth', 'role:Ms,HeadNurse'])
+    ->middleware(['auth', 'role:Ms'])
     ->name('api.sc1.requisitions.reject');
 
 Route::put(
@@ -436,14 +436,14 @@ Route::put(
     '/api/surgical-consumable-2/requisitions/{id}/approve',
     [SurgicalConsumable2Controller::class, 'approveRequisition']
 )
-    ->middleware(['auth', 'role:Head Nurse,Ms'])
+    ->middleware(['auth', 'role:Ms'])
     ->name('api.sc2.requisitions.approve');
 
 Route::put(
     '/api/surgical-consumable-2/requisitions/{id}/reject',
     [SurgicalConsumable2Controller::class, 'rejectRequisition']
 )
-    ->middleware(['auth', 'role:ms,admin'])
+    ->middleware(['auth', 'role:Ms'])
     ->name('api.sc2.requisitions.reject');
 
 
@@ -597,14 +597,14 @@ Route::put(
     '/api/local-purchases/requisitions/{id}/approve',
     [LocalPurchaseController::class, 'approveRequisition']
 )
-    ->middleware(['auth', 'role:Head Nurse,Ms'])
+    ->middleware(['auth', 'role:Ms'])
     ->name('api.local.requisitions.approve');
 
 Route::put(
     '/api/local-purchases/requisitions/{id}/reject',
     [LocalPurchaseController::class, 'rejectRequisition']
 )
-    ->middleware(['auth', 'role:Head Nurse,Ms'])
+    ->middleware(['auth', 'role:Ms'])
     ->name('api.local.requisitions.reject');
 
 Route::put(

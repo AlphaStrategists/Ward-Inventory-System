@@ -12,6 +12,28 @@ use Illuminate\Support\Facades\DB;
 
 class SurgicalConsumableController extends Controller
 {
+    private const MODULE = 'surgical_consumable_1';
+    private const CATEGORY_NAME = 'Medical Consumables';
+
+    /** Resolve the category by its stable name, never by an assumed numeric ID. */
+    private function categoryId(): int
+    {
+        $id = DB::table('categories')->where('name', self::CATEGORY_NAME)->value('id');
+        if (!$id) {
+            throw new \RuntimeException('The Medical Consumables category is missing. Run the latest migration.');
+        }
+        return (int) $id;
+    }
+
+    /** Return only an order owned by this inventory module. */
+    private function moduleOrder(int $id)
+    {
+        $order = DB::table('orders')->where('id', $id)->where('module', self::MODULE)->first();
+        if (!$order) {
+            abort(404, 'Requisition not found in Surgical Consumables 1.');
+        }
+        return $order;
+    }
     /**
      * Fallback default consumables 1
      */
@@ -24,11 +46,6 @@ class SurgicalConsumableController extends Controller
         ['name' => 'POVIDONE IODINE 500ML', 'balance' => 12, 'unit' => 'Bottle'],
         ['name' => 'ADHESIVE PLASTER 5CM', 'balance' => 25, 'unit' => 'Roll'],
     ];
-
-    /**
-     * Category ID for Surgical Consumable 1
-     */
-    protected $categoryId = 1;
 
     /**
      * Render the Surgical Consumable 1 front-end view.
@@ -67,7 +84,7 @@ class SurgicalConsumableController extends Controller
      */
     public function getConsumables()
     {
-        $items = WardDatabaseService::getCategoryItems($this->categoryId, $this->defaultConsumables);
+        $items = WardDatabaseService::getCategoryItems($this->categoryId(), $this->defaultConsumables);
         return response()->json($items);
     }
 
@@ -83,7 +100,7 @@ class SurgicalConsumableController extends Controller
         ]);
 
         $item = WardDatabaseService::storeItem(
-            $this->categoryId,
+            $this->categoryId(),
             $validated['name'],
             $validated['balance'],
             $validated['unit']
@@ -105,6 +122,7 @@ class SurgicalConsumableController extends Controller
             'name' => 'required|string|max:150',
         ]);
 
+        abort_unless(DB::table('general_items')->where('id', $id)->where('category_id', $this->categoryId())->exists(), 404);
         WardDatabaseService::updateItem($id, $validated['name']);
 
         return response()->json([
@@ -118,6 +136,7 @@ class SurgicalConsumableController extends Controller
      */
     public function destroyConsumable($id)
     {
+        abort_unless(DB::table('general_items')->where('id', $id)->where('category_id', $this->categoryId())->exists(), 404);
         WardDatabaseService::deleteItem($id);
 
         return response()->json([
@@ -190,7 +209,7 @@ class SurgicalConsumableController extends Controller
         $unit = DB::table('units')->where('unit_name', $unitName)->first();
         $unitId = $unit ? $unit->id : 1;
 
-        $med = DB::table('medicines')->where('name', $name)->first();
+        $med = DB::table('medicines')->where('name', $name)->where('category_id', $categoryId)->first();
         if ($med) {
             return $med->id;
         }
@@ -282,7 +301,7 @@ class SurgicalConsumableController extends Controller
     private function getCurrentBalance(string $itemName): int
     {
         $item = DB::table('general_items')
-            ->where('category_id', $this->categoryId)
+            ->where('category_id', $this->categoryId())
             ->where('name', strtoupper(trim($itemName)))
             ->first();
 
@@ -374,6 +393,7 @@ class SurgicalConsumableController extends Controller
                 ->leftJoin('users as requester', 'orders.requested_by', '=', 'requester.id')
                 ->leftJoin('users as approver', 'orders.approved_by', '=', 'approver.id')
                 ->where('orders.ward_id', 1)
+                ->where('orders.module', self::MODULE)
                 ->orderByDesc('orders.id')
                 ->select(
                     'orders.*',
@@ -406,21 +426,8 @@ class SurgicalConsumableController extends Controller
 
             foreach ($orders as $order) {
                 $meta = json_decode($order->remark, true) ?: [];
-
-                // SC1 records are identified by module.
-                // Keep category_id only as a fallback for older records.
-                $module = $meta['module'] ?? null;
-
-                if ($module !== null) {
-                    if ($module !== 'surgical_consumable_1') {
-                        continue;
-                    }
-                } else {
-                    $categoryId = (int) ($meta['category_id'] ?? $this->categoryId);
-
-                    if ($categoryId !== (int) $this->categoryId) {
-                        continue;
-                    }
+                if (($order->module ?? null) !== self::MODULE) {
+                    continue;
                 }
 
                 $details = DB::table('order_details')
@@ -556,6 +563,7 @@ class SurgicalConsumableController extends Controller
 
         $validated = $request->validate([
             'date' => 'required|date',
+            'req_no' => 'required|string|max:50|unique:orders,req_no',
             'items' => 'required|array|min:1',
             'items.*.name' => 'required|string|max:150',
             'items.*.requested_qty_num' => 'required|integer|min:1',
@@ -571,7 +579,7 @@ class SurgicalConsumableController extends Controller
             $unit = trim($inputItem['unit'] ?: 'Box');
             $qty = (int) $inputItem['requested_qty_num'];
 
-            $this->ensureGeneralItem($name, $this->categoryId, $unit);
+            $this->ensureGeneralItem($name, $this->categoryId(), $unit);
 
             $currentBalance = $this->getCurrentBalance($name);
 
@@ -586,18 +594,14 @@ class SurgicalConsumableController extends Controller
             ];
         }
 
-        $reqNo = sprintf(
-            'REQ-%d-%s-%04d',
-            $this->categoryId,
-            date('YmdHis'),
-            random_int(1000, 9999)
-        );
+        $reqNo = trim($validated['req_no']);
 
         DB::beginTransaction();
 
         try {
             $orderId = DB::table('orders')->insertGetId([
                 'ward_id' => 1,
+                'module' => self::MODULE,
                 'req_no' => $reqNo,
                 'date' => $orderDate,
                 'requested_by' => $actor['id'],
@@ -605,7 +609,7 @@ class SurgicalConsumableController extends Controller
                 'approved_by' => null,
                 'remark' => json_encode([
                     'module' => 'surgical_consumable_1',
-                    'category_id' => $this->categoryId,
+                    'category_id' => $this->categoryId(),
                     'workflow_status' => 'pending',
                     'requested_by_name' => $actor['name'],
                     'requested_by_id' => $actor['id'],
@@ -617,7 +621,7 @@ class SurgicalConsumableController extends Controller
             foreach ($items as $index => $item) {
                 $medicineId = $this->ensureMedicineRecord(
                     $item['name'],
-                    $this->categoryId,
+                    $this->categoryId(),
                     $item['unit']
                 );
 
@@ -635,7 +639,7 @@ class SurgicalConsumableController extends Controller
 
             $meta = [
                 'module' => 'surgical_consumable_1',
-                'category_id' => $this->categoryId,
+                'category_id' => $this->categoryId(),
                 'workflow_status' => 'pending',
                 'requested_by_name' => $actor['name'],
                 'requested_by_id' => $actor['id'],
@@ -645,6 +649,7 @@ class SurgicalConsumableController extends Controller
 
             DB::table('orders')
                 ->where('id', $orderId)
+                ->where('module', self::MODULE)
                 ->update(['remark' => json_encode($meta)]);
 
             $this->logWorkflowEvent($orderId, 'CREATED', [
@@ -703,7 +708,7 @@ class SurgicalConsumableController extends Controller
             'remark' => 'nullable|string|max:1000',
         ]);
 
-        $order = DB::table('orders')->where('id', $id)->first();
+        $order = DB::table('orders')->where('id', $id)->where('module', self::MODULE)->first();
 
         if (!$order) {
             return response()->json([
@@ -740,8 +745,8 @@ class SurgicalConsumableController extends Controller
                     continue;
                 }
 
-                $this->ensureGeneralItem($name, $this->categoryId, $unit);
-                $medicineId = $this->ensureMedicineRecord($name, $this->categoryId, $unit);
+                $this->ensureGeneralItem($name, $this->categoryId(), $unit);
+                $medicineId = $this->ensureMedicineRecord($name, $this->categoryId(), $unit);
 
                 $detailId = isset($inputItem['id'])
                     ? (int) $inputItem['id']
@@ -815,6 +820,7 @@ class SurgicalConsumableController extends Controller
 
             DB::table('orders')
                 ->where('id', $id)
+                ->where('module', self::MODULE)
                 ->update([
                     'ms_approval_status' => 'Approved',
                     'approved_by' => $actor['id'],
@@ -865,7 +871,7 @@ class SurgicalConsumableController extends Controller
             'reason' => 'required|string|max:1000',
         ]);
 
-        $order = DB::table('orders')->where('id', $id)->first();
+        $order = DB::table('orders')->where('id', $id)->where('module', self::MODULE)->first();
 
         if (!$order) {
             return response()->json([
@@ -890,6 +896,7 @@ class SurgicalConsumableController extends Controller
 
         DB::table('orders')
             ->where('id', $id)
+            ->where('module', self::MODULE)
             ->update([
                 'ms_approval_status' => 'Rejected',
                 'remark' => json_encode($meta),
@@ -933,6 +940,7 @@ class SurgicalConsumableController extends Controller
         try {
             $order = DB::table('orders')
                 ->where('id', $id)
+                ->where('module', self::MODULE)
                 ->lockForUpdate()
                 ->first();
 
@@ -1019,7 +1027,7 @@ class SurgicalConsumableController extends Controller
 
                 $generalItemId = $this->ensureGeneralItem(
                     $medicine->name,
-                    $this->categoryId,
+                    $this->categoryId(),
                     $unit
                 );
 
@@ -1058,6 +1066,7 @@ class SurgicalConsumableController extends Controller
 
             DB::table('orders')
                 ->where('id', $id)
+                ->where('module', self::MODULE)
                 ->update([
                     'remark' => json_encode($meta),
                 ]);
@@ -1130,6 +1139,7 @@ class SurgicalConsumableController extends Controller
 
         $order = DB::table('orders')
             ->where('id', $id)
+            ->where('module', self::MODULE)
             ->first();
 
         if (!$order) {
@@ -1165,6 +1175,7 @@ class SurgicalConsumableController extends Controller
 
             DB::table('orders')
                 ->where('id', $id)
+                ->where('module', self::MODULE)
                 ->delete();
         });
 
@@ -1185,7 +1196,7 @@ class SurgicalConsumableController extends Controller
     public function getAdjustments()
     {
         return response()->json(
-            WardDatabaseService::getAdjustments($this->categoryId, [])
+            WardDatabaseService::getAdjustments($this->categoryId(), [])
         );
     }
 
@@ -1210,7 +1221,7 @@ class SurgicalConsumableController extends Controller
 
         try {
             $transId = WardDatabaseService::storeAdjustment(
-            $this->categoryId,
+            $this->categoryId(),
             $validated['item_name'],
             $validated['type'],
             $amount,
@@ -1258,7 +1269,7 @@ class SurgicalConsumableController extends Controller
         $fallback = [];
 
         return response()->json(
-            WardDatabaseService::getDailyCounts($this->categoryId, $fallback)
+            WardDatabaseService::getDailyCounts($this->categoryId(), $fallback)
         );
     }
 
@@ -1283,7 +1294,7 @@ class SurgicalConsumableController extends Controller
             $sistersName = trim($actor['name']);
 
             $result = WardDatabaseService::storeDailyCount(
-                self::CATEGORY_ID,
+                $this->categoryId(),
                 $validated['item_name'],
                 (int) $validated['qty_given'],
                 $sistersName,

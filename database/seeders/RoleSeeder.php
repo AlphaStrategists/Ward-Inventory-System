@@ -9,51 +9,47 @@ use Illuminate\Support\Facades\DB;
 class RoleSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
-     * Creates only the 4 canonical roles.
+     * Ensure canonical roles exist and safely consolidate legacy role aliases.
+     * Existing role records and permissions are retained; no users are reset.
      */
     public function run(): void
     {
-        $roles = [
-            'Admin',
-            'Doctor',
-            'Nurse',
-            'Pharmacist',
-        ];
-
-        $roleModels = [];
-        foreach ($roles as $roleName) {
-            $roleModels[$roleName] = Role::firstOrCreate(['role_name' => $roleName]);
+        $canonical = [];
+        foreach (['Admin', 'MS', 'Nurse', 'Pharmacist'] as $name) {
+            $canonical[$name] = Role::firstOrCreate(['role_name' => $name]);
         }
 
-        // Reassign any existing users on non-canonical roles to canonical roles before cleanup
-        $nurseRoles = Role::whereIn('role_name', ['Staff Nurse', 'Ward Sister', 'Test Nurse', 'Audit Nurse', 'Ctrl Nurse'])->pluck('id');
-        if ($nurseRoles->isNotEmpty()) {
-            DB::table('users')->whereIn('role_id', $nurseRoles)->update(['role_id' => $roleModels['Nurse']->id]);
+        $this->mergeRoleAliases(['Doctor', 'Medical Officer', 'Test Doctor'], $canonical['MS']->id);
+        $this->mergeRoleAliases(['Staff Nurse', 'Ward Sister', 'Test Nurse', 'Audit Nurse', 'Ctrl Nurse'], $canonical['Nurse']->id);
+        $this->mergeRoleAliases(['Test Pharmacist'], $canonical['Pharmacist']->id);
+        $this->mergeRoleAliases(['System Admin'], $canonical['Admin']->id);
+
+        if (DB::getSchemaBuilder()->hasColumn('users', 'role')) {
+            DB::table('users')->whereRaw('LOWER(TRIM(role)) = ?', ['doctor'])->update(['role' => 'MS']);
+        }
+    }
+
+    private function mergeRoleAliases(array $aliases, int $targetRoleId): void
+    {
+        $aliasIds = Role::whereIn('role_name', $aliases)->pluck('id');
+        if ($aliasIds->isEmpty()) {
+            return;
         }
 
-        $doctorRoles = Role::whereIn('role_name', ['Medical Officer', 'Test Doctor'])->pluck('id');
-        if ($doctorRoles->isNotEmpty()) {
-            DB::table('users')->whereIn('role_id', $doctorRoles)->update(['role_id' => $roleModels['Doctor']->id]);
+        if (DB::getSchemaBuilder()->hasTable('role_permissions')) {
+            $permissionIds = DB::table('role_permissions')
+                ->whereIn('role_id', $aliasIds)
+                ->pluck('permission_id')
+                ->unique();
+
+            foreach ($permissionIds as $permissionId) {
+                DB::table('role_permissions')->insertOrIgnore([
+                    'role_id' => $targetRoleId,
+                    'permission_id' => $permissionId,
+                ]);
+            }
         }
 
-        $adminRoles = Role::whereIn('role_name', ['System Admin', 'MS'])->pluck('id');
-        if ($adminRoles->isNotEmpty()) {
-            DB::table('users')->whereIn('role_id', $adminRoles)->update(['role_id' => $roleModels['Admin']->id]);
-        }
-
-        $pharmacistRoles = Role::whereIn('role_name', ['Test Pharmacist'])->pluck('id');
-        if ($pharmacistRoles->isNotEmpty()) {
-            DB::table('users')->whereIn('role_id', $pharmacistRoles)->update(['role_id' => $roleModels['Pharmacist']->id]);
-        }
-
-        $canonicalIds = array_map(fn($r) => $r->id, $roleModels);
-        DB::table('users')->whereNotIn('role_id', $canonicalIds)->update(['role_id' => $roleModels['Nurse']->id]);
-
-        // Clean up role_permissions for non-canonical roles
-        DB::table('role_permissions')->whereNotIn('role_id', $canonicalIds)->delete();
-
-        // Remove any roles that are not part of the 4 canonical roles
-        Role::whereNotIn('role_name', $roles)->delete();
+        DB::table('users')->whereIn('role_id', $aliasIds)->update(['role_id' => $targetRoleId]);
     }
 }

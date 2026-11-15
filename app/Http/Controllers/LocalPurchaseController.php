@@ -9,7 +9,17 @@ use Illuminate\Support\Facades\DB;
 class LocalPurchaseController extends Controller
 {
     private const MODULE = 'local_purchase';
-    private const CATEGORY_ID = 3;
+    private const CATEGORY_NAME = 'Local Purchases';
+
+    /** Resolve Local Purchases by category name, not a hard-coded numeric ID. */
+    private function categoryId(): int
+    {
+        $id = DB::table('categories')->where('name', self::CATEGORY_NAME)->value('id');
+        if (!$id) {
+            throw new \RuntimeException('The Local Purchases category is missing. Run the latest migration.');
+        }
+        return (int) $id;
+    }
 
     private array $defaultItems = [
         ['name' => 'PARACETAMOL SYRUP', 'balance' => 18, 'unit' => 'Bottle'],
@@ -57,35 +67,14 @@ class LocalPurchaseController extends Controller
      * Get Local Purchase items.
      */
     public function getItems()
-{
-    $items = DB::table('general_items')
-        ->where('category_id', self::CATEGORY_ID)
-        ->orderBy('name')
-        ->get()
-        ->map(function ($item) {
-            return [
-                'id' => (int) $item->id,
-                'name' => $item->name,
-                'balance' => (int) ($item->balance ?? 0),
-                'unit' => $item->unit ?? 'Box',
-                'category_id' => (int) ($item->category_id ?? 0),
-            ];
-        });
+    {
+        $items = WardDatabaseService::getCategoryItems($this->categoryId(), []);
 
-    if ($items->isEmpty()) {
-        $items = collect($this->defaultItems)->map(function ($item, $index) {
-            return [
-                'id' => $index + 1,
-                'name' => $item['name'],
-                'balance' => (int) ($item['balance'] ?? 0),
-                'unit' => $item['unit'] ?? 'Box',
-                'category_id' => self::CATEGORY_ID,
-            ];
-        });
+        return response()->json(array_map(function ($item) {
+            $item['category_id'] = $this->categoryId();
+            return $item;
+        }, $items));
     }
-
-    return response()->json($items->values());
-}
 
     /**
      * Add Local Purchase item.
@@ -99,7 +88,7 @@ class LocalPurchaseController extends Controller
         ]);
 
         $item = WardDatabaseService::storeItem(
-            self::CATEGORY_ID,
+            $this->categoryId(),
             $validated['name'],
             $validated['balance'],
             $validated['unit']
@@ -121,6 +110,8 @@ class LocalPurchaseController extends Controller
             'name' => 'required|string|max:150',
         ]);
 
+        abort_unless(DB::table('general_items')->where('id', $id)->where('category_id', $this->categoryId())->exists(), 404);
+
         WardDatabaseService::updateItem(
             $id,
             $validated['name']
@@ -139,6 +130,7 @@ class LocalPurchaseController extends Controller
     {
         $this->verifyRole($request, ['nurse', 'admin']);
 
+        abort_unless(DB::table('general_items')->where('id', $id)->where('category_id', $this->categoryId())->exists(), 404);
         WardDatabaseService::deleteItem($id);
 
         return response()->json([
@@ -247,6 +239,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
         $medicine = DB::table('medicines')
             ->where('name', $name)
+            ->where('category_id', $categoryId)
             ->first();
 
         if ($medicine) {
@@ -276,7 +269,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
     private function currentBalanceForItem(string $itemName): int
     {
         $item = DB::table('general_items')
-            ->where('category_id', self::CATEGORY_ID)
+            ->where('category_id', $this->categoryId())
             ->where('name', strtoupper(trim($itemName)))
             ->first();
 
@@ -386,6 +379,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
                 'approver.id'
             )
             ->where('orders.ward_id', 1)
+            ->where('orders.module', self::MODULE)
             ->orderByDesc('orders.id')
             ->select(
                 'orders.*',
@@ -424,20 +418,8 @@ private function verifyRole(Request $request, array $allowedRoles): string
             true
         ) ?: [];
 
-        // Local Purchase records are identified by module.
-        // Keep category_id only as a fallback for older records.
-        $module = $meta['module'] ?? null;
-
-        if ($module !== null) {
-            if ($module !== self::MODULE) {
-                continue;
-            }
-        } else {
-            $categoryId = (int) ($meta['category_id'] ?? self::CATEGORY_ID);
-
-            if ($categoryId !== (int) self::CATEGORY_ID) {
-                continue;
-            }
+        if (($order->module ?? null) !== self::MODULE) {
+            continue;
         }
 
 
@@ -582,6 +564,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
         $validated = $request->validate([
             'date' => 'required|date',
+            'req_no' => 'required|string|max:50|unique:orders,req_no',
             'items' => 'required|array|min:1',
             'items.*.name' =>
                 'required|string|max:150',
@@ -612,7 +595,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
             $this->ensureGeneralItem(
                 $name,
-                self::CATEGORY_ID,
+                $this->categoryId(),
                 $unit
             );
 
@@ -627,11 +610,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
             ];
         }
 
-        $reqNo = sprintf(
-            'LP-%s-%04d',
-            date('YmdHis'),
-            random_int(1000, 9999)
-        );
+        $reqNo = trim($validated['req_no']);
 
         DB::beginTransaction();
 
@@ -639,6 +618,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
             $orderId = DB::table('orders')
                 ->insertGetId([
                     'ward_id' => 1,
+                    'module' => self::MODULE,
                     'req_no' => $reqNo,
                     'date' => $orderDate,
                     'requested_by' => $actor['id'],
@@ -647,7 +627,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
                     'approved_by' => null,
                     'remark' => json_encode([
                         'module' => self::MODULE,
-                        'category_id' => self::CATEGORY_ID,
+                        'category_id' => $this->categoryId(),
                         'workflow_status' => 'pending',
                         'requested_by_name' => $actor['name'],
                         'requested_by_id' => $actor['id'],
@@ -660,7 +640,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
                 $medicineId =
                     $this->ensureMedicineRecord(
                         $item['name'],
-                        self::CATEGORY_ID,
+                        $this->categoryId(),
                         $item['unit']
                     );
 
@@ -688,10 +668,11 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
             DB::table('orders')
                 ->where('id', $orderId)
+                ->where('module', self::MODULE)
                 ->update([
                    'remark' => json_encode([
                         'module' => self::MODULE,
-                        'category_id' => self::CATEGORY_ID,
+                        'category_id' => $this->categoryId(),
                         'workflow_status' => 'pending',
                         'requested_by_name' => $actor['name'],
                         'requested_by_id' => $actor['id'],
@@ -780,6 +761,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
         $order = DB::table('orders')
             ->where('id', $id)
+            ->where('module', self::MODULE)
             ->first();
 
         if (!$order) {
@@ -825,14 +807,14 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
                 $this->ensureGeneralItem(
                     $name,
-                    self::CATEGORY_ID,
+                    $this->categoryId(),
                     $unit
                 );
 
                 $medicineId =
                     $this->ensureMedicineRecord(
                         $name,
-                        self::CATEGORY_ID,
+                        $this->categoryId(),
                         $unit
                     );
 
@@ -911,6 +893,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
             DB::table('orders')
                 ->where('id', $id)
+                ->where('module', self::MODULE)
                 ->update([
                     'ms_approval_status' =>
                         'Approved',
@@ -986,6 +969,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
         $order = DB::table('orders')
             ->where('id', $id)
+            ->where('module', self::MODULE)
             ->first();
 
         if (!$order) {
@@ -1029,6 +1013,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
         DB::table('orders')
             ->where('id', $id)
+            ->where('module', self::MODULE)
             ->update([
                 'ms_approval_status' =>
                     'Rejected',
@@ -1085,6 +1070,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
         try {
             $order = DB::table('orders')
                 ->where('id', $id)
+                ->where('module', self::MODULE)
                 ->lockForUpdate()
                 ->first();
 
@@ -1184,7 +1170,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
                 $generalItemId =
                     $this->ensureGeneralItem(
                         $medicine->name,
-                        self::CATEGORY_ID,
+                        $this->categoryId(),
                         $unit
                     );
 
@@ -1240,6 +1226,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
             DB::table('orders')
                 ->where('id', $id)
+                ->where('module', self::MODULE)
                 ->update([
                     'remark' =>
                         json_encode($meta),
@@ -1339,6 +1326,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
         $order = DB::table('orders')
             ->where('id', $id)
+            ->where('module', self::MODULE)
             ->first();
 
         if (!$order) {
@@ -1395,6 +1383,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
 
                 DB::table('orders')
                     ->where('id', $id)
+                    ->where('module', self::MODULE)
                     ->delete();
             }
         );
@@ -1413,7 +1402,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
     {
         return response()->json(
             WardDatabaseService::getAdjustments(
-                self::CATEGORY_ID,
+                $this->categoryId(),
                 []
             )
         );
@@ -1447,7 +1436,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
         try {
             $transId =
                 WardDatabaseService::storeAdjustment(
-                    self::CATEGORY_ID,
+                    $this->categoryId(),
                     $validated['item_name'],
                     $validated['type'],
                     $amount,
@@ -1496,7 +1485,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
         $fallback = [];
 
         return response()->json(
-            WardDatabaseService::getDailyCounts(self::CATEGORY_ID, $fallback)
+            WardDatabaseService::getDailyCounts($this->categoryId(), $fallback)
         );
     }
 
@@ -1521,7 +1510,7 @@ private function verifyRole(Request $request, array $allowedRoles): string
             $sistersName = trim($actor['name']);
 
             $result = WardDatabaseService::storeDailyCount(
-                self::CATEGORY_ID,
+                $this->categoryId(),
                 $validated['item_name'],
                 (int) $validated['qty_given'],
                 $sistersName,

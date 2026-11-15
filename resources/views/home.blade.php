@@ -1552,7 +1552,28 @@
     'Head Nurse' => 'head_nurse',
     ];
 
-    $surgicalRole = $surgicalRoleMap[$originalRole] ?? null;
+    /*
+|--------------------------------------------------------------------------
+| SURGICAL INVENTORY ROLE MAPPING
+|--------------------------------------------------------------------------
+*/
+
+$roleId = (int) auth()->user()->role_id;
+
+        $surgicalRoleMap = [
+            1 => 'admin',
+            2 => 'ms',
+            3 => 'nurse',
+            4 => 'pharmacist',
+        ];
+
+        $surgicalRole = $surgicalRoleMap[$roleId] ?? null;
+
+        $hasSurgicalAccess = in_array(
+            $surgicalRole,
+            ['admin', 'ms', 'nurse', 'pharmacist'],
+            true
+        );
 
     $hasSurgicalAccess = in_array(
     $surgicalRole,

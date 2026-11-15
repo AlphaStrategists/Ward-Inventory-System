@@ -2,20 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
-
 use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    /**
-     * Where to redirect users after login.
-     *
-     * @var string
-     */
-    protected $redirectTo = RouteServiceProvider::HOME;
-
     public function showLoginForm()
     {
         return view('login');
@@ -29,9 +20,24 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
+
             $request->session()->regenerate();
 
-            return redirect()->intended(RouteServiceProvider::HOME);
+            // Use role_id because your users table
+            // currently has NULL values in the role column.
+            $roleId = (int) Auth::user()->role_id;
+
+           $destination = match ($roleId) {
+                1 => route('home'),
+                2 => route('home'),
+                3 => route('home'),
+                4 => route('home'),
+                default => route('login'),
+            };
+
+return redirect()->intended($destination);
+
+            return redirect()->intended($destination);
         }
 
         return back()->withErrors([
@@ -44,8 +50,9 @@ class AuthController extends Controller
         Auth::logout();
 
         $request->session()->invalidate();
+
         $request->session()->regenerateToken();
 
-        return redirect('/login');
+        return redirect()->route('login');
     }
 }
