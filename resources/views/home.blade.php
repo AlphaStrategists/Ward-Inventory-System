@@ -1751,7 +1751,7 @@
                                             <i class="fa-solid fa-droplet text-slate-400"></i>
                                             IV Fluids
                                         </a>
-                                        
+
                                     </div>
                                 </div>
 
@@ -1812,7 +1812,7 @@
 
                             </div>
 
-                            
+
 
                             <!-- injections-->
                             <div class="group/item relative">
@@ -1822,7 +1822,7 @@
                                     class="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
                                     <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
-                                       <i class="fa-solid fa-syringe"></i>
+                                        <i class="fa-solid fa-syringe"></i>
                                     </span>
 
                                     <span class="flex-1 text-left">
@@ -2018,19 +2018,23 @@
 
 
                     <!-- Account -->
+
                     <div class="ml-2">
-                        <form method="POST" action="{{ route('logout') }}"
-                            onsubmit="return confirm('Are you sure you want to log out?');">
+                        <form method="POST" action="{{ route('logout') }}" id="logout-form">
                             @csrf
+
                             <button
-                                type="submit"
+                                type="button"
+                                onclick="confirmLogout()"
                                 title="Log out"
                                 class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-red-600/20 transition hover:bg-red-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 active:scale-95">
+
                                 <i class="fa-solid fa-right-from-bracket"></i>
                                 <span>Logout</span>
                             </button>
                         </form>
                     </div>
+
 
                 </div>
                 @auth
@@ -2439,6 +2443,42 @@
         </div>
 
     </footer>
+
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    function confirmLogout() {
+        Swal.fire({
+            title: 'Logout Confirmation',
+            text: 'Are you sure you want to log out of your account?',
+            icon: 'warning',
+
+            showCancelButton: true,
+
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+
+            confirmButtonText: 'Yes, Logout',
+            cancelButtonText: 'Cancel',
+
+            reverseButtons: true,
+            focusCancel: true,
+
+            customClass: {
+                popup: 'rounded-2xl',
+                title: 'text-xl font-bold',
+                confirmButton: 'rounded-lg px-5 py-2.5 font-semibold',
+                cancelButton: 'rounded-lg px-5 py-2.5 font-semibold'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('logout-form').submit();
+            }
+        });
+    }
+</script>
+
 
 </body>
 
