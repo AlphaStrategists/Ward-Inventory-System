@@ -169,8 +169,8 @@
                     <div x-data="{ open: false }" class="relative dropdown">
                         <button @click="open = !open" @click.away="open = false" class="dropdown-toggle flex items-center gap-3 focus:outline-none hover:bg-slate-50 p-1.5 pr-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">
                             <div class="text-right hidden sm:block">
-                                <div class="text-sm font-bold text-slate-700 leading-tight">{{ auth()->user()->name ?? 'Guest User' }}</div>
-                                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ auth()->user()->role ?? 'Nurse' }}</div>
+                                <div class="text-sm font-bold text-slate-700 leading-tight">Hi, {{ auth()->user()->name ?? 'Guest User' }}</div>
+                                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ strtoupper(Auth::user()->role ?? 'USER') }}</div>
                             </div>
                             <div class="w-9 h-9 rounded-full bg-blue-100 text-[#3B82F6] flex items-center justify-center font-bold text-sm border border-blue-200 shadow-sm">
                                 {{ substr(auth()->user()->name ?? 'U', 0, 1) }}

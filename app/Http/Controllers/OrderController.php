@@ -130,17 +130,25 @@ class OrderController extends Controller
             ]);
 
             $detail->update(['qty_requested' => $validated['qty_requested']]);
-            $order->update([
+            $orderUpdates = [
                 'ms_approval_status' => 'Approved',
                 'approved_by' => Auth::id() ?? 1,
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'approved_at')) {
+                $orderUpdates['approved_at'] = now();
+            }
+            $order->update($orderUpdates);
 
             return redirect()->back()->with('success', "Order requisition {$order->req_no} has been approved.");
         } else {
-            $order->update([
+            $orderUpdates = [
                 'ms_approval_status' => 'Rejected',
                 'approved_by' => Auth::id() ?? 1,
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'approved_at')) {
+                $orderUpdates['approved_at'] = now();
+            }
+            $order->update($orderUpdates);
 
             return redirect()->back()->with('success', "Order requisition {$order->req_no} has been rejected.");
         }
@@ -163,11 +171,16 @@ class OrderController extends Controller
 
         $userId = Auth::id() ?? 1;
 
-        // Efficient bulk update in a single database query
-        $updatedCount = Order::where('ms_approval_status', 'Pending')->update([
+        $bulkUpdates = [
             'ms_approval_status' => 'Approved',
             'approved_by' => $userId,
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'approved_at')) {
+            $bulkUpdates['approved_at'] = now();
+        }
+
+        // Efficient bulk update in a single database query
+        $updatedCount = Order::where('ms_approval_status', 'Pending')->update($bulkUpdates);
 
         return redirect()->back()->with('success', "All pending order requisition(s) ({$updatedCount}) have been approved.");
     }
@@ -185,18 +198,24 @@ class OrderController extends Controller
         }
 
         $validated = $request->validate([
-            'qty_issued' => 'required|integer|min:1',
+            'qty_issued' => 'required|numeric|min:1|max:' . $detail->qty_requested,
+        ], [
+            'qty_issued.max' => 'Issued quantity cannot exceed the requested/approved quantity (' . $detail->qty_requested . ').',
         ]);
 
-        $qtyIssued = $validated['qty_issued'];
-        if ($qtyIssued > $detail->qty_requested) {
-            return redirect()->back()->with('error', 'Issued quantity cannot exceed requested quantity.');
-        }
+        $qtyIssued = (int) $validated['qty_issued'];
 
         $detail->update([
             'qty_issued' => $qtyIssued,
             'remark' => '[ISSUED_BY:' . (Auth::user()->name ?? 'Pharmacist') . '] ' . ($detail->remark ?? '')
         ]);
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'issued_by')) {
+            $order->update([
+                'issued_by' => Auth::id() ?? 1,
+                'issued_date' => now(),
+            ]);
+        }
 
         return redirect()->back()->with('success', "Order requisition {$order->req_no} has been issued successfully.");
     }
@@ -206,7 +225,7 @@ class OrderController extends Controller
      */
     public function receive(Request $request, $id)
     {
-        $detail = OrderDetail::with(['order', 'medicine'])->findOrFail($id);
+        $detail = OrderDetail::with(['order', 'medicine.strengthUnit', 'medicine.form', 'medicine.unit'])->findOrFail($id);
         $order = $detail->order;
 
         if (strtolower($order->ms_approval_status ?? '') === 'cancelled') {
@@ -217,18 +236,30 @@ class OrderController extends Controller
             return redirect()->back()->with('error', 'This order has already been received.');
         }
 
+        // Inherit supplier_id directly from the original order record
+        $orderSupplierId = $order->supplier_id ?? $detail->supplier_id ?? null;
+        if (!$orderSupplierId && preg_match('/\[SUPPLIER:(.*?)\]/', $detail->remark ?? '', $supMatches)) {
+            $supplierName = trim($supMatches[1]);
+            $orderSupplierId = Supplier::whereRaw('LOWER(TRIM(supplier_name)) = ?', [strtolower($supplierName)])->value('id');
+        }
+        if (!$orderSupplierId) {
+            $orderSupplierId = MedicineBatch::where('medicine_id', $detail->medicine_id)
+                ->whereNotNull('supplier_id')
+                ->orderByDesc('id')
+                ->value('id');
+        }
+
         $isNewBatch = $request->input('batch_type') === 'new';
 
         if ($isNewBatch) {
             $validated = $request->validate([
                 'new_batch_no' => 'required|string|max:100',
                 'new_expiry_date' => 'required|date',
-                'supplier_id' => 'nullable|integer|exists:suppliers,id',
             ]);
 
             $batch = MedicineBatch::create([
                 'medicine_id' => $detail->medicine_id,
-                'supplier_id' => $validated['supplier_id'] ?? null,
+                'supplier_id' => $orderSupplierId,
                 'batch_no' => strtoupper(trim($validated['new_batch_no'])),
                 'expiry_date' => $validated['new_expiry_date'],
                 'created_at' => now(),
@@ -237,13 +268,12 @@ class OrderController extends Controller
         } else {
             $validated = $request->validate([
                 'batch_id' => 'required|integer|exists:medicine_batches,id',
-                'supplier_id' => 'nullable|integer|exists:suppliers,id',
             ]);
             $batchId = $validated['batch_id'];
 
-            if (!empty($validated['supplier_id'])) {
-                MedicineBatch::where('id', $batchId)->update([
-                    'supplier_id' => $validated['supplier_id'],
+            if ($orderSupplierId) {
+                MedicineBatch::where('id', $batchId)->whereNull('supplier_id')->update([
+                    'supplier_id' => $orderSupplierId,
                 ]);
             }
         }
@@ -251,28 +281,42 @@ class OrderController extends Controller
         $wardId = Auth::user()->ward_id ?? DB::table('wards')->value('id');
         $userId = Auth::id() ?? 1;
 
-        if ($detail->qty_issued > 0) {
+        $qtyReceived = (int) ($request->input('qty_received') ?: $detail->qty_issued);
+        $medicine = $detail->medicine;
+        $ledgerQtyReceived = $qtyReceived;
+        if ($medicine && $medicine->isLiquidMl()) {
+            $bottleVolume = $medicine->getBottleVolumeMl();
+            if ($bottleVolume > 0) {
+                $ledgerQtyReceived = $qtyReceived * $bottleVolume;
+            }
+        }
+
+        if ($ledgerQtyReceived > 0) {
             StockReceipt::create([
                 'batch_id' => $batchId,
                 'ward_id' => $wardId,
-                'quantity_received' => $detail->qty_issued,
+                'quantity_received' => $ledgerQtyReceived,
                 'received_by' => $userId,
                 'date' => now(),
             ]);
         }
 
         $remarkStr = $detail->remark ?? '';
-        if (!empty($validated['supplier_id'])) {
-            $supplierModel = Supplier::find($validated['supplier_id']);
-            if ($supplierModel) {
-                $remarkStr = preg_replace('/\[SUPPLIER:.*?\]\s*/', '', $remarkStr);
-                $remarkStr = '[SUPPLIER:' . $supplierModel->supplier_name . '] ' . trim($remarkStr);
-            }
-        }
 
-        $detail->update([
+        $detailUpdates = [
             'remark' => trim('[RECEIVED_BY:' . (Auth::user()->name ?? 'Nurse') . '] ' . $remarkStr)
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('order_details', 'qty_received')) {
+            $detailUpdates['qty_received'] = $qtyReceived;
+        }
+        $detail->update($detailUpdates);
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'received_by')) {
+            $order->update([
+                'received_by' => $userId,
+                'received_date' => now(),
+            ]);
+        }
 
         return redirect()->back()->with('success', "Order requisition {$order->req_no} received successfully. Stock has been incremented.");
     }

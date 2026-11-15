@@ -83,12 +83,19 @@ class User extends Authenticatable
     }
 
     /**
-     * Role is stored directly in users.role (with fallback to 'Admin' when is_admin is true).
+     * Role is stored in users.role or via role_id (with fallback to 'Admin' when is_admin is true).
      */
     public function getRoleAttribute(): ?string
     {
         if (isset($this->attributes['role']) && trim((string) $this->attributes['role']) !== '') {
             return trim((string) $this->attributes['role']);
+        }
+
+        if (!empty($this->attributes['role_id'])) {
+            $relatedRole = $this->roleRelation?->role_name;
+            if ($relatedRole !== null && trim((string) $relatedRole) !== '') {
+                return trim((string) $relatedRole);
+            }
         }
 
         if (!empty($this->attributes['is_admin'])) {

@@ -30,7 +30,7 @@
     </style>
 </head>
 
-<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: '{{ $errors->has('qty_given') ? 'patient' : 'pharmacy' }}', searchQuery: '', searchDate: '', openAddModal: false, openAdminModal: {{ $errors->has('qty_given') ? 'true' : 'false' }}, showAdjustmentModal: false, openOrderModal: {{ $errors->has('req_no') ? 'true' : 'false' }}, openReceiveModal: false, receiveModalDetailId: '', receiveModalMaxQty: 1, openEditOrderModal: false, editOrderData: { detailId: '', reqNo: '', date: '', qtyRequested: 1, unitsPerPack: 1, supplierId: '' }, editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
+<body class="bg-[#F8FAFC] text-slate-800 h-screen overflow-hidden flex" x-data="{ tab: '{{ $errors->has('qty_given') ? 'patient' : 'pharmacy' }}', searchQuery: '', searchDate: '', openAddModal: false, openAdminModal: {{ $errors->has('qty_given') ? 'true' : 'false' }}, showAdjustmentModal: false, openOrderModal: {{ $errors->has('req_no') ? 'true' : 'false' }}, openReceiveModal: false, receiveModalDetailId: '', receiveModalMaxQty: 1, receiveModalSupplierName: 'N/A', openEditOrderModal: false, editOrderData: { detailId: '', reqNo: '', date: '', qtyRequested: 1, unitsPerPack: 1, supplierId: '' }, editModalId: null, isControlled: {{ $category === 'narcotics' ? 'true' : 'false' }}, initialStock: 0 }">
 
     @if(session('success'))
     <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)"
@@ -51,6 +51,17 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         <span>{{ session('error') }}</span>
+    </div>
+    @endif
+
+    @if($errors->any())
+    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
+        x-transition.opacity.duration.500ms
+        class="fixed top-5 right-5 z-50 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg font-semibold flex items-center gap-3 max-w-md">
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span>{{ $errors->first() }}</span>
     </div>
     @endif
 
@@ -102,12 +113,11 @@
             $warning = (int) $medicine->warning_limit;
 
             $compareValue = $stock;
-            if (stripos($medicine->strength, 'ml') !== false) {
-            preg_match('/(\d+)/', $medicine->strength, $matches);
-            $baseVol = (int) ($matches[1] ?? 1);
-            if ($baseVol > 0) {
-            $compareValue = $stock / $baseVol;
-            }
+            if ($medicine->isLiquidMl()) {
+                $baseVol = $medicine->getBottleVolumeMl();
+                if ($baseVol > 0) {
+                    $compareValue = $stock / $baseVol;
+                }
             }
 
             if ($compareValue <= $min) {
@@ -148,12 +158,11 @@
                             @endif
                         </div>
                         <span class="text-[11px] font-bold px-2.5 py-1 rounded-full {{ $badgeClass }}">
-                            @if(stripos($medicine->strength, 'ml') !== false)
+                            @if($medicine->isLiquidMl())
                             @php
-                            preg_match('/(\d+)/', $medicine->strength, $matches);
-                            $baseVol = (int) ($matches[1] ?? 1);
-                            $bottles = $baseVol > 0 ? floor($medicine->stock / $baseVol) : 0;
-                            $remainingMl = $baseVol > 0 ? $medicine->stock % $baseVol : 0;
+                            $baseVol = $medicine->getBottleVolumeMl();
+                            $bottles = $baseVol > 0 ? (int) floor($medicine->stock / $baseVol) : 0;
+                            $remainingMl = $baseVol > 0 ? ($medicine->stock % $baseVol) : 0;
                             @endphp
                             @if($remainingMl > 0)
                             {{ $bottles }} Bottle(s) & {{ $remainingMl }}ml (Total: {{ $medicine->stock }}ml)
@@ -212,13 +221,9 @@
                         <div class="text-right hidden sm:block">
                             @php
                                 $headerName = trim((Auth::user()->first_name ?? '') . ' ' . (Auth::user()->last_name ?? '')) ?: (Auth::user()->name ?? 'Guest User');
-                                $headerRole = $displayRole ?? (Auth::user()->role ?? (Auth::user()->is_admin ? 'System Admin' : 'User'));
-                                if (in_array(strtolower(trim((string) $headerRole)), ['ms', 'doctor'], true)) {
-                                    $headerRole = 'MS';
-                                }
                             @endphp
                             <div class="text-sm font-bold text-slate-700 leading-tight">Hi, {{ $headerName }}</div>
-                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ $headerRole }}</div>
+                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ strtoupper(Auth::user()->role ?? 'USER') }}</div>
                         </div>
                         <div class="w-9 h-9 rounded-full bg-blue-100 text-[#3B82F6] flex items-center justify-center font-bold text-sm border border-blue-200 shadow-sm">
                             {{ strtoupper(substr($headerName, 0, 1)) }}
@@ -302,12 +307,11 @@
                     $warning = (int) $selectedMedicine->warning_limit;
 
                     $compareValue = $stock;
-                    if (stripos($selectedMedicine->strength, 'ml') !== false) {
-                    preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
-                    $baseVol = (int) ($matches[1] ?? 1);
-                    if ($baseVol > 0) {
-                    $compareValue = $stock / $baseVol;
-                    }
+                    if ($selectedMedicine->isLiquidMl()) {
+                        $baseVol = $selectedMedicine->getBottleVolumeMl();
+                        if ($baseVol > 0) {
+                            $compareValue = $stock / $baseVol;
+                        }
                     }
 
                     if ($compareValue <= $min) {
@@ -321,17 +325,16 @@
                         @endphp
                         <div class="text-[32px] font-extrabold tracking-tight leading-none mb-1 {{ $stockColor }}">
                         @if($selectedMedicine)
-                        @if(stripos($selectedMedicine->strength, 'ml') !== false)
+                        @if($selectedMedicine->isLiquidMl())
                         @php
-                        preg_match('/(\d+)/', $selectedMedicine->strength, $matches);
-                        $baseVolume = (int) ($matches[1] ?? 1);
-                        $bottleCount = $baseVolume > 0 ? floor($stock / $baseVolume) : 0;
-                        $remainingMl = $baseVolume > 0 ? $stock % $baseVolume : 0;
+                        $baseVolume = $selectedMedicine->getBottleVolumeMl();
+                        $bottleCount = $baseVolume > 0 ? (int) floor($stock / $baseVolume) : 0;
+                        $remainingMl = $baseVolume > 0 ? ($stock % $baseVolume) : 0;
                         @endphp
                         @if($remainingMl > 0)
-                        {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s) & {{ $remainingMl }}ml</span> <span class="text-xl text-white/80 font-semibold ml-2">(Total: {{ $stock }}ml)</span>
+                        {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s) & {{ $remainingMl }}ml</span> <span class="text-sm text-slate-500 font-semibold ml-1">(Total: {{ $stock }}ml)</span>
                         @else
-                        {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s)</span> <span class="text-xl text-white/80 font-semibold ml-2">(Total: {{ $stock }}ml)</span>
+                        {{ $bottleCount }} <span class="text-lg font-bold">Bottle(s)</span> <span class="text-sm text-slate-500 font-semibold ml-1">(Total: {{ $stock }}ml)</span>
                         @endif
                         @else
                         {{ $stock }} <span class="text-lg font-bold">{{ $selectedMedicine->form->form_name ?? $selectedMedicine->unit->unit_name ?? 'Unit' }}</span>
@@ -388,7 +391,7 @@
                     class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200">
                     Pharmacy Orders ({{ isset($pharmacyOrders) ? $pharmacyOrders->count() : 0 }})
                 </button>
-                @if(strtolower(auth()->user()->role ?? '') !== 'pharmacist')
+                @if(auth()->check() && strtolower(auth()->user()->role) !== 'pharmacist')
                 <button @click="tab = 'patient'"
                     :class="tab === 'patient' ? 'bg-[#F8FAFC] text-slate-800 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-semibold'"
                     class="px-5 py-2.5 rounded-[10px] text-[13px] transition-all duration-200 ml-1">
@@ -439,7 +442,7 @@
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Pharmacy Requisitions Log</h3>
-                    @if(auth()->check() && !auth()->user()->is_admin && auth()->user()->role !== 'Admin' && strtolower(trim((string) (auth()->user()->role ?? ''))) !== 'admin' && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'MS']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'MS'])))
+                    @if(auth()->check() && strtolower(auth()->user()->role) === 'nurse')
                     <button @click="openOrderModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -600,6 +603,9 @@
                                                 @if($order->approver)
                                                 <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver->name }}</span>
                                                 @endif
+                                                @if($order->approved_at)
+                                                <div class="text-[10px] text-slate-400 mt-0.5">{{ \Carbon\Carbon::parse($order->approved_at)->format('M d, Y h:i A') }}</div>
+                                                @endif
                                             </div>
                                             @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order->ms_approval_status === 'Pending')
                                             <div class="flex gap-1.5 mt-1">
@@ -612,7 +618,15 @@
                                     {{-- 6. Received Quantity --}}
                                     <td class="px-6 py-4 font-bold text-slate-800">
                                         @if($displayReceivedQty !== null)
-                                            {{ $displayReceivedQty }} <span class="text-[11px] font-normal text-slate-500">{{ $itemUnit }}</span>
+                                            @if($isPackOrdering && $unitsPerPack > 0)
+                                                @php
+                                                    $recPacks = round(((int) $displayReceivedQty) / $unitsPerPack, 2);
+                                                    $displayRecPacks = (float)$recPacks == (int)$recPacks ? (int)$recPacks : $recPacks;
+                                                @endphp
+                                                {{ $displayRecPacks }} Pack(s) <span class="text-[11px] font-normal text-slate-500">(Total: {{ $displayReceivedQty }} {{ $itemUnit }})</span>
+                                            @else
+                                                {{ $displayReceivedQty }} <span class="text-[11px] font-normal text-slate-500">{{ $itemUnit }}</span>
+                                            @endif
                                         @else
                                             <span class="text-slate-400 font-medium text-xs">&mdash;</span>
                                         @endif
@@ -628,7 +642,7 @@
                                             @if(auth()->check() && strtolower(auth()->user()->role ?? '') == 'pharmacist' && $order->ms_approval_status === 'Approved' && $detail->qty_issued == 0)
                                             <form id="issue-form-{{$detail->id}}" action="{{ route('inventory.medicines.orders.issue', ['category' => $category, 'id' => $detail->id]) }}" method="POST" class="flex items-center gap-1.5">
                                                 @csrf @method('PATCH')
-                                                <input type="number" name="qty_issued" value="{{ $detail->qty_requested }}" max="{{ $detail->qty_requested }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
+                                                <input type="number" name="qty_issued" value="{{ $detail->qty_requested }}" min="1" max="{{ $detail->qty_requested }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
                                                 <button type="submit" class="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs px-2.5 py-1 rounded font-semibold transition-colors shadow-sm">Issue</button>
                                             </form>
                                             @elseif($order->ms_approval_status === 'Cancelled')
@@ -652,7 +666,7 @@
                                             @elseif($detail->qty_issued == 0)
                                             <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
                                             @elseif(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse')))
-                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
+                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; receiveModalSupplierName = '{{ addslashes($rowSupplierName ?: ($order->supplier->supplier_name ?? $order->supplier->name ?? 'N/A')) }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                             @else
                                             <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
                                             @endif
@@ -737,7 +751,15 @@
                                     {{-- 6. Received Quantity --}}
                                     <td class="px-6 py-4 font-bold text-slate-800">
                                         @if($displayReceivedQty !== null)
-                                            {{ $displayReceivedQty }} <span class="text-[11px] font-normal text-slate-500">{{ $itemUnit }}</span>
+                                            @if($isPackOrdering && $unitsPerPack > 0)
+                                                @php
+                                                    $recPacks = round(((int) $displayReceivedQty) / $unitsPerPack, 2);
+                                                    $displayRecPacks = (float)$recPacks == (int)$recPacks ? (int)$recPacks : $recPacks;
+                                                @endphp
+                                                {{ $displayRecPacks }} Pack(s) <span class="text-[11px] font-normal text-slate-500">(Total: {{ $displayReceivedQty }} {{ $itemUnit }})</span>
+                                            @else
+                                                {{ $displayReceivedQty }} <span class="text-[11px] font-normal text-slate-500">{{ $itemUnit }}</span>
+                                            @endif
                                         @else
                                             <span class="text-slate-400 font-medium text-xs">&mdash;</span>
                                         @endif
@@ -755,7 +777,7 @@
                                             @elseif($detail->qty_issued == 0)
                                             <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
                                             @elseif(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse')))
-                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
+                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; receiveModalSupplierName = '{{ addslashes($rowSupplierName ?: ($order->supplier->supplier_name ?? $order->supplier->name ?? 'N/A')) }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                             @else
                                             <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
                                             @endif
@@ -836,6 +858,9 @@
                                                 @if($order->approver)
                                                 <span class="text-[10px] font-semibold text-slate-500">{{ $order->approver->name }}</span>
                                                 @endif
+                                                @if($order->approved_at)
+                                                <div class="text-[10px] text-slate-400 mt-0.5">{{ \Carbon\Carbon::parse($order->approved_at)->format('M d, Y h:i A') }}</div>
+                                                @endif
                                             </div>
                                             @if(auth()->check() && (strtolower(trim((string) (auth()->user()->role ?? ''))) === 'ms' || auth()->user()->hasRole('MS')) && $order->ms_approval_status === 'Pending')
                                             <div class="flex gap-1.5 mt-1">
@@ -851,22 +876,24 @@
                                             @csrf @method('PATCH')
                                         </form>
                                         <div class="flex items-center gap-1">
-                                            <input type="number" form="issue-form-{{$detail->id}}" name="qty_issued" value="{{ $detail->qty_requested }}" max="{{ $detail->qty_requested }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
+                                            <input type="number" form="issue-form-{{$detail->id}}" name="qty_issued" value="{{ $detail->qty_requested }}" min="1" max="{{ $detail->qty_requested }}" class="w-16 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" required>
                                             <span class="text-[11px] font-normal text-slate-500">{{ $itemUnit }}</span>
                                         </div>
                                         @else
-                                        @if($detail->qty_issued > 0)
                                         @php
-                                        $actualIssued = (int) $detail->qty_issued;
+                                        $actualReceivedOrIssued = (int) (($detail->qty_received !== null && $detail->qty_received > 0) ? $detail->qty_received : $detail->qty_issued);
+                                        @endphp
+                                        @if($actualReceivedOrIssued > 0)
+                                        @php
                                         if ($isPackOrdering && $unitsPerPack > 0) {
-                                            $issuedPacks = round($actualIssued / $unitsPerPack, 2);
+                                            $issuedPacks = round($actualReceivedOrIssued / $unitsPerPack, 2);
                                             $displayIssuedPacks = (float)$issuedPacks == (int)$issuedPacks ? (int)$issuedPacks : $issuedPacks;
                                         }
                                         @endphp
                                         @if($isPackOrdering && $unitsPerPack > 0)
-                                        {{ $displayIssuedPacks }} Pack(s) <span class="text-[11px] font-normal text-slate-500">(Total: {{ $actualIssued }} {{ $itemUnit }})</span>
+                                        {{ $displayIssuedPacks }} Pack(s) <span class="text-[11px] font-normal text-slate-500">(Total: {{ $actualReceivedOrIssued }} {{ $itemUnit }})</span>
                                         @else
-                                        {{ $actualIssued }} <span class="text-[11px] font-normal text-slate-500">{{ $itemUnit }}</span>
+                                        {{ $actualReceivedOrIssued }} <span class="text-[11px] font-normal text-slate-500">{{ $itemUnit }}</span>
                                         @endif
                                         @else
                                         0
@@ -902,7 +929,7 @@
                                             @elseif($detail->qty_issued == 0)
                                             <span class="text-slate-400 font-medium text-xs">Waiting for Issue</span>
                                             @elseif(auth()->check() && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse']) || auth()->user()->hasRole('Nurse')))
-                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
+                                            <button type="button" @click="receiveModalDetailId = '{{ $detail->id }}'; receiveModalMaxQty = '{{ $detail->qty_issued }}'; receiveModalSupplierName = '{{ addslashes($rowSupplierName ?: ($order->supplier->supplier_name ?? $order->supplier->name ?? 'N/A')) }}'; openReceiveModal = true" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded font-semibold transition-colors shadow-sm">Confirm Receipt</button>
                                             @else
                                             <span class="text-slate-400 font-medium text-xs">Pending Receipt</span>
                                             @endif
@@ -943,13 +970,13 @@
                 </div>
             </div>
 
-            @if(strtolower(auth()->user()->role ?? '') !== 'pharmacist')
+            @if(auth()->check() && strtolower(auth()->user()->role) !== 'pharmacist')
             <!-- Patient Tab Content -->
             <div x-show="tab === 'patient'" x-cloak x-transition.opacity.duration.300ms>
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Patient Dispensations & Admin Log</h3>
-                    @if(auth()->check() && !auth()->user()->is_admin && auth()->user()->role !== 'Admin' && strtolower(trim((string) (auth()->user()->role ?? ''))) !== 'admin' && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'MS']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'MS'])))
+                    @if(auth()->check() && strtolower(auth()->user()->role) === 'nurse')
                     <button @click="openAdminModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -997,13 +1024,24 @@
                                 <td class="px-6 py-4 font-bold text-slate-800">{{ $admin->qty_given }}</td>
                                 <td class="px-6 py-4 font-bold {{ (int) $admin->dynamic_balance < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
                                     @php
-                                    $isLiquid = false;
-                                    if (isset($selectedMedicine) && $selectedMedicine->form) {
-                                    $formName = strtolower($selectedMedicine->form->form_name);
-                                    $isLiquid = in_array($formName, ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']);
+                                    $isLiquidMl = isset($selectedMedicine) && $selectedMedicine->isLiquidMl();
+                                    $isLiquid = $isLiquidMl;
+                                    if (!$isLiquid && isset($selectedMedicine) && $selectedMedicine->form) {
+                                        $formName = strtolower($selectedMedicine->form->form_name);
+                                        $isLiquid = in_array($formName, ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']);
                                     }
                                     @endphp
-                                    {{ $admin->dynamic_balance }} {{ $isLiquid ? 'ml' : ($selectedMedicine->unit->unit_name ?? '') }}
+                                    @if($isLiquidMl)
+                                        @php
+                                        $baseVol = $selectedMedicine->getBottleVolumeMl();
+                                        $balVal = (int) ($admin->dynamic_balance ?? 0);
+                                        $balBottles = $baseVol > 0 ? (int) floor($balVal / $baseVol) : 0;
+                                        $balRemMl = $baseVol > 0 ? ($balVal % $baseVol) : 0;
+                                        @endphp
+                                        {{ $balBottles }} Bottle(s){{ $balRemMl > 0 ? ' & ' . $balRemMl . 'ml' : '' }} <span class="text-xs font-normal text-slate-500">(Total: {{ $balVal }}ml)</span>
+                                    @else
+                                        {{ $admin->dynamic_balance }} {{ $isLiquid ? 'ml' : ($selectedMedicine->unit->unit_name ?? '') }}
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 font-semibold text-slate-700">{{ $admin->sister_initials }}</td>
                                 <td class="px-6 py-4 text-slate-500 font-medium">{{ $admin->remark }}</td>
@@ -1015,13 +1053,13 @@
             </div>
             @endif
 
-            @if(strtolower(auth()->user()->role ?? '') !== 'pharmacist')
+            @if(auth()->check() && strtolower(auth()->user()->role) !== 'pharmacist')
             <!-- Adjustments Tab Content -->
             <div x-show="tab === 'adjustments'" x-cloak x-transition.opacity.duration.300ms>
                 <!-- Header -->
                 <div class="p-6 pb-5 flex items-center justify-between bg-white border-b border-slate-100/50">
                     <h3 class="text-[16px] font-bold text-slate-800">Stock Adjustments</h3>
-                    @if(auth()->check() && !auth()->user()->is_admin && auth()->user()->role !== 'Admin' && strtolower(trim((string) (auth()->user()->role ?? ''))) !== 'admin' && (in_array(auth()->user()->role, ['Nurse', 'Head Nurse', 'MS']) || auth()->user()->hasAnyRole(['Nurse', 'Head Nurse', 'MS'])))
+                    @if(auth()->check() && strtolower(auth()->user()->role) === 'nurse')
                     <button @click="showAdjustmentModal = true" class="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold rounded-xl text-[13px] px-4 py-2.5 transition-all shadow-sm flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -1069,13 +1107,24 @@
                                 </td>
                                 <td class="px-6 py-4 font-bold {{ (int) ($adj->dynamic_balance ?? 0) < 50 ? 'text-[#DC2626]' : 'text-[#16A34A]' }}">
                                     @php
-                                    $isLiquid = false;
-                                    if (isset($selectedMedicine) && $selectedMedicine->form) {
-                                    $formName = strtolower($selectedMedicine->form->form_name);
-                                    $isLiquid = in_array($formName, ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']);
+                                    $isLiquidMl = isset($selectedMedicine) && $selectedMedicine->isLiquidMl();
+                                    $isLiquid = $isLiquidMl;
+                                    if (!$isLiquid && isset($selectedMedicine) && $selectedMedicine->form) {
+                                        $formName = strtolower($selectedMedicine->form->form_name);
+                                        $isLiquid = in_array($formName, ['syrup', 'drops', 'injection', 'iv-fluid', 'solution', 'suspension']);
                                     }
                                     @endphp
-                                    {{ $adj->dynamic_balance ?? 0 }} {{ $isLiquid ? 'ml' : ($selectedMedicine->unit->unit_name ?? '') }}
+                                    @if($isLiquidMl)
+                                        @php
+                                        $baseVol = $selectedMedicine->getBottleVolumeMl();
+                                        $balVal = (int) ($adj->dynamic_balance ?? 0);
+                                        $balBottles = $baseVol > 0 ? (int) floor($balVal / $baseVol) : 0;
+                                        $balRemMl = $baseVol > 0 ? ($balVal % $baseVol) : 0;
+                                        @endphp
+                                        {{ $balBottles }} Bottle(s){{ $balRemMl > 0 ? ' & ' . $balRemMl . 'ml' : '' }} <span class="text-xs font-normal text-slate-500">(Total: {{ $balVal }}ml)</span>
+                                    @else
+                                        {{ $adj->dynamic_balance ?? 0 }} {{ $isLiquid ? 'ml' : ($selectedMedicine->unit->unit_name ?? '') }}
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 text-slate-500 font-medium">{{ $adj->reason }}</td>
                                 <td class="px-6 py-4 font-semibold text-slate-700">{{ $adj->adjustedBy->name ?? 'N/A' }}</td>
@@ -1156,7 +1205,15 @@
                                             <!-- Strength -->
                                             <div class="col-span-2">
                                                 <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
-                                                <input type="text" name="strength" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400" placeholder="e.g. 500mg">
+                                                <div class="flex items-center gap-2">
+                                                    <input type="number" step="any" min="0" name="strength_value" value="{{ old('strength_value') }}" placeholder="e.g. 500" class="w-2/3 bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
+                                                    <select name="strength_unit_id" class="w-1/3 bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
+                                                        <option value="">Unit</option>
+                                                        @foreach($strengthUnits ?? [] as $sUnit)
+                                                            <option value="{{ $sUnit->id }}" {{ (old('strength_unit_id') == $sUnit->id) ? 'selected' : '' }}>{{ $sUnit->name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
                                             </div>
 
                                             <!-- Min, Warning & Units per Pack -->
@@ -1178,7 +1235,7 @@
                                                 <div>
                                                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Units/Pack</label>
                                                     <div class="input-group flex items-center">
-                                                        <input type="number" name="units_per_pack" value="1" required min="1" class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
+                                                        <input type="number" name="units_per_pack" x-model.number="unitsPerPack" value="1" required min="1" class="form-control w-full rounded-l-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 border-r-0">
                                                         <span class="input-group-text bg-slate-100 border border-slate-200 rounded-r-lg px-2 py-2 text-[11px] font-bold text-slate-500 h-[38px] flex items-center justify-center whitespace-nowrap min-w-[60px]">Units</span>
                                                     </div>
                                                 </div>
@@ -1311,7 +1368,15 @@
                                     <!-- Strength -->
                                     <div class="col-span-2">
                                         <label class="block text-sm font-semibold text-slate-700 mb-1.5">Strength</label>
-                                        <input type="text" name="strength" value="{{ $medicine->strength }}" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400">
+                                        <div class="flex items-center gap-2">
+                                            <input type="number" step="any" min="0" name="strength_value" value="{{ old('strength_value', $medicine->strength_value !== null ? rtrim(rtrim(number_format((float) $medicine->strength_value, 2, '.', ''), '0'), '.') : '') }}" placeholder="e.g. 500" class="w-2/3 bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
+                                            <select name="strength_unit_id" class="w-1/3 bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-2.5 outline-none">
+                                                <option value="">Unit</option>
+                                                @foreach($strengthUnits ?? [] as $sUnit)
+                                                    <option value="{{ $sUnit->id }}" {{ (old('strength_unit_id', $medicine->strength_unit_id ?? '') == $sUnit->id) ? 'selected' : '' }}>{{ $sUnit->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
                                     </div>
                                     <!-- Min, Warning & Units per Pack Stock -->
                                     <div class="col-span-2 grid grid-cols-3 gap-3">
@@ -1817,14 +1882,11 @@
                                     </div>
                                 </div>
 
-                                <div class="mb-5">
-                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Supplier</label>
-                                    <select name="supplier_id" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700">
-                                        <option value="">Select Supplier...</option>
-                                        @foreach($suppliers ?? [] as $supplier)
-                                        <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
-                                        @endforeach
-                                    </select>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Supplier</label>
+                                    <div class="p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-medium" x-text="receiveModalSupplierName || 'N/A'">
+                                        {{ $order->supplier->name ?? ($rowSupplierName ?? 'N/A') }}
+                                    </div>
                                 </div>
 
                                 <p class="mt-2 text-xs text-slate-500">Note: Receipt will update stock automatically.</p>

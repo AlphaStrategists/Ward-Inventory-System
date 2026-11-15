@@ -1963,6 +1963,25 @@
                             </a>
 
                             <a
+                                href="{{ route('strength-units.index') }}"
+                                class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
+
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#1894f2]">
+                                    <i class="fa-solid fa-flask-vial"></i>
+                                </span>
+
+                                <span>
+                                    <span class="block font-semibold">
+                                        Strength Units
+                                    </span>
+                                    <span class="text-xs text-slate-400">
+                                        Dosage concentration units
+                                    </span>
+                                </span>
+
+                            </a>
+
+                            <a
                                 href="{{ route('suppliers.index') }}"
                                 class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-[#1894f2]">
 
@@ -2029,7 +2048,7 @@
                             Hi, {{ trim((Auth::user()->first_name ?? '') . ' ' . (Auth::user()->last_name ?? '')) ?: (Auth::user()->name ?? 'User') }}
                         </span>
                         <span class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                            {{ Auth::user()->role ?? (Auth::user()->is_admin ? 'System Admin' : 'User') }}
+                            {{ strtoupper(Auth::user()->role ?? 'USER') }}
                         </span>
                     </span>
 

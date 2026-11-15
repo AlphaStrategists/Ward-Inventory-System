@@ -334,6 +334,11 @@
                                         By: {{ $order->approver->name }}
                                     </div>
                                     @endif
+                                    @if($order->approved_at)
+                                    <div class="text-muted" style="font-size: 0.675rem;">
+                                        {{ \Carbon\Carbon::parse($order->approved_at)->format('M d, Y h:i A') }}
+                                    </div>
+                                    @endif
                                 </div>
                             </td>
 
@@ -544,17 +549,12 @@
                         </div>
                     </div>
 
-                    <!-- Supplier (Read-only / Locked) -->
+                    <!-- Supplier (Read-only) -->
                     <div class="mb-3">
-                        <label for="supplierNameDisplay" class="form-label">Supplier</label>
-                        <input type="hidden" name="supplier_id" id="supplierIdInput" value="">
-                        <div class="input-group">
-                            <span class="input-group-text bg-slate-100 text-slate-500 border-end-0">
-                                <i class="fa-solid fa-lock text-xs"></i>
-                            </span>
-                            <input type="text" id="supplierNameDisplay" class="form-control text-sm bg-slate-100 text-slate-700 fw-semibold border-start-0" value="Not Specified" readonly tabindex="-1" style="cursor: not-allowed;">
+                        <label class="form-label">Supplier</label>
+                        <div id="supplierNameDisplayText" class="p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm fw-medium">
+                            N/A
                         </div>
-                        <small class="text-muted" style="font-size: 0.725rem;">Locked to the supplier selected when this order was placed.</small>
                     </div>
 
                     <div class="alert alert-light border rounded-xl py-2 px-3 text-xs text-muted mb-0">
@@ -615,14 +615,10 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('modalMedicineName').textContent = medName;
             document.getElementById('modalQtyIssued').textContent = qtyIssued + ' ' + unit;
 
-            // Populate read-only supplier field locked to the order's supplier
-            const supplierIdInput = document.getElementById('supplierIdInput');
-            const supplierNameDisplay = document.getElementById('supplierNameDisplay');
-            if (supplierIdInput) {
-                supplierIdInput.value = supplierId;
-            }
-            if (supplierNameDisplay) {
-                supplierNameDisplay.value = supplierName || 'Not Specified';
+            // Populate read-only supplier display
+            const supplierNameDisplayText = document.getElementById('supplierNameDisplayText');
+            if (supplierNameDisplayText) {
+                supplierNameDisplayText.textContent = supplierName || 'N/A';
             }
 
             // Reset radio to existing
